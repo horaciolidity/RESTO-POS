@@ -17,6 +17,7 @@ import WaiterLinkHandler from './pages/waiter/WaiterLinkHandler';
 import Settings from './pages/settings/Settings';
 import CustomerOrder from './pages/customer-order/CustomerOrder';
 import TableCall from './pages/table-call/TableCall';
+import GlobalHistory from './pages/global-history/GlobalHistory';
 import SuperAdmin from './pages/super-admin/SuperAdmin';
 import { useAuthStore } from './store/useAuthStore';
 
@@ -133,6 +134,12 @@ function App() {
           <Route path="incidents" element={
             <ProtectedRoute allowedRoles={['admin', 'cajero', 'mozo', 'cocina', 'delivery', 'supervisor']}>
               <IncidentsPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="history" element={
+            <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+              <GlobalHistory />
             </ProtectedRoute>
           } />
 

@@ -18,7 +18,8 @@ import {
   Moon,
   Tv,
   Wallet,
-  Settings2
+  Settings2,
+  History
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCashStore } from '../../store/useCashStore';
@@ -68,6 +69,7 @@ export default function Layout() {
     { path: '/cash', label: 'Caja & Arqueos', icon: Wallet, roles: ['super_admin', 'admin', 'cajero', 'supervisor'] },
     { path: '/audit', label: 'Centro Conciliación', icon: ShieldCheck, roles: ['super_admin', 'admin', 'supervisor'] },
     { path: '/incidents', label: 'Incidencias & Turno', icon: AlertTriangle, roles: ['super_admin', 'admin', 'cajero', 'mozo', 'cocina', 'delivery', 'supervisor'] },
+    { path: '/history', label: 'Historial General', icon: History, roles: ['super_admin', 'admin', 'supervisor'] },
     { path: '/settings', label: 'Ajustes & Personal', icon: Settings2, roles: ['super_admin', 'admin', 'supervisor'] },
   ];
 
