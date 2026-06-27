@@ -88,7 +88,7 @@ export default function Login() {
               <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center shadow-lg">
                 <Coffee className="w-5 h-5 text-white" />
               </div>
-              <span className="text-2xl font-bold tracking-tight text-white">RESTO POS</span>
+              <span className="text-2xl font-bold tracking-tight text-white">MesaHub</span>
             </div>
             
             <div className="space-y-2">

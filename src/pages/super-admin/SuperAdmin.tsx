@@ -227,7 +227,7 @@ export default function SuperAdmin() {
           </div>
           <div>
             <h2 className="text-2xl font-extrabold tracking-tight">Panel Super Admin</h2>
-            <p className="text-sm text-muted-foreground">GastroPOS Platform · Gestión Global de Cuentas</p>
+            <p className="text-sm text-muted-foreground">MesaHub Platform · Gestión Global de Cuentas</p>
           </div>
         </div>
         <button onClick={() => { loadTenants(); loadAlerts(); }} disabled={loadingTenants}

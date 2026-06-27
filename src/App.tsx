@@ -16,6 +16,7 @@ import WaiterPage from './pages/waiter/Waiter';
 import WaiterLinkHandler from './pages/waiter/WaiterLinkHandler';
 import Settings from './pages/settings/Settings';
 import CustomerOrder from './pages/customer-order/CustomerOrder';
+import TableCall from './pages/table-call/TableCall';
 import SuperAdmin from './pages/super-admin/SuperAdmin';
 import { useAuthStore } from './store/useAuthStore';
 
@@ -57,6 +58,9 @@ function App() {
         <Route path="/customer-billing" element={<CustomerBillingDisplay />} />
         {/* Public QR ordering route - no auth required */}
         <Route path="/mesa/:tableToken" element={<CustomerOrder />} />
+
+        {/* Public Table Call route - client calls waiter from QR */}
+        <Route path="/llamar/:tableToken" element={<TableCall />} />
         
         {/* Public Waiter Link - auto-sets simulated auth */}
         <Route path="/m/:employeeId" element={<WaiterLinkHandler />} />

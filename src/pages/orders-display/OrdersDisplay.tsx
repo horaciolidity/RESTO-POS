@@ -86,7 +86,7 @@ export default function OrdersDisplay() {
           </div>
 
           <div className="pt-4 border-t border-white/5 text-slate-500 text-[10px] text-center font-bold tracking-wide uppercase">
-            RESTO POS Realtime Queue Display
+            MesaHub Realtime Queue Display
 
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function OrdersDisplay() {
 
       {/* Footer credits info */}
       <div className="text-center text-xs text-slate-600 font-semibold tracking-wider uppercase">
-        RESTO POS Gastronomic Display System • Multichannel Sync Active
+        MesaHub Gastronomic Display System • Multichannel Sync Active
 
       </div>
 

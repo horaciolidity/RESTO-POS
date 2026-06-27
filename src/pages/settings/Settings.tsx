@@ -386,18 +386,73 @@ export default function Settings() {
           {/* Tables List */}
           <div className="col-span-1 md:col-span-2 bg-card border border-border rounded-2xl p-5">
             <h3 className="font-bold text-lg mb-4">Mesas Registradas ({tables.length})</h3>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-              {tables.map(t => (
-                <div key={t.id} className="p-3 border border-border rounded-xl flex items-center justify-between bg-muted/30">
-                  <div>
-                    <span className="font-bold text-sm block">Mesa {t.number}</span>
-                    <span className="text-[10px] text-muted-foreground">{t.zone} • {t.capacity} pax</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {tables.map(t => {
+                const callUrl = `${window.location.origin}/llamar/${t.qr_token || 'table-' + t.number}`;
+                const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(callUrl)}&bgcolor=ffffff&color=1a1a2e&qzone=2`;
+                const handlePrintQr = () => {
+                  const win = window.open('', '_blank', 'width=420,height=600');
+                  if (!win) return;
+                  win.document.write(`
+                    <!DOCTYPE html><html><head>
+                    <title>QR Mesa ${t.number}</title>
+                    <style>
+                      * { box-sizing: border-box; margin: 0; padding: 0; }
+                      body { font-family: 'Segoe UI', sans-serif; background: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+                      .card { border: 3px solid #1a1a2e; border-radius: 24px; padding: 32px 24px; text-align: center; max-width: 320px; width: 100%; }
+                      .logo { font-size: 22px; font-weight: 900; color: #1a1a2e; letter-spacing: -0.5px; margin-bottom: 4px; }
+                      .mesa { font-size: 36px; font-weight: 900; color: #7c3aed; margin: 8px 0; }
+                      .zone { font-size: 13px; color: #64748b; font-weight: 600; margin-bottom: 20px; }
+                      .qr-img { width: 220px; height: 220px; border-radius: 16px; border: 2px solid #e2e8f0; }
+                      .cta { margin-top: 18px; font-size: 13px; font-weight: 700; color: #334155; }
+                      .sub { margin-top: 6px; font-size: 11px; color: #94a3b8; }
+                      .divider { margin: 16px 0; border: none; border-top: 1.5px dashed #e2e8f0; }
+                    </style>
+                    </head><body>
+                    <div class="card">
+                      <div class="logo">🍽️ MesaHub</div>
+                      <div class="mesa">Mesa ${t.number}</div>
+                      <div class="zone">${t.zone} · ${t.capacity} personas</div>
+                      <img class="qr-img" src="${qrImgUrl}" alt="QR Mesa ${t.number}" />
+                      <hr class="divider" />
+                      <div class="cta">📱 Escaneá para llamar al mozo<br/>o ver el menú</div>
+                      <div class="sub">Podés hacer tu pedido desde tu celular</div>
+                    </div>
+                    <script>window.onload = () => { window.print(); }<\/script>
+                    </body></html>
+                  `);
+                  win.document.close();
+                };
+                return (
+                  <div key={t.id} className="p-4 border border-border rounded-2xl bg-muted/30 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="font-bold text-base block">Mesa {t.number}</span>
+                        <span className="text-[11px] text-muted-foreground">{t.zone} · {t.capacity} pax</span>
+                      </div>
+                      <button onClick={() => removeTable(t.id)} className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Mini QR preview */}
+                    <div className="flex justify-center">
+                      <img
+                        src={qrImgUrl}
+                        alt={`QR Mesa ${t.number}`}
+                        className="w-20 h-20 rounded-xl border border-border bg-white p-1"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handlePrintQr}
+                      className="w-full py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <QrCode className="w-3.5 h-3.5" /> Imprimir QR de Mesa
+                    </button>
                   </div>
-                  <button onClick={() => removeTable(t.id)} className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

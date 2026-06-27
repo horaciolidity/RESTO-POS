@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   FileText,
   AlertCircle,
@@ -11,12 +11,16 @@ import {
   QrCode,
   Eye,
   Send,
-  RefreshCw
+  RefreshCw,
+  Bell,
+  BellRing
 } from 'lucide-react';
 import { useOrdersStore, RestaurantTable, Order } from '../../store/useOrdersStore';
 import { useInventoryStore, Product } from '../../store/useInventoryStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { supabase } from '../../services/supabase';
+import { tableCallService, TableCallEvent } from '../../services/tableCallService';
 import { useNavigate } from 'react-router-dom';
 
 // Admin exit lock modal
@@ -114,6 +118,62 @@ export default function Waiter() {
 
   const [waiterNovedad, setWaiterNovedad] = useState('');
   const [waiterNovedadType, setWaiterNovedadType] = useState<'incidente' | 'reclamo' | 'rotura' | 'error_cocina'>('incidente');
+  const [tableCallAlert, setTableCallAlert] = useState<TableCallEvent | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const callChannelRef = useRef<any>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+  }, []);
+
+  // Subscribe to table call events (customers calling the waiter)
+  useEffect(() => {
+    if (!user?.branchId) return;
+    const channel = tableCallService.subscribeToTableCalls(
+      user.branchId,
+      (event: TableCallEvent) => {
+        // Only alert if mozo has this table assigned (or no restriction in demo)
+        const { employees } = useSettingsStore.getState();
+        const myEmployee = employees.find((e: any) =>
+          `${e.firstName} ${e.lastName}`.trim() === user.name?.trim()
+        );
+        const myTables: string[] = myEmployee?.assignedTables || [];
+        if (myTables.length === 0 || myTables.includes(event.tableId)) {
+          setTableCallAlert(event);
+          tableCallService.playAlarm();
+          tableCallService.vibrate();
+        }
+      }
+    );
+    callChannelRef.current = channel;
+    return () => {
+      tableCallService.unsubscribeAll();
+    };
+  }, [user?.branchId, user?.name]);
+
+  const handleConfirmTableCall = async () => {
+    if (!tableCallAlert || !user?.branchId) return;
+    setConfirming(true);
+    await tableCallService.confirmCall(
+      {
+        tableToken: tableCallAlert.tableToken,
+        tableNumber: tableCallAlert.tableNumber,
+        waiterName: user.name || 'Mozo',
+      },
+      user.branchId
+    );
+    setTableCallAlert(null);
+    setConfirming(false);
+  };
+
+  const handleDeliverOrder = async (order: Order, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    await updateOrderStatus(order.id, 'entregado');
+    const assocTable = tables.find(t => `Mesa ${t.number}` === order.tableName || t.currentOrderId === order.id);
+    if (assocTable && assocTable.status !== 'solicita_cuenta') {
+      await updateTableStatus(assocTable.id, 'comiendo', assocTable.currentOrderId || undefined);
+    }
+  };
 
   const handleWaiterFinalizeTable = async (order: Order) => {
     // 1. Update order status to 'entregado' but do not mark as paid
@@ -344,6 +404,45 @@ export default function Waiter() {
         />
       )}
 
+      {/* ⚡ TABLE CALL ALERT MODAL — highest priority overlay */}
+      {tableCallAlert && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+          {/* Pulse background */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-64 h-64 rounded-full bg-amber-500/10 animate-ping [animation-duration:1s]" />
+          </div>
+          <div className="relative bg-[#18181b] border-2 border-amber-400/50 rounded-3xl p-7 w-full max-w-sm space-y-6 shadow-2xl shadow-amber-500/20 text-center">
+            {/* Bell icon animated */}
+            <div className="w-24 h-24 mx-auto rounded-full bg-amber-400/10 border-2 border-amber-400/40 flex items-center justify-center">
+              <BellRing className="w-12 h-12 text-amber-400 animate-bounce" />
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-xs text-amber-400/70 font-bold uppercase tracking-widest">¡Llamada Entrante!</p>
+              <h2 className="text-3xl font-black text-white">Mesa {tableCallAlert.tableNumber}</h2>
+              <p className="text-slate-400 text-sm">Un cliente está solicitando tu atención.</p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={handleConfirmTableCall}
+                disabled={confirming}
+                className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-base rounded-2xl shadow-xl shadow-amber-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                <CheckCircle2 className="w-5 h-5" />
+                {confirming ? 'Confirmando...' : '¡Voy para allá!'}
+              </button>
+              <button
+                onClick={() => setTableCallAlert(null)}
+                className="w-full py-2.5 bg-white/5 border border-white/10 text-slate-400 font-bold text-sm rounded-2xl hover:bg-white/10 transition-all"
+              >
+                Descartar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* QR Payment Modal */}
       {showQrPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -452,6 +551,14 @@ export default function Waiter() {
             {/* Waiter can close table and leave novelties/incidents if unpaid */}
             {!showOrderDetail.paid && (
               <div className="pt-2 border-t border-border space-y-3">
+                {showOrderDetail.status === 'listo' && (
+                  <button
+                    onClick={() => { handleDeliverOrder(showOrderDetail); setShowOrderDetail(null); }}
+                    className="w-full py-2.5 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1 shadow-md shadow-green-500/15"
+                  >
+                    <CheckCircle2 className="w-4 h-4" /> Entregar Comanda
+                  </button>
+                )}
                 <div className="p-3 bg-muted/40 rounded-xl space-y-2 text-xs">
                   <div className="flex justify-between items-center">
                     <label className="text-[10px] text-muted-foreground uppercase font-bold">Asentar Novedad / Incidente (Opcional)</label>
@@ -793,16 +900,16 @@ export default function Waiter() {
                     {activeWaiterOrders.map((o: Order) => (
                       <div key={o.id} className="flex items-center justify-between text-xs p-2.5 bg-card rounded-xl border border-border">
                         <div>
-                          <p className="font-bold">{o.tableName}</p>
-                          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <p className="font-bold text-sm">#{o.orderNumber} <span className="text-xs text-muted-foreground font-normal">· {o.tableName}</span></p>
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
                             <Clock className="w-3 h-3" />
                             {new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="text-right">
+                          <div className="text-right flex flex-col items-end">
                             <p className="font-extrabold text-primary">${o.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
-                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full mt-0.5 ${
                               o.status === 'preparando' ? 'bg-blue-500/10 text-blue-500' :
                               o.status === 'listo' ? 'bg-emerald-500/10 text-emerald-500' :
                               'bg-orange-500/10 text-orange-500'
@@ -810,9 +917,17 @@ export default function Waiter() {
                               {o.status}
                             </span>
                           </div>
+                          {o.status === 'listo' && (
+                            <button
+                              onClick={(e) => handleDeliverOrder(o, e)}
+                              className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold text-[10px] shadow-sm flex items-center gap-1 transition-colors"
+                            >
+                              <CheckCircle2 className="w-3 h-3" /> Entregar
+                            </button>
+                          )}
                           <button
                             onClick={() => setShowOrderDetail(o)}
-                            className="p-1.5 bg-muted hover:bg-primary/10 hover:text-primary rounded-lg transition-colors"
+                            className="p-1.5 bg-muted hover:bg-primary/10 hover:text-primary rounded-lg transition-colors ml-1"
                             title="Ver detalles"
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -835,8 +950,8 @@ export default function Waiter() {
                     {waiterOrders.slice(0, 10).map((o: Order) => (
                       <div key={o.id} className="flex items-center justify-between text-xs p-2.5 bg-card rounded-xl border border-border">
                         <div>
-                          <p className="font-bold">{o.tableName}</p>
-                          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <p className="font-bold text-sm">#{o.orderNumber} <span className="text-xs text-muted-foreground font-normal">· {o.tableName}</span></p>
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
                             <Clock className="w-3 h-3" />
                             {new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>

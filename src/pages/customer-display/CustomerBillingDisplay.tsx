@@ -52,7 +52,7 @@ export default function CustomerBillingDisplay() {
               <Tv className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tighter gradient-text">RESTO POS</h1>
+              <h1 className="text-3xl font-black tracking-tighter gradient-text">MesaHub</h1>
               <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">Pantalla de Cliente</p>
             </div>
           </div>

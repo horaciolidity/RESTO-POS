@@ -208,7 +208,7 @@ export default function CustomerOrder() {
           <div>
             <div className="flex items-center gap-2">
               <ChefHat className="w-5 h-5 text-primary" />
-              <span className="font-black text-base">RESTO POS</span>
+              <span className="font-black text-base">MesaHub</span>
 
             </div>
             {tableInfo && (
