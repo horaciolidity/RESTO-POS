@@ -68,6 +68,19 @@ function App() {
           </ProtectedRoute>
         } />
         
+        {/* Rutas de Mozo - Independientes del Layout (app completa) */}
+        <Route path="/waiter" element={
+          <ProtectedRoute allowedRoles={['admin', 'mozo', 'supervisor']}>
+            <WaiterPage />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/mozo" element={
+          <ProtectedRoute allowedRoles={['admin', 'mozo', 'supervisor']}>
+            <WaiterPage />
+          </ProtectedRoute>
+        } />
+
         {/* Main Application Routes inside Layout */}
         <Route path="/" element={
           <ProtectedRoute>
@@ -85,18 +98,6 @@ function App() {
           <Route path="tables" element={
             <ProtectedRoute allowedRoles={['admin', 'mozo', 'supervisor']}>
               <TablesPage />
-            </ProtectedRoute>
-          } />
-
-          <Route path="waiter" element={
-            <ProtectedRoute allowedRoles={['admin', 'mozo', 'supervisor']}>
-              <WaiterPage />
-            </ProtectedRoute>
-          } />
-
-          <Route path="mozo" element={
-            <ProtectedRoute allowedRoles={['admin', 'mozo', 'supervisor']}>
-              <WaiterPage />
             </ProtectedRoute>
           } />
           
