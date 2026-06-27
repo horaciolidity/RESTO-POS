@@ -12,7 +12,6 @@ import {
   Eye,
   Send,
   RefreshCw,
-  Bell,
   BellRing
 } from 'lucide-react';
 import { useOrdersStore, RestaurantTable, Order } from '../../store/useOrdersStore';
