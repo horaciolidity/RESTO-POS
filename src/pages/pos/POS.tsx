@@ -888,12 +888,28 @@ export default function POS() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-2xl bg-card rounded-2xl border border-border p-6 shadow-2xl space-y-6 animate-in zoom-in-95 duration-150">
             <div className="flex justify-between items-center pb-2 border-b border-border">
-              <div>
-                <h3 className="font-extrabold text-base flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-primary" />
-                  Comandas por Cobrar (Mesas Liberadas / Activas)
-                </h3>
-                <p className="text-[11px] text-muted-foreground">Listado de comandas de salón que aún no han sido cobradas.</p>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h3 className="font-extrabold text-base flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-primary" />
+                    Comandas por Cobrar (Mesas Liberadas / Activas)
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">Listado de comandas de salón que aún no han sido cobradas.</p>
+                </div>
+                {/* Refresh button inside modal */}
+                <button
+                  onClick={handleRefreshOrders}
+                  disabled={isRefreshingOrders}
+                  title="Actualizar lista de comandas"
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                    isRefreshingOrders
+                      ? 'bg-primary/10 border-primary/30 text-primary'
+                      : 'bg-muted border-border text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingOrders ? 'animate-spin' : ''}`} />
+                  {isRefreshingOrders ? 'Actualizando...' : 'Actualizar'}
+                </button>
               </div>
               <button 
                 onClick={() => setIsUnpaidOrdersOpen(false)}
