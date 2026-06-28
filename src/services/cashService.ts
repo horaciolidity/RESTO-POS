@@ -191,5 +191,23 @@ export const cashService = {
       return [];
     }
     return data as SupabaseCashMovement[];
+  },
+
+  // ── Real-time subscription handle ────────────────────────────────
+  subscribeToCashSessions(onUpdate: () => void, branchId?: string) {
+    if (!isSupabaseConfigured()) return null;
+
+    const channelName = `cash-sessions-realtime-${branchId || 'all'}-${Date.now()}`;
+    return supabase
+      .channel(channelName)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'cash_sessions',
+        ...(branchId ? { filter: `branch_id=eq.${branchId}` } : {})
+      }, () => {
+        onUpdate();
+      })
+      .subscribe();
   }
 };

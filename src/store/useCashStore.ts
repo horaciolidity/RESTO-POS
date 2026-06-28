@@ -108,6 +108,18 @@ export const useCashStore = create<CashState>((set, get) => ({
         } else {
           set({ currentSession: null, movements: [] });
         }
+
+        // Subscribe to real-time changes of cash sessions
+        cashService.subscribeToCashSessions(async () => {
+          const updatedSession = await cashService.getCurrentSession(branchId);
+          if (updatedSession) {
+            const rawMoves = await cashService.getMovements(updatedSession.id);
+            set({ currentSession: mapSession(updatedSession), movements: mapMovements(rawMoves) });
+          } else {
+            set({ currentSession: null, movements: [] });
+          }
+        }, branchId);
+
       } else {
         // ── localStorage only ──
         const local = loadLocalSession(branchId);
