@@ -104,9 +104,6 @@ export default function Waiter() {
   const { tables, updateTableStatus, addOrder, orders, initializeStore, updateOrderStatus, addIncident } = useOrdersStore();
   const { products } = useInventoryStore();
   const { user } = useAuthStore();
-  const { currentSession, initializeCash } = useCashStore();
-  const navigate = useNavigate();
-
   const [activeTable, setActiveTable] = useState<RestaurantTable | null>(null);
   const [selectedItems, setSelectedItems] = useState<{ product: any; quantity: number; notes: string }[]>([]);
   const [activeTab, setActiveTab] = useState<'mesas' | 'pedido' | 'mi_historial'>('mesas');
@@ -122,13 +119,21 @@ export default function Waiter() {
   const [tableCallAlert, setTableCallAlert] = useState<TableCallEvent | null>(null);
   const [confirming, setConfirming] = useState(false);
   const callChannelRef = useRef<any>(null);
+  const { currentSession, initializeCash, loading: cashLoading } = useCashStore();
+  const navigate = useNavigate();
 
+  // Re-fetch cash only if branchId changes OR if store hasn't loaded yet
   useEffect(() => {
     document.documentElement.classList.add('dark');
-    if (user?.branchId) {
-      initializeCash(user.branchId);
+    if (user?.branchId && !cashLoading && currentSession === null) {
+      // Layout already calls initializeCash on mount; only call here as a
+      // safety net if the store is still empty after auth settles.
+      const timer = setTimeout(() => {
+        initializeCash(user.branchId);
+      }, 300); // small delay to let Layout's call finish first
+      return () => clearTimeout(timer);
     }
-  }, [user]);
+  }, [user?.branchId]);
 
   // Subscribe to table call events (customers calling the waiter)
   useEffect(() => {
@@ -403,6 +408,18 @@ export default function Waiter() {
     return 'border-border bg-muted/30 text-muted-foreground';
   };
 
+  // Show loading screen while cash data is being fetched (prevents false "closed" block)
+  if (cashLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground text-sm font-semibold">Verificando estado de caja...</p>
+        </div>
+      </div>
+    );
+  }
+
   const isCashRegisterOpen = currentSession && currentSession.status === 'open';
 
   return (
@@ -421,6 +438,12 @@ export default function Waiter() {
                 Solicite al cajero o administrador que realice la apertura de caja para continuar.
               </p>
             </div>
+            <button
+              onClick={() => initializeCash(user?.branchId || '')}
+              className="w-full py-2.5 bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary font-bold text-xs rounded-xl transition-all mb-2"
+            >
+              Reintentar verificación
+            </button>
             <button
               onClick={handleExitClick}
               className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs rounded-xl transition-all"
