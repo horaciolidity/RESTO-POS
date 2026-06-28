@@ -66,16 +66,19 @@ export const useAuthStore = create<AuthState>((set: any, get: any) => ({
   initialize: async () => {
     set({ loading: true });
     try {
-      const activeUser = await authService.restoreSession();
-      if (!activeUser && sessionStorage.getItem('simulated_mozo')) {
-        set({ user: JSON.parse(sessionStorage.getItem('simulated_mozo')!), loading: false });
+      // Prioritize simulated mozo from link so active admin sessions on the same browser don't override it
+      const simulated = sessionStorage.getItem('simulated_mozo');
+      if (simulated) {
+        set({ user: JSON.parse(simulated), loading: false });
       } else {
+        const activeUser = await authService.restoreSession();
         set({ user: activeUser, loading: false });
       }
 
       authService.onAuthStateChange((profile) => {
-        if (!profile && sessionStorage.getItem('simulated_mozo')) {
-          set({ user: JSON.parse(sessionStorage.getItem('simulated_mozo')!) });
+        const simulatedActive = sessionStorage.getItem('simulated_mozo');
+        if (simulatedActive) {
+          set({ user: JSON.parse(simulatedActive) });
         } else {
           set({ user: profile });
         }

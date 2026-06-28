@@ -440,16 +440,18 @@ export default function Waiter() {
             </div>
             <button
               onClick={() => initializeCash(user?.branchId || '')}
-              className="w-full py-2.5 bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary font-bold text-xs rounded-xl transition-all mb-2"
+              className="w-full py-3 bg-primary text-white font-bold text-xs rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all mb-2"
             >
               Reintentar verificación
             </button>
-            <button
-              onClick={handleExitClick}
-              className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs rounded-xl transition-all"
-            >
-              Regresar al Menú
-            </button>
+            {!sessionStorage.getItem('simulated_mozo') && (
+              <button
+                onClick={handleExitClick}
+                className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs rounded-xl transition-all"
+              >
+                Regresar al Menú
+              </button>
+            )}
           </div>
         </div>
       )}
