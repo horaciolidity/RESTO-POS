@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Search,
   ShoppingCart,
@@ -14,7 +14,8 @@ import {
   QrCode,
   Sparkles,
   Layers,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import { useInventoryStore, Product } from '../../store/useInventoryStore';
 import { useCartStore } from '../../store/useCartStore';
@@ -45,8 +46,16 @@ export default function POS() {
     clearCart,
     totals
   } = useCartStore();
-  const { addOrder, tables, updateTableStatus, orders, closeOrder } = useOrdersStore();
+  const { addOrder, tables, updateTableStatus, orders, closeOrder, initializeStore } = useOrdersStore();
   const { currentSession, addMovement } = useCashStore();
+
+  const [isRefreshingOrders, setIsRefreshingOrders] = useState(false);
+  const handleRefreshOrders = useCallback(async () => {
+    if (isRefreshingOrders) return;
+    setIsRefreshingOrders(true);
+    await initializeStore();
+    setTimeout(() => setIsRefreshingOrders(false), 600);
+  }, [isRefreshingOrders, initializeStore]);
 
   const [isUnpaidOrdersOpen, setIsUnpaidOrdersOpen] = useState(false);
   const [activeOrderIdBeingPaid, setActiveOrderIdBeingPaid] = useState<string | null>(null);
@@ -251,6 +260,20 @@ export default function POS() {
           >
             <Layers className="w-4 h-4" />
             Comandas por Cobrar ({orders.filter(o => o.source === 'mesas' && !o.paid).length})
+          </button>
+          {/* Refresh orders button — right next to Comandas */}
+          <button
+            onClick={handleRefreshOrders}
+            disabled={isRefreshingOrders}
+            title="Actualizar comandas y pedidos"
+            className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all shrink-0 ${
+              isRefreshingOrders
+                ? 'bg-primary/10 border-primary/30 text-primary'
+                : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
+            }`}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingOrders ? 'animate-spin' : ''}`} />
+            {isRefreshingOrders ? 'Actualizando...' : 'Actualizar'}
           </button>
           
           <div className="flex gap-2 overflow-x-auto pb-1.5 shrink-0 scrollbar-thin">
