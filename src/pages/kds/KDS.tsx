@@ -1,17 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   ChefHat,
   Clock,
   CheckCircle2,
   Play,
   Volume2,
-  Utensils
+  Utensils,
+  RefreshCw
 } from 'lucide-react';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 
 export default function KDS() {
-  const { orders, updateOrderStatus } = useOrdersStore();
+  const { orders, updateOrderStatus, initializeStore } = useOrdersStore();
   const [activeQueue, setActiveQueue] = useState<'activas' | 'historico'>('activas');
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await initializeStore();
+    setLastUpdated(new Date());
+    setTimeout(() => setIsRefreshing(false), 500);
+  }, [initializeStore]);
+
+  // Initialize on mount — establishes Realtime subscription
+  useEffect(() => {
+    refresh();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Polling fallback every 30 s — keeps the screen live if
+  // the Supabase Realtime WebSocket drops on slow networks.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      initializeStore().then(() => setLastUpdated(new Date()));
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [initializeStore]);
 
   // Filter orders related to kitchen preparation
   const kitchenOrders = orders.filter((o: Order) => {
@@ -60,10 +84,29 @@ export default function KDS() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Pantalla de Cocina (KDS)</h2>
-          <p className="text-muted-foreground text-xs">Monitoreo de producción, tiempos de cocción y despacho de comandas en tiempo real.</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            {/* Live indicator */}
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
+            <p className="text-muted-foreground text-xs">
+              EN VIVO · Actualizado {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </p>
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
+          {/* Manual refresh button */}
+          <button
+            onClick={refresh}
+            disabled={isRefreshing}
+            title="Actualizar ahora"
+            className={`p-2.5 bg-card border border-border rounded-xl flex items-center gap-1.5 text-xs font-semibold transition-all ${
+              isRefreshing ? 'text-primary border-primary/40' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+          </button>
+
           <button
             onClick={handlePlaySound}
             className="p-2.5 bg-card border border-border rounded-xl text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs font-semibold"

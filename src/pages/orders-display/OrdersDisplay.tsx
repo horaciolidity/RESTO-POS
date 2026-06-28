@@ -1,15 +1,32 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Tv, ChevronLeft, Volume2, Sparkles, ChefHat } from 'lucide-react';
+import { Tv, ChevronLeft, Volume2, Sparkles, ChefHat, RefreshCw } from 'lucide-react';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 
 export default function OrdersDisplay() {
   const { orders, initializeStore } = useOrdersStore();
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Explicitly initialize on mount so Realtime subscriptions
-  // are always active, even on this public (no-auth) route.
+  const refresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await initializeStore();
+    setLastUpdated(new Date());
+    setTimeout(() => setIsRefreshing(false), 500);
+  }, [initializeStore]);
+
+  // Initialize on mount (establishes Realtime subscription)
   useEffect(() => {
-    initializeStore();
+    refresh();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Polling fallback every 30 s — keeps the screen live even if
+  // the Supabase Realtime WebSocket drops on slow/shared networks.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      initializeStore().then(() => setLastUpdated(new Date()));
+    }, 30_000);
+    return () => clearInterval(interval);
   }, [initializeStore]);
 
   const preparingOrders = orders.filter((o: Order) => o.status === 'preparando');
@@ -47,17 +64,34 @@ export default function OrdersDisplay() {
             </div>
             <div>
               <h1 className="font-extrabold text-lg tracking-tight">Estado de Pedidos</h1>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black leading-none">Pantalla de Retiro</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {/* Live indicator dot */}
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black leading-none">
+                  EN VIVO · Act. {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <button
-          onClick={triggerCallSound}
-          className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all text-slate-300"
-        >
-          <Volume2 className="w-4 h-4 text-primary" /> Llamar Cliente
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Manual refresh button */}
+          <button
+            onClick={refresh}
+            disabled={isRefreshing}
+            title="Actualizar ahora"
+            className="p-2 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-slate-300 transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-green-400' : ''}`} />
+          </button>
+          <button
+            onClick={triggerCallSound}
+            className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all text-slate-300"
+          >
+            <Volume2 className="w-4 h-4 text-primary" /> Llamar Cliente
+          </button>
+        </div>
       </div>
 
       {/* Main 2-column queue display */}

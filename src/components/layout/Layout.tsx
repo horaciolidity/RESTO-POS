@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -19,19 +19,37 @@ import {
   Tv,
   Wallet,
   Settings2,
-  History
+  History,
+  RefreshCw
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCashStore } from '../../store/useCashStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { useOrdersStore } from '../../store/useOrdersStore';
 
 export default function Layout() {
   const { user, logout } = useAuthStore();
   const { currentSession, initializeCash } = useCashStore();
   const { businessName, setBusinessName } = useSettingsStore();
+  const { initializeStore } = useOrdersStore();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        initializeStore(),
+        user?.branchId ? initializeCash(user.branchId) : Promise.resolve()
+      ]);
+    } finally {
+      // Keep spinner visible for at least 600ms so the user sees feedback
+      setTimeout(() => setIsRefreshing(false), 600);
+    }
+  }, [isRefreshing, initializeStore, initializeCash, user?.branchId]);
 
   // Initialize cash register for the branch
   useEffect(() => {
@@ -167,6 +185,19 @@ export default function Layout() {
             </button>
           </div>
 
+          {/* Refresh + Logout */}
+          <button
+            onClick={handleRefresh}
+            title="Actualizar datos"
+            className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold transition-all border mb-2 ${
+              isRefreshing
+                ? 'bg-primary/10 border-primary/30 text-primary'
+                : 'hover:bg-muted border-transparent text-muted-foreground hover:border-border'
+            }`}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Actualizando...' : 'Actualizar Datos'}
+          </button>
           <button
             onClick={logout}
             className="w-full flex items-center justify-center gap-2 py-2 px-3 hover:bg-red-500/10 text-red-500 rounded-xl text-xs font-semibold transition-all border border-transparent hover:border-red-500/20"
@@ -189,6 +220,14 @@ export default function Layout() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Refresh button */}
+            <button
+              onClick={handleRefresh}
+              title="Actualizar datos de la app"
+              className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
+            </button>
             <Link to="/customer-billing" target="_blank" title="Pantalla Cliente Facturación" className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
               <DollarSign className="w-4 h-4" />
             </Link>
