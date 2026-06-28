@@ -18,6 +18,7 @@ import { useOrdersStore, RestaurantTable, Order } from '../../store/useOrdersSto
 import { useInventoryStore, Product } from '../../store/useInventoryStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { useCashStore } from '../../store/useCashStore';
 import { supabase } from '../../services/supabase';
 import { tableCallService, TableCallEvent } from '../../services/tableCallService';
 import { useNavigate } from 'react-router-dom';
@@ -103,6 +104,7 @@ export default function Waiter() {
   const { tables, updateTableStatus, addOrder, orders, initializeStore, updateOrderStatus, addIncident } = useOrdersStore();
   const { products } = useInventoryStore();
   const { user } = useAuthStore();
+  const { currentSession, initializeCash } = useCashStore();
   const navigate = useNavigate();
 
   const [activeTable, setActiveTable] = useState<RestaurantTable | null>(null);
@@ -123,7 +125,10 @@ export default function Waiter() {
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
-  }, []);
+    if (user?.branchId) {
+      initializeCash(user.branchId);
+    }
+  }, [user]);
 
   // Subscribe to table call events (customers calling the waiter)
   useEffect(() => {
@@ -214,13 +219,17 @@ export default function Waiter() {
     }
   }, [user]);
 
-  // Real waiter stats from actual orders
+  // Real waiter stats from actual orders (filter out duplicates, match name cleanly)
   const waiterOrders: Order[] = orders.filter((o: Order) =>
-    o.waiterName === user?.name && o.source === 'mesas'
+    o.waiterName?.trim().toLowerCase() === user?.name?.trim().toLowerCase() && o.source === 'mesas'
   );
 
-  // Active (unpaid) orders by this waiter
-  const activeWaiterOrders: Order[] = waiterOrders.filter(o => !o.paid && o.status !== 'cancelado' && o.status !== 'entregado');
+  // Active (unpaid and not delivered/cancelled) orders by this waiter
+  const activeWaiterOrders: Order[] = waiterOrders.filter(o => 
+    !o.paid && 
+    o.status !== 'cancelado' && 
+    o.status !== 'entregado'
+  );
 
   const waiterStats = {
     ordersSent: waiterOrders.length,
@@ -394,8 +403,33 @@ export default function Waiter() {
     return 'border-border bg-muted/30 text-muted-foreground';
   };
 
+  const isCashRegisterOpen = currentSession && currentSession.status === 'open';
+
   return (
     <div className="min-h-screen bg-background flex items-start justify-center p-2 sm:p-4">
+      {/* 🔒 BLOCKER FOR CLOSED CASH REGISTER */}
+      {!isCashRegisterOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-4 text-center">
+          <div className="bg-card border border-border rounded-3xl p-8 max-w-sm space-y-6 shadow-2xl">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
+              <Lock className="w-8 h-8 text-red-500" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-black text-white">Panel Inactivo</h2>
+              <p className="text-slate-400 text-xs leading-relaxed">
+                El modo mozo no puede utilizarse porque la caja del local está actualmente **Cerrada**. 
+                Solicite al cajero o administrador que realice la apertura de caja para continuar.
+              </p>
+            </div>
+            <button
+              onClick={handleExitClick}
+              className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs rounded-xl transition-all"
+            >
+              Regresar al Menú
+            </button>
+          </div>
+        </div>
+      )}
       {showExitModal && (
         <AdminExitModal
           onClose={() => setShowExitModal(false)}
@@ -861,7 +895,13 @@ export default function Waiter() {
                     </button>
                     {selectedItems.length > 0 && activeTable && (
                       <button
-                        onClick={() => setShowQrPaymentModal(true)}
+                        onClick={() => {
+                          if (!qrPaymentImage) {
+                            alert('No se puede cobrar con QR. No hay una imagen de QR configurada en los ajustes del sistema. Por favor cobra este pedido en la Caja.');
+                            return;
+                          }
+                          setShowQrPaymentModal(true);
+                        }}
                         className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/15"
                       >
                         <QrCode className="w-4 h-4" />
