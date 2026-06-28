@@ -249,8 +249,14 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
         total: order.total
       }).eq('id', existingOrderId);
 
-      // 4. Force a reload
-      await get().initializeStore();
+      // 4. Lightweight local update — do NOT call initializeStore() to avoid loop
+      set((state) => ({
+        orders: state.orders.map(o =>
+          o.id === existingOrderId
+            ? { ...o, subtotal: order.subtotal, total: order.total, items: order.items as any }
+            : o
+        )
+      }));
       return existingOrderId;
     }
 
@@ -301,9 +307,10 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       modifiers: []
     })));
 
-    // Force immediate refresh so KDS and other screens see the new order
-    await get().initializeStore();
-
+    // The Realtime subscription (subscribeToOrders) will automatically update
+    // the local store when Supabase inserts the row — no need to call
+    // initializeStore() here, which would cancel/recreate subscriptions and
+    // cause a render loop.
     return orderId || '';
   },
 
@@ -409,9 +416,12 @@ if (typeof window !== 'undefined') {
   useOrdersStore.getState().initializeStore();
 }
 
-// Re-initialize when auth changes (user logs in)
+// Re-initialize ONLY when branchId actually changes (avoids loop)
+let _lastOrdersBranchId: string | null | undefined = null;
 useAuthStore.subscribe((state) => {
-  if (state.user?.branchId) {
+  const newBranchId = state.user?.branchId ?? null;
+  if (newBranchId && newBranchId !== _lastOrdersBranchId) {
+    _lastOrdersBranchId = newBranchId;
     useOrdersStore.getState().initializeStore();
   }
 });

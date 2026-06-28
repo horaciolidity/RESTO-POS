@@ -185,9 +185,12 @@ if (typeof window !== 'undefined') {
   useInventoryStore.getState().initializeStore();
 }
 
-// Re-initialize when auth changes (user logs in)
+// Re-initialize ONLY when branchId actually changes (avoids loop)
+let _lastInventoryBranchId: string | null | undefined = null;
 useAuthStore.subscribe((state) => {
-  if (state.user?.branchId) {
+  const newBranchId = state.user?.branchId ?? null;
+  if (newBranchId && newBranchId !== _lastInventoryBranchId) {
+    _lastInventoryBranchId = newBranchId;
     useInventoryStore.getState().initializeStore();
   }
 });
