@@ -90,7 +90,9 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
 
   initializeStore: async () => {
     const user = useAuthStore.getState().user;
-    const branchId = user?.branchId;
+    const rawBranchId = user?.branchId;
+    // If it's a simulated waiter or default branch, fetch globally to avoid blocking orders
+    const branchId = (rawBranchId === 'local-branch' || rawBranchId === 'default') ? undefined : rawBranchId;
 
     // Load tables initially
     const fetchedTables = await tablesService.getAll(branchId);
