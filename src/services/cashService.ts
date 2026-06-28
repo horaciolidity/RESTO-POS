@@ -42,17 +42,35 @@ export const cashService = {
       .from('cash_sessions')
       .select('*')
       .eq('status', 'open')
-      .order('opened_at', { ascending: false })
-      .limit(1);
+      .order('opened_at', { ascending: false });
 
-    if (branchId) query = query.eq('branch_id', branchId);
+    if (branchId && branchId !== 'local-branch' && branchId !== 'default') {
+      query = query.eq('branch_id', branchId);
+    }
 
     const { data, error } = await query;
     if (error) {
       console.error('[cashService.getCurrentSession]', error);
       return null;
     }
-    return (data?.[0] as SupabaseCashSession) || null;
+
+    if (data && data.length > 0) {
+      return data[0] as SupabaseCashSession;
+    }
+
+    // Fallback: If we filtered by branch and got nothing, try to find any active session for the tenant
+    if (branchId) {
+      const { data: fallbackData } = await supabase
+        .from('cash_sessions')
+        .select('*')
+        .eq('status', 'open')
+        .order('opened_at', { ascending: false });
+      if (fallbackData && fallbackData.length > 0) {
+        return fallbackData[0] as SupabaseCashSession;
+      }
+    }
+
+    return null;
   },
 
   /**
