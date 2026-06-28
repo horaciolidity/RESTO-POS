@@ -184,13 +184,13 @@ export default function POS() {
       await updateTableStatus(selectedTableId, 'libre');
     }
 
-    // Add transaction amount directly to current cash sessions
+    // Add transaction amount directly to current cash sessions for any payment method
     const desc = activeOrderIdBeingPaid 
-      ? `Cobro Comanda (Mesa ${tableName || 'S/M'}) (Pedido #${orderId.slice(-4)})`
-      : `Venta Directa POS (Pedido #${orderId.slice(-4)})`;
-    if (paymentMethod === 'efectivo') {
-      addMovement('ingreso', total, desc, user?.branchId || 'default');
-    }
+      ? `Cobro Comanda (Mesa ${tableName || 'S/M'}) (Pedido #${orderId.slice(-4)}) [${paymentMethod.toUpperCase()}]`
+      : `Venta Directa POS (Pedido #${orderId.slice(-4)}) [${paymentMethod.toUpperCase()}]`;
+    
+    // Add movement to cash log (we track all POS sales in cash movements log, not just cash/efectivo)
+    await addMovement('ingreso', total, desc, user?.branchId || 'default');
 
     setLastOrderDetails({
       id: orderId,
