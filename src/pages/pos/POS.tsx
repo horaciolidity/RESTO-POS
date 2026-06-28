@@ -43,8 +43,7 @@ export default function POS() {
     orderNote,
     setOrderNote,
     clearCart,
-    totals,
-    setLastCompletedOrder
+    totals
   } = useCartStore();
   const { addOrder, tables, updateTableStatus, orders, closeOrder } = useOrdersStore();
   const { currentSession, addMovement } = useCashStore();
@@ -198,20 +197,31 @@ export default function POS() {
       time: new Date().toLocaleTimeString()
     });
 
-    // Update customer display
+    // Update customer display & reset cart atomically (single render)
     const orderNumber = orderId.slice(-4);
-    setLastCompletedOrder(orderNumber);
+    // Batch both mutations so the UI never renders an intermediate
+    // state where lastCompletedOrder is set but items are still present
+    // (or vice-versa), which caused the "total flickers to 0" bug.
+    useCartStore.setState({
+      lastCompletedOrder: orderNumber,
+      items: [],
+      customer: null,
+      discount: 0,
+      tips: 0,
+      paymentMethod: 'efectivo',
+      orderType: 'salon',
+      selectedTableId: null,
+      orderNote: ''
+    });
     // Clear customer display after 15 seconds
     setTimeout(() => {
-      // only clear if it's still this order
       const currentLast = useCartStore.getState().lastCompletedOrder;
       if (currentLast === orderNumber) {
         useCartStore.getState().setLastCompletedOrder(null);
       }
     }, 15000);
 
-    // Reset UI
-    clearCart();
+    // Reset checkout UI
     setIsCheckoutOpen(false);
     setIsReceiptOpen(true);
   };

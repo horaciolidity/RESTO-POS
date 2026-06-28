@@ -84,34 +84,51 @@ export const useCartStore = create<CartState>((set: any, get: any) => ({
   }
 }));
 
-// Cross-tab synchronization logic
+// ── Cross-tab synchronization ──────────────────────────────────────
+// We use a flag to break the feedback loop:
+// Tab A writes → Tab B receives storage event → Tab B calls setState
+// → Tab B's subscribe fires → Tab B writes → Tab A receives → loop!
+// Solution: suppress the localStorage write when state was set from
+// an external storage event (not from local user interaction).
+let _suppressStorageWrite = false;
+
 useCartStore.subscribe((state) => {
-  localStorage.setItem('cart-sync', JSON.stringify({
-    items: state.items,
-    discount: state.discount,
-    tips: state.tips,
-    paymentMethod: state.paymentMethod,
-    orderType: state.orderType,
-    selectedTableId: state.selectedTableId,
-    orderNote: state.orderNote,
-    lastCompletedOrder: state.lastCompletedOrder
-  }));
+  if (_suppressStorageWrite) return; // avoid echo loop
+  try {
+    localStorage.setItem('cart-sync', JSON.stringify({
+      items: state.items,
+      discount: state.discount,
+      tips: state.tips,
+      paymentMethod: state.paymentMethod,
+      orderType: state.orderType,
+      selectedTableId: state.selectedTableId,
+      orderNote: state.orderNote,
+      lastCompletedOrder: state.lastCompletedOrder
+    }));
+  } catch (_) { /* quota exceeded – ignore */ }
 });
 
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key === 'cart-sync' && e.newValue) {
-      const data = JSON.parse(e.newValue);
-      useCartStore.setState({
-        items: data.items,
-        discount: data.discount,
-        tips: data.tips,
-        paymentMethod: data.paymentMethod,
-        orderType: data.orderType || 'salon',
-        selectedTableId: data.selectedTableId || null,
-        orderNote: data.orderNote || '',
-        lastCompletedOrder: data.lastCompletedOrder
-      });
+      try {
+        const data = JSON.parse(e.newValue);
+        // Suppress the echo: when we setState here, the subscribe
+        // callback above should NOT write back to localStorage.
+        _suppressStorageWrite = true;
+        useCartStore.setState({
+          items: data.items,
+          discount: data.discount,
+          tips: data.tips,
+          paymentMethod: data.paymentMethod,
+          orderType: data.orderType || 'salon',
+          selectedTableId: data.selectedTableId || null,
+          orderNote: data.orderNote || '',
+          lastCompletedOrder: data.lastCompletedOrder
+        });
+      } catch (_) { /* malformed JSON – ignore */ } finally {
+        _suppressStorageWrite = false;
+      }
     }
   });
 }

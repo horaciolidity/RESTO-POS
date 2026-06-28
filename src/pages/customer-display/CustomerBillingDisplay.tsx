@@ -8,8 +8,14 @@ export default function CustomerBillingDisplay() {
   const discount = useCartStore((s) => s.discount);
   const tips = useCartStore((s) => s.tips);
   const lastCompletedOrder = useCartStore((s) => s.lastCompletedOrder);
-  const { orders } = useOrdersStore();
+  const { orders, initializeStore } = useOrdersStore();
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Explicitly initialize on mount so Realtime subscriptions
+  // are always active, even on this public (no-auth) route.
+  useEffect(() => {
+    initializeStore();
+  }, [initializeStore]);
 
   // Calcular totales reactivamente (no con getState que causa parpadeo)
   const subtotal = items.reduce((acc, item) => acc + item.product.salePrice * item.quantity, 0);

@@ -1,9 +1,16 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Tv, ChevronLeft, Volume2, Sparkles, ChefHat } from 'lucide-react';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 
 export default function OrdersDisplay() {
-  const { orders } = useOrdersStore();
+  const { orders, initializeStore } = useOrdersStore();
+
+  // Explicitly initialize on mount so Realtime subscriptions
+  // are always active, even on this public (no-auth) route.
+  useEffect(() => {
+    initializeStore();
+  }, [initializeStore]);
 
   const preparingOrders = orders.filter((o: Order) => o.status === 'preparando');
   const readyOrders = orders.filter((o: Order) => o.status === 'listo');
