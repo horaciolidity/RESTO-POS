@@ -41,6 +41,11 @@ CREATE POLICY anon_insert_incidents ON public.incidents
   FOR INSERT TO anon
   WITH CHECK (true);
 
+-- 6. Permitir que los mozos con enlace directo lean las sesiones de caja (SELECT en cash_sessions)
+CREATE POLICY anon_select_cash_sessions ON public.cash_sessions
+  FOR SELECT TO anon
+  USING (true);
+
 -- NOTA: Estas reglas asumen que el ID de la empresa (tenant_id) y la sucursal
 -- se inyectan y validan desde la aplicación en el lado del cliente y que nadie
 -- conoce el enlace de los mozos excepto ellos mismos y el administrador.
