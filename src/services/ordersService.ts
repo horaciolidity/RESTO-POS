@@ -108,8 +108,11 @@ export const ordersService = {
   subscribeToOrders(onUpdate: (orders: SupabaseOrder[]) => void, branchId?: string) {
     if (!isSupabaseConfigured()) return;
 
+    // Use a unique channel name so multiple tabs/components don't conflict
+    const channelName = `orders-realtime-${branchId || 'all'}-${Date.now()}`;
+
     ordersSubscription = supabase
-      .channel('orders-realtime')
+      .channel(channelName)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',

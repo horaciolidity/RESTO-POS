@@ -22,7 +22,7 @@ export default function CustomerOrder() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'menu' | 'cart' | 'success'>('menu');
-  const [tableInfo, setTableInfo] = useState<{ number: number; zone: string } | null>(null);
+  const [tableInfo, setTableInfo] = useState<{ number: number; zone: string; branchId?: string; tenantId?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -53,7 +53,12 @@ export default function CustomerOrder() {
             tablesService.getByQrToken(tableToken),
             productsService.getPublicMenu()
           ]);
-          if (tableData) setTableInfo({ number: tableData.number, zone: tableData.zone });
+          if (tableData) setTableInfo({
+            number: tableData.number,
+            zone: tableData.zone,
+            branchId: tableData.branch_id,
+            tenantId: tableData.tenant_id
+          });
           setProducts(productsData as any as Product[]);
         } else {
           // Demo mode: parse token as "table-{number}"
@@ -113,8 +118,11 @@ export default function CustomerOrder() {
       if (isSupabaseConfigured()) {
         const created = await ordersService.create(
           {
-            branch_id: 'b1000000-0000-0000-0000-000000000001',
-            order_number: String(Math.floor(Math.random() * 9000) + 1000),
+            // Use real branch/tenant from the QR table, fallback to demo only if missing
+            branch_id: tableInfo?.branchId || 'b1000000-0000-0000-0000-000000000001',
+            tenant_id: tableInfo?.tenantId,
+            // order_number is generated internally by ordersService.create — do NOT pass it here
+            order_number: '',
             source: 'mesas',
             status: 'pendiente',
             table_name: tableInfo ? `Mesa ${tableInfo.number} (${tableInfo.zone})` : 'Mesa QR',

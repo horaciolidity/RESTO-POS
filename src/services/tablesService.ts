@@ -62,8 +62,11 @@ export const tablesService = {
   subscribeToTables(onUpdate: (tables: SupabaseTable[]) => void, branchId?: string) {
     if (!isSupabaseConfigured()) return;
 
+    // Unique channel name to avoid conflicts with multiple subscribers
+    const channelName = `tables-realtime-${branchId || 'all'}-${Date.now()}`;
+
     tablesSubscription = supabase
-      .channel('tables-realtime')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables' }, async () => {
         const updated = await tablesService.getAll(branchId);
         onUpdate(updated);
