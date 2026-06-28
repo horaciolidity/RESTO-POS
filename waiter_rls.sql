@@ -46,6 +46,16 @@ CREATE POLICY anon_select_cash_sessions ON public.cash_sessions
   FOR SELECT TO anon
   USING (true);
 
+-- 7. Permitir a los mozos anónimos agregar nuevos pedidos (INSERT en orders)
+CREATE POLICY anon_insert_orders ON public.orders
+  FOR INSERT TO anon
+  WITH CHECK (true);
+
+-- 8. Permitir a los mozos anónimos agregar nuevos productos al pedido (INSERT en order_items)
+CREATE POLICY anon_insert_order_items ON public.order_items
+  FOR INSERT TO anon
+  WITH CHECK (true);
+
 -- NOTA: Estas reglas asumen que el ID de la empresa (tenant_id) y la sucursal
 -- se inyectan y validan desde la aplicación en el lado del cliente y que nadie
 -- conoce el enlace de los mozos excepto ellos mismos y el administrador.
