@@ -4,16 +4,25 @@ import { useCartStore } from '../../store/useCartStore';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 
 export default function CustomerBillingDisplay() {
-  const { items, discount, lastCompletedOrder } = useCartStore();
+  const items = useCartStore((s) => s.items);
+  const discount = useCartStore((s) => s.discount);
+  const tips = useCartStore((s) => s.tips);
+  const lastCompletedOrder = useCartStore((s) => s.lastCompletedOrder);
   const { orders } = useOrdersStore();
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Calcular totales reactivamente (no con getState que causa parpadeo)
+  const subtotal = items.reduce((acc, item) => acc + item.product.salePrice * item.quantity, 0);
+  const discountAmount = (subtotal * discount) / 100;
+  const total = Math.max(0, subtotal - discountAmount + tips);
+  const currentTotals = { subtotal, discountAmount, total };
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const currentTotals = useCartStore.getState().totals();
+
 
   // Pending/preparing orders from the restaurant (for table view)
   const activeOrders = orders.filter((o: Order) =>
