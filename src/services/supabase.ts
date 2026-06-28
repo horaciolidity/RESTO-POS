@@ -27,6 +27,7 @@ export const supabase = createClient(
 
 export type SupabaseOrder = {
   id: string;
+  tenant_id?: string;
   branch_id: string;
   order_number: string;
   source: 'pos' | 'mesas' | 'delivery' | 'take_away';
@@ -65,6 +66,7 @@ export type SupabaseOrderItem = {
 
 export type SupabaseTable = {
   id: string;
+  tenant_id?: string;
   branch_id: string;
   number: number;
   zone: 'Salón Principal' | 'Terraza' | 'Planta Alta';
