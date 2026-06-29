@@ -854,8 +854,18 @@ export default function POS() {
                   <p className="mt-4">---------------------------------</p>
                 </div>
 
-                <div className="text-center font-bold">
+                <div className="text-center font-bold space-y-3">
                   <p>** FIN DE COMANDA **</p>
+                  <p>---------------------------------</p>
+                  <p className="text-[8px] text-slate-500 font-semibold mb-1">ESCANEE PARA CAMBIAR A LISTO</p>
+                  <div className="flex justify-center bg-white p-2 rounded-lg border border-slate-200 w-28 h-28 mx-auto">
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(window.location.origin + '/scan/' + lastOrderDetails.id)}`} 
+                      alt="Scan QR" 
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <p className="text-[8px] text-slate-400 font-bold tracking-wider mt-1">{lastOrderDetails.id}</p>
                 </div>
               </div>
             )}

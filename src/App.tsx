@@ -19,6 +19,7 @@ import CustomerOrder from './pages/customer-order/CustomerOrder';
 import TableCall from './pages/table-call/TableCall';
 import GlobalHistory from './pages/global-history/GlobalHistory';
 import SuperAdmin from './pages/super-admin/SuperAdmin';
+import ScanOrderHandler from './pages/orders-display/ScanOrderHandler';
 import { useAuthStore } from './store/useAuthStore';
 
 // Protected Route Component
@@ -59,6 +60,8 @@ function App() {
         <Route path="/customer-billing" element={<CustomerBillingDisplay />} />
         {/* Public QR ordering route - no auth required */}
         <Route path="/mesa/:tableToken" element={<CustomerOrder />} />
+        {/* Public QR comanda scanner handler */}
+        <Route path="/scan/:orderId" element={<ScanOrderHandler />} />
 
         {/* Public Table Call route - client calls waiter from QR */}
         <Route path="/llamar/:tableToken" element={<TableCall />} />

@@ -4,9 +4,10 @@ import { Tv, ChevronLeft, Volume2, Sparkles, ChefHat, RefreshCw } from 'lucide-r
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 
 export default function OrdersDisplay() {
-  const { orders, initializeStore } = useOrdersStore();
+  const { orders, initializeStore, updateOrderStatus } = useOrdersStore();
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -49,8 +50,14 @@ export default function OrdersDisplay() {
     setTimeout(() => osc.stop(), 350);
   };
 
+  const handleMarkAsReady = async (orderId: string) => {
+    await updateOrderStatus(orderId, 'listo');
+    triggerCallSound();
+    setSelectedOrder(null);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6 md:p-12 flex flex-col justify-between font-sans">
+    <div className="min-h-screen bg-slate-950 text-white p-6 md:p-12 flex flex-col justify-between font-sans relative">
       
       {/* Header bar */}
       <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-8">
@@ -115,7 +122,12 @@ export default function OrdersDisplay() {
                 <p className="py-16 text-center text-slate-500 text-xs font-semibold">No hay comandas en cocción.</p>
               ) : (
                 preparingOrders.map((order: Order) => (
-                  <div key={order.id} className="flex justify-between items-center p-5 bg-slate-900 border border-white/5 rounded-2xl">
+                  <div 
+                    key={order.id} 
+                    onClick={() => setSelectedOrder(order)}
+                    className="flex justify-between items-center p-5 bg-slate-900 border border-white/5 rounded-2xl cursor-pointer hover:border-primary/40 transition-all"
+                    title="Hacer clic para marcar como Listo"
+                  >
                     <span className="text-xs text-slate-400 font-bold uppercase">Turno</span>
                     <span className="font-black text-3xl tracking-widest text-slate-300">
                       {order.orderNumber}
@@ -128,7 +140,6 @@ export default function OrdersDisplay() {
 
           <div className="pt-4 border-t border-white/5 text-slate-500 text-[10px] text-center font-bold tracking-wide uppercase">
             MesaHub Realtime Queue Display
-
           </div>
         </div>
 
@@ -176,8 +187,34 @@ export default function OrdersDisplay() {
       {/* Footer credits info */}
       <div className="text-center text-xs text-slate-600 font-semibold tracking-wider uppercase">
         MesaHub Gastronomic Display System • Multichannel Sync Active
-
       </div>
+
+      {/* Manual Ready Action Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm space-y-5 text-center shadow-2xl">
+            <h3 className="font-black text-lg text-white">Marcar Pedido como Listo</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              ¿Deseas cambiar el estado del turno <strong className="text-primary text-sm">#{selectedOrder.orderNumber}</strong> de la {selectedOrder.tableName || 'barra'} a <strong>Listo para Retirar</strong>?
+            </p>
+            
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 transition-colors text-white"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleMarkAsReady(selectedOrder.id)}
+                className="py-2.5 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-500 transition-colors shadow-lg shadow-green-600/20"
+              >
+                Poner Listo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
