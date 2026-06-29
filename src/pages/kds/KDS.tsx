@@ -2,16 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ChefHat,
   Clock,
-  CheckCircle2,
-  Play,
   Volume2,
-  Utensils,
   RefreshCw
 } from 'lucide-react';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 
 export default function KDS() {
-  const { orders, updateOrderStatus, initializeStore } = useOrdersStore();
+  const { orders, initializeStore } = useOrdersStore();
   const [activeQueue, setActiveQueue] = useState<'activas' | 'historico'>('activas');
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -228,48 +225,10 @@ export default function KDS() {
                   ))}
                 </div>
 
-                {/* Action Buttons to move state */}
-                <div className="pt-3 border-t border-border flex gap-2">
-                  {order.status === 'pendiente' && (
-                    <button
-                      onClick={() => {
-                        updateOrderStatus(order.id, 'preparando');
-                        handlePlaySound();
-                      }}
-                      className="w-full py-2.5 rounded-xl text-xs font-bold text-white gradient-bg hover:opacity-90 flex items-center justify-center gap-1.5 shadow-lg shadow-primary/20"
-                    >
-                      <Play className="w-3.5 h-3.5" /> Iniciar Preparación
-                    </button>
-                  )}
-
-                  {order.status === 'preparando' && (
-                    <button
-                      onClick={() => {
-                        updateOrderStatus(order.id, 'listo');
-                        handlePlaySound();
-                      }}
-                      className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-green-500 hover:bg-green-600 flex items-center justify-center gap-1.5 shadow-lg shadow-green-500/20"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Marcar como Listo
-                    </button>
-                  )}
-
-                  {order.status === 'listo' && (
-                    <button
-                      onClick={() => {
-                        updateOrderStatus(order.id, 'entregado');
-                      }}
-                      className="w-full py-2.5 rounded-xl text-xs font-bold text-muted-foreground bg-muted border border-border hover:bg-muted/80 flex items-center justify-center gap-1.5"
-                    >
-                      <Utensils className="w-3.5 h-3.5" /> Entregar Comida
-                    </button>
-                  )}
-
-                  {activeQueue === 'historico' && (
-                    <span className="w-full py-2 text-center text-xs text-green-500 font-bold bg-green-500/10 border border-green-500/20 rounded-xl">
-                      Entregado & Finalizado
-                    </span>
-                  )}
+                {/* pure monitoring list, no buttons */}
+                <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Estado: <strong className="uppercase font-bold text-primary">{order.status}</strong></span>
+                  <span>#{order.id.slice(-4)}</span>
                 </div>
               </div>
             );

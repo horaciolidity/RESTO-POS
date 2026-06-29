@@ -298,7 +298,7 @@ export default function Waiter() {
 
     const orderId = await addOrder({
       source: 'mesas',
-      status: 'pendiente',
+      status: 'preparando',
       tableName: `Mesa ${activeTable.number}`,
       waiterName: user?.name || 'Mozo',
       items: selectedItems.map(item => ({
@@ -1011,34 +1011,50 @@ export default function Waiter() {
                   <p className="text-xs text-muted-foreground text-center py-4">No hay comandas registradas aún.</p>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {waiterOrders.slice(0, 10).map((o: Order) => (
-                      <div key={o.id} className="flex items-center justify-between text-xs p-2.5 bg-card rounded-xl border border-border">
-                        <div>
-                          <p className="font-bold text-sm">#{o.orderNumber} <span className="text-xs text-muted-foreground font-normal">· {o.tableName}</span></p>
-                          <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <Clock className="w-3 h-3" />
-                            {new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-right">
-                            <p className="font-extrabold text-primary">${o.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
-                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-                              o.status === 'entregado' ? 'bg-green-500/10 text-green-500' :
-                              o.status === 'preparando' ? 'bg-blue-500/10 text-blue-500' :
-                              o.status === 'listo' ? 'bg-emerald-500/10 text-emerald-500' :
-                              'bg-orange-500/10 text-orange-500'
-                            }`}>
-                              {o.status}
-                            </span>
+                     {waiterOrders.slice(0, 15).map((o: Order) => (
+                      <div key={o.id} className="flex flex-col text-xs p-3 bg-card rounded-xl border border-border space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-bold text-sm">#{o.orderNumber} <span className="text-xs text-muted-foreground font-normal">· {o.tableName}</span></p>
+                            <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Clock className="w-3 h-3" />
+                              {new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
                           </div>
-                          <button
-                            onClick={() => setShowOrderDetail(o)}
-                            className="p-1.5 bg-muted hover:bg-primary/10 hover:text-primary rounded-lg transition-colors"
-                            title="Ver detalles"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <div className="text-right">
+                              <p className="font-extrabold text-primary">${o.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                                o.status === 'entregado' ? 'bg-green-500/10 text-green-500' :
+                                o.status === 'preparando' ? 'bg-blue-500/10 text-blue-500' :
+                                o.status === 'listo' ? 'bg-emerald-500/10 text-emerald-500' :
+                                'bg-orange-500/10 text-orange-500'
+                              }`}>
+                                {o.status}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => setShowOrderDetail(o)}
+                              className="p-1.5 bg-muted hover:bg-primary/10 hover:text-primary rounded-lg transition-colors"
+                              title="Ver detalles"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        {/* Display item summary */}
+                        <div className="text-[10px] bg-muted/30 p-2 rounded-lg space-y-1">
+                          {o.items.map(item => (
+                            <div key={item.id} className="flex justify-between text-muted-foreground">
+                              <span>{item.product.name} x{item.quantity}</span>
+                              {item.notes && <span className="italic text-primary text-[9px] ml-1">Obs: {item.notes}</span>}
+                            </div>
+                          ))}
+                          {o.orderNote && (
+                            <p className="text-[9px] text-amber-500 font-semibold border-t border-border pt-1 mt-1">
+                              Novedad: {o.orderNote}
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}

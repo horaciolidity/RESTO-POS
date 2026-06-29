@@ -41,6 +41,13 @@ export default function Cash() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   };
 
+  // Automatically fetch cash sessions and movements when the page loads
+  useEffect(() => {
+    if (user?.branchId) {
+      initializeCash(user.branchId);
+    }
+  }, [user?.branchId, initializeCash]);
+
   // When session opens, pre-fill closing amount with current expected
   useEffect(() => {
     if (currentSession?.status === 'open') {
