@@ -8,7 +8,7 @@ import {
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 
 export default function KDS() {
-  const { orders, initializeStore } = useOrdersStore();
+  const { orders, initializeStore, updateOrderStatus } = useOrdersStore();
   const [activeQueue, setActiveQueue] = useState<'activas' | 'historico'>('activas');
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -25,12 +25,11 @@ export default function KDS() {
     refresh();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Polling fallback every 30 s — keeps the screen live if
-  // the Supabase Realtime WebSocket drops on slow networks.
+  // Polling fallback every 10 s — keeps orders & turns screen in sync.
   useEffect(() => {
     const interval = setInterval(() => {
       initializeStore().then(() => setLastUpdated(new Date()));
-    }, 30_000);
+    }, 10_000);
     return () => clearInterval(interval);
   }, [initializeStore]);
 
@@ -225,11 +224,21 @@ export default function KDS() {
                   ))}
                 </div>
 
-                {/* pure monitoring list, no buttons */}
+                {/* Status footer + manual ready button */}
                 <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
                   <span>Estado: <strong className="uppercase font-bold text-primary">{order.status}</strong></span>
                   <span>#{order.id.slice(-4)}</span>
                 </div>
+
+                {/* Manual 'Mark as Ready' button — only for orders being prepared */}
+                {order.status === 'preparando' && (
+                  <button
+                    onClick={() => updateOrderStatus(order.id, 'listo')}
+                    className="w-full py-2.5 mt-1 rounded-xl text-xs font-black uppercase tracking-wide bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+                  >
+                    ✅ Marcar como Listo para Retirar
+                  </button>
+                )}
               </div>
             );
           })

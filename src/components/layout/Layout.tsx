@@ -26,6 +26,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useCashStore } from '../../store/useCashStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
+import { useGlobalQRScanner } from '../../hooks/useGlobalQRScanner';
 
 export default function Layout() {
   const { user, logout } = useAuthStore();
@@ -36,6 +37,9 @@ export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Mount global QR scanner (captures USB HID / keyboard-wedge scanners from any screen)
+  useGlobalQRScanner();
 
   const handleRefresh = useCallback(async () => {
     if (isRefreshing) return;

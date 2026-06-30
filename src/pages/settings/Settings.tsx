@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings2, Users, Layers, PlayCircle, Plus, Trash2, ShieldCheck, CheckCircle2, QrCode, Copy, ExternalLink, Store, Crown, Zap, Star, Bell, RefreshCw, Check } from 'lucide-react';
+import { Settings2, Users, Layers, PlayCircle, Plus, Trash2, ShieldCheck, CheckCircle2, QrCode, Copy, ExternalLink, Store, Crown, Zap, Star, Bell, RefreshCw, Check, Printer, ScanLine, ToggleLeft, ToggleRight, ChefHat } from 'lucide-react';
 import { useSettingsStore, Employee } from '../../store/useSettingsStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { useCashStore } from '../../store/useCashStore';
@@ -8,7 +8,7 @@ import { supabase } from '../../services/supabase';
 import { Link } from 'react-router-dom';
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<'general' | 'mesas' | 'personal' | 'turno' | 'qr' | 'miplan'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'mesas' | 'personal' | 'turno' | 'qr' | 'miplan' | 'hardware'>('general');
   
   const { tables, addTable, removeTable } = useOrdersStore();
   const { employees, addEmployee, removeEmployee, assignTableToWaiter, unassignTableFromWaiter, shift, openShift, closeShift, businessName, setBusinessName } = useSettingsStore();
@@ -23,6 +23,56 @@ export default function Settings() {
   const [submittingAlert, setSubmittingAlert] = useState(false);
   const [alertSent, setAlertSent] = useState(false);
   const [myAlerts, setMyAlerts] = useState<any[]>([]);
+
+  // Hardware config state
+  const [hwConfig, setHwConfig] = useState(() => {
+    try {
+      const raw = localStorage.getItem('hardware_config');
+      return raw ? JSON.parse(raw) : {
+        billingPrinterName: 'Impresora Facturación',
+        billingPrinterWidth: '80',
+        kitchenPrinterName: 'Comandera Cocina',
+        kitchenPrinterWidth: '80',
+        scannerEnabled: true,
+      };
+    } catch { return { billingPrinterName: 'Impresora Facturación', billingPrinterWidth: '80', kitchenPrinterName: 'Comandera Cocina', kitchenPrinterWidth: '80', scannerEnabled: true }; }
+  });
+  const [hwSaved, setHwSaved] = useState(false);
+
+  const saveHwConfig = (updated: typeof hwConfig) => {
+    setHwConfig(updated);
+    localStorage.setItem('hardware_config', JSON.stringify(updated));
+    setHwSaved(true);
+    setTimeout(() => setHwSaved(false), 2000);
+  };
+
+  const printTestTicket = (type: 'billing' | 'kitchen') => {
+    const printerName = type === 'billing' ? hwConfig.billingPrinterName : hwConfig.kitchenPrinterName;
+    const width = type === 'billing' ? hwConfig.billingPrinterWidth : hwConfig.kitchenPrinterWidth;
+    const win = window.open('', '_blank', 'width=320,height=500');
+    if (!win) return;
+    win.document.write(`
+      <!DOCTYPE html><html><head><title>Prueba de Impresión</title>
+      <style>
+        @page { size: ${width}mm auto; margin: 4mm; }
+        body { font-family: monospace; font-size: 11px; width: ${width}mm; margin: 0; padding: 0; }
+        h2 { font-size: 14px; text-align: center; border-bottom: 1px dashed #000; padding-bottom: 6px; }
+        p { margin: 3px 0; }
+        .center { text-align: center; }
+      </style></head><body>
+      <h2>${type === 'billing' ? '🧾 PRUEBA FACTURACIÓN' : '🍳 PRUEBA COMANDERA'}</h2>
+      <p>Impresora: ${printerName}</p>
+      <p>Ancho: ${width}mm</p>
+      <p>Fecha: ${new Date().toLocaleString()}</p>
+      <p class="center" style="margin-top:12px;">--- TICKET DE PRUEBA ---</p>
+      <p>Artículo 1 ............ x1</p>
+      <p>Artículo 2 ............ x2</p>
+      <p class="center" style="margin-top:12px;">*** FIN DE PRUEBA ***</p>
+      <script>window.onload=()=>window.print();<\/script>
+      </body></html>
+    `);
+    win.document.close();
+  };
 
   // QR Payment Image State
   const [qrPaymentImage, setQrPaymentImage] = useState('');
@@ -254,6 +304,14 @@ export default function Settings() {
           }`}
         >
           <div className="flex items-center gap-2"><Crown className="w-4 h-4" /> Mi Plan</div>
+        </button>
+        <button
+          onClick={() => setActiveTab('hardware')}
+          className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
+            activeTab === 'hardware' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2"><Printer className="w-4 h-4" /> Periféricos</div>
         </button>
       </div>
 
@@ -894,6 +952,188 @@ export default function Settings() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+      {/* Tab Content: Periféricos */}
+      {activeTab === 'hardware' && (
+        <div className="space-y-6">
+          <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 text-sm text-amber-600">
+            <strong>Nota:</strong> La impresión se realiza a través del diálogo nativo del sistema. Asegúrate de seleccionar la impresora correcta cada vez que imprimas, o configúrala como predeterminada en Windows. El ancho de papel aquí configura el formato del ticket.
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Impresora de Facturación */}
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Printer className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Impresora de Facturación</h3>
+                  <p className="text-xs text-muted-foreground">Usada para tickets de venta y recibos del cliente</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Nombre / Identificación</label>
+                  <input
+                    type="text"
+                    value={hwConfig.billingPrinterName}
+                    onChange={e => setHwConfig({ ...hwConfig, billingPrinterName: e.target.value })}
+                    className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="Ej: Epson TM-T20 Mostrador"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Ancho de papel</label>
+                  <select
+                    value={hwConfig.billingPrinterWidth}
+                    onChange={e => setHwConfig({ ...hwConfig, billingPrinterWidth: e.target.value })}
+                    className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="80">80 mm (estándar)</option>
+                    <option value="58">58 mm (compacto)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => printTestTicket('billing')}
+                  className="flex-1 py-2.5 bg-muted hover:bg-muted/80 border border-border rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Imprimir Prueba
+                </button>
+                <button
+                  onClick={() => saveHwConfig(hwConfig)}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors ${hwSaved ? 'bg-green-500 text-white' : 'bg-primary text-white hover:opacity-90'}`}
+                >
+                  <Check className="w-3.5 h-3.5" /> {hwSaved ? 'Guardado' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+
+            {/* Comandera de Cocina */}
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                  <ChefHat className="w-5 h-5 text-orange-500" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Comandera de Cocina</h3>
+                  <p className="text-xs text-muted-foreground">Usada para imprimir las comandas de pedidos al área de cocina</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Nombre / Identificación</label>
+                  <input
+                    type="text"
+                    value={hwConfig.kitchenPrinterName}
+                    onChange={e => setHwConfig({ ...hwConfig, kitchenPrinterName: e.target.value })}
+                    className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="Ej: Bixolon SRP-350 Cocina"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Ancho de papel</label>
+                  <select
+                    value={hwConfig.kitchenPrinterWidth}
+                    onChange={e => setHwConfig({ ...hwConfig, kitchenPrinterWidth: e.target.value })}
+                    className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="80">80 mm (estándar)</option>
+                    <option value="58">58 mm (compacto)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => printTestTicket('kitchen')}
+                  className="flex-1 py-2.5 bg-muted hover:bg-muted/80 border border-border rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Imprimir Prueba
+                </button>
+                <button
+                  onClick={() => saveHwConfig(hwConfig)}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors ${hwSaved ? 'bg-green-500 text-white' : 'bg-primary text-white hover:opacity-90'}`}
+                >
+                  <Check className="w-3.5 h-3.5" /> {hwSaved ? 'Guardado' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Escáner QR */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <ScanLine className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Escáner de Código QR</h3>
+                  <p className="text-xs text-muted-foreground">Captura global: funciona desde cualquier pantalla del sistema</p>
+                </div>
+              </div>
+              <button
+                onClick={() => saveHwConfig({ ...hwConfig, scannerEnabled: !hwConfig.scannerEnabled })}
+                className="flex items-center gap-2"
+                title={hwConfig.scannerEnabled ? 'Desactivar escáner' : 'Activar escáner'}
+              >
+                {hwConfig.scannerEnabled
+                  ? <ToggleRight className="w-10 h-10 text-primary" />
+                  : <ToggleLeft className="w-10 h-10 text-muted-foreground" />
+                }
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="col-span-2 space-y-3">
+                <div className={`p-4 rounded-xl border ${hwConfig.scannerEnabled ? 'border-blue-500/20 bg-blue-500/5' : 'border-border bg-muted/20'}`}>
+                  <p className={`text-sm font-bold ${hwConfig.scannerEnabled ? 'text-blue-400' : 'text-muted-foreground'}`}>
+                    {hwConfig.scannerEnabled ? '✅ Escáner Global Activo' : '⏸️ Escáner Desactivado'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    {hwConfig.scannerEnabled
+                      ? 'El sistema detecta lectores USB HID (tipo teclado) automáticamente. Cuando se escanea un QR de comanda, el pedido se marca como "Listo" instantáneamente sin intervención manual.'
+                      : 'El escáner global está desactivado. Los QR sólo se pueden procesar desde la pantalla /scan directamente.'}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border bg-muted/10 space-y-2">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">¿Cómo conectar el escáner?</p>
+                  <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
+                    <li>Conectar el lector QR/código de barras por <strong className="text-foreground">USB</strong> al PC de caja o mostrador</li>
+                    <li>El lector funciona como <strong className="text-foreground">teclado virtual</strong> — no necesita driver ni configuración</li>
+                    <li>Apuntar el lector al <strong className="text-foreground">código QR</strong> impreso en la comanda</li>
+                    <li>El sistema detecta el scan y <strong className="text-foreground">marca el turno como Listo</strong> automáticamente</li>
+                  </ol>
+                </div>
+              </div>
+
+              <div className="bg-muted/20 border border-border rounded-xl p-4 flex flex-col gap-3">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Opción Manual</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Si no tienes escáner disponible, siempre podés marcar un turno como listo manualmente desde la pantalla de Turnos.
+                </p>
+                <Link
+                  to="/orders-display"
+                  target="_blank"
+                  className="mt-auto py-2.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Abrir Pantalla de Turnos
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-500/5 border border-slate-500/20 rounded-2xl p-4 text-xs text-muted-foreground">
+            <strong className="text-foreground">💡 Importante:</strong> La opción manual (hacer clic en el turno en la pantalla de Turnos) estará <strong className="text-foreground">siempre disponible</strong>, independientemente de si el escáner está activo o no. El escáner es un complemento, no un requisito.
           </div>
         </div>
       )}

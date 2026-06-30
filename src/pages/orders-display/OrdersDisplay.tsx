@@ -21,12 +21,12 @@ export default function OrdersDisplay() {
     refresh();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Polling fallback every 30 s — keeps the screen live even if
+  // Polling fallback every 10 s — keeps the screen live even if
   // the Supabase Realtime WebSocket drops on slow/shared networks.
   useEffect(() => {
     const interval = setInterval(() => {
       initializeStore().then(() => setLastUpdated(new Date()));
-    }, 30_000);
+    }, 10_000);
     return () => clearInterval(interval);
   }, [initializeStore]);
 
