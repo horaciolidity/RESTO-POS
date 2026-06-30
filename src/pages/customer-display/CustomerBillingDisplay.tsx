@@ -17,6 +17,12 @@ export default function CustomerBillingDisplay() {
     initializeStore();
   }, [initializeStore]);
 
+  // Polling fallback every 10s — ensures orders appear even if Realtime drops
+  useEffect(() => {
+    const interval = setInterval(() => initializeStore(), 10_000);
+    return () => clearInterval(interval);
+  }, [initializeStore]);
+
   // Calcular totales reactivamente (no con getState que causa parpadeo)
   const subtotal = items.reduce((acc, item) => acc + item.product.salePrice * item.quantity, 0);
   const discountAmount = (subtotal * discount) / 100;
