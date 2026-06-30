@@ -317,6 +317,11 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
   },
 
   updateOrderStatus: async (id, status) => {
+    // Update locally first (optimistic update) so UI responds immediately
+    set((state) => ({
+      orders: state.orders.map(o => o.id === id ? { ...o, status } : o)
+    }));
+    // Then persist to Supabase
     await ordersService.updateStatus(id, status);
   },
 

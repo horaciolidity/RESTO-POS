@@ -230,11 +230,11 @@ export default function KDS() {
                   <span>#{order.id.slice(-4)}</span>
                 </div>
 
-                {/* Manual 'Mark as Ready' button — only for orders being prepared */}
-                {order.status === 'preparando' && (
+                {/* Manual 'Mark as Ready' button — visible while order is being cooked */}
+                {(order.status === 'preparando' || order.status === 'pendiente') && (
                   <button
                     onClick={() => updateOrderStatus(order.id, 'listo')}
-                    className="w-full py-2.5 mt-1 rounded-xl text-xs font-black uppercase tracking-wide bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+                    className="w-full py-3 mt-1 rounded-xl text-sm font-black uppercase tracking-wide bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
                   >
                     ✅ Marcar como Listo para Retirar
                   </button>
