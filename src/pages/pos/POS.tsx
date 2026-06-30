@@ -167,16 +167,20 @@ export default function POS() {
     };
 
     let orderId = '';
+    let orderNumber = '';
     if (activeOrderIdBeingPaid) {
       // 1. Update existing order in Supabase
-      await addOrder(orderData as any, activeOrderIdBeingPaid);
+      const res = await addOrder(orderData as any, activeOrderIdBeingPaid);
       // 2. Close and mark order as paid
       await closeOrder(activeOrderIdBeingPaid, paymentMethod);
-      orderId = activeOrderIdBeingPaid;
+      orderId = res.id;
+      orderNumber = res.orderNumber;
       setActiveOrderIdBeingPaid(null);
     } else {
       // Create new order
-      orderId = await addOrder(orderData as any);
+      const res = await addOrder(orderData as any);
+      orderId = res.id;
+      orderNumber = res.orderNumber;
     }
 
     if (selectedTableId) {
@@ -186,15 +190,15 @@ export default function POS() {
 
     // Add transaction amount directly to current cash sessions for any payment method
     const desc = activeOrderIdBeingPaid 
-      ? `Cobro Comanda (Mesa ${tableName || 'S/M'}) (Pedido #${orderId.slice(-4)}) [${paymentMethod.toUpperCase()}]`
-      : `Venta Directa POS (Pedido #${orderId.slice(-4)}) [${paymentMethod.toUpperCase()}]`;
+      ? `Cobro Comanda (Mesa ${tableName || 'S/M'}) (Pedido #${orderNumber}) [${paymentMethod.toUpperCase()}]`
+      : `Venta Directa POS (Pedido #${orderNumber}) [${paymentMethod.toUpperCase()}]`;
     
     // Add movement to cash log (we track all POS sales in cash movements log, not just cash/efectivo)
     await addMovement('ingreso', total, desc, user?.branchId || 'default');
 
     setLastOrderDetails({
       id: orderId,
-      orderNumber: orderId.slice(-4),
+      orderNumber: orderNumber,
       items: [...items],
       subtotal,
       discountAmount,
@@ -207,7 +211,6 @@ export default function POS() {
     });
 
     // Update customer display & reset cart atomically (single render)
-    const orderNumber = orderId.slice(-4);
     // Batch both mutations so the UI never renders an intermediate
     // state where lastCompletedOrder is set but items are still present
     // (or vice-versa), which caused the "total flickers to 0" bug.

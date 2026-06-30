@@ -70,7 +70,7 @@ interface OrdersState {
   incidents: Incident[];
   auditAlerts: AuditAlert[];
   initializeStore: () => Promise<void>;
-  addOrder: (order: Omit<Order, 'id' | 'orderNumber' | 'createdAt'>, existingOrderId?: string) => Promise<string>;
+  addOrder: (order: Omit<Order, 'id' | 'orderNumber' | 'createdAt'>, existingOrderId?: string) => Promise<{ id: string; orderNumber: string }>;
   updateOrderStatus: (id: string, status: Order['status']) => Promise<void>;
   closeOrder: (id: string, paymentMethod?: string) => Promise<void>;
   addTable: (table: Omit<RestaurantTable, 'id' | 'status'>) => Promise<void>;
@@ -259,7 +259,8 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
             : o
         )
       }));
-      return existingOrderId;
+      const found = get().orders.find(o => o.id === existingOrderId);
+      return { id: existingOrderId, orderNumber: found?.orderNumber || existingOrderId.slice(-4) };
     }
 
     // Limit check for free plan
@@ -275,7 +276,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       }
     }
 
-    const orderId = await ordersService.create({
+    const result = await ordersService.create({
       tenant_id: tenantId,
       branch_id: branchId,
       order_number: '',
@@ -309,11 +310,16 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       modifiers: []
     })));
 
+    if (!result) {
+      const fallbackNum = String(Math.floor(Math.random() * 9000) + 1000);
+      return { id: '', orderNumber: fallbackNum };
+    }
+
     // The Realtime subscription (subscribeToOrders) will automatically update
     // the local store when Supabase inserts the row — no need to call
     // initializeStore() here, which would cancel/recreate subscriptions and
     // cause a render loop.
-    return orderId || '';
+    return result;
   },
 
   updateOrderStatus: async (id, status) => {

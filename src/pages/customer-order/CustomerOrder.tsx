@@ -137,10 +137,10 @@ export default function CustomerOrder() {
           },
           orderItems
         );
-        setOrderId(created);
+        setOrderId(created ? created.id : null);
       } else {
         // Demo mode: add to local Zustand store
-        const id = await addOrder({
+        const res = await addOrder({
           source: 'mesas',
           status: 'pendiente',
           tableName: tableInfo ? `Mesa ${tableInfo.number}` : 'Mesa QR',
@@ -156,8 +156,9 @@ export default function CustomerOrder() {
           subtotal, discount: 0, tips: 0, total: subtotal,
           paid: false
         } as any);
-        setOrderId(id);
+        setOrderId(res.id);
       }
+
 
 
       setCart([]);

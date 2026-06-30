@@ -56,7 +56,7 @@ export const ordersService = {
   async create(
     order: Omit<SupabaseOrder, 'id' | 'created_at' | 'updated_at'>,
     items: Omit<SupabaseOrderItem, 'id' | 'order_id' | 'created_at'>[]
-  ): Promise<string | null> {
+  ): Promise<{ id: string; orderNumber: string } | null> {
     if (!isSupabaseConfigured()) return null;
 
     const orderNumber = String(Math.floor(Math.random() * 9000) + 1000);
@@ -76,7 +76,7 @@ export const ordersService = {
 
     if (itemsError) { console.error('[ordersService.create] items', itemsError); }
 
-    return orderId;
+    return { id: orderId, orderNumber };
   },
 
   async updateStatus(orderId: string, status: SupabaseOrder['status']): Promise<void> {

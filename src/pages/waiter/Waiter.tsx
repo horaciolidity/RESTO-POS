@@ -296,7 +296,7 @@ export default function Waiter() {
     const existingOrder = getTableOrder(activeTable);
     const existingOrderId = existingOrder?.id;
 
-    const orderId = await addOrder({
+    const { id: orderId } = await addOrder({
       source: 'mesas',
       status: 'preparando',
       tableName: `Mesa ${activeTable.number}`,
@@ -317,6 +317,7 @@ export default function Waiter() {
 
     // Update table status to pending
     await updateTableStatus(activeTable.id, 'esperando_comida', orderId);
+
 
     setSendSuccess(true);
     setTimeout(() => setSendSuccess(false), 3500);
