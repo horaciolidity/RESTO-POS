@@ -69,6 +69,14 @@ export default function POS() {
   const [qrPaymentImage, setQrPaymentImage] = useState('');
   const { user } = useAuthStore();
 
+  // Payment timing: 'now' = charge immediately, 'later' = open tab (send to kitchen, pay at end)
+  const [paymentTiming, setPaymentTiming] = useState<'now' | 'later'>('now');
+
+  // Delivery customer info
+  const [deliveryName, setDeliveryName] = useState('');
+  const [deliveryPhone, setDeliveryPhone] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+
   useEffect(() => {
     if (user?.tenantId) {
       const cached = localStorage.getItem('qr_payment_image_' + user.tenantId);
@@ -145,8 +153,59 @@ export default function POS() {
     const tableInfo = selectedTableId ? tables.find(t => t.id === selectedTableId) : null;
     const tableName = tableInfo ? `${tableInfo.zone} - Mesa ${tableInfo.number}` : undefined;
 
+    // ── "Pagar al finalizar" flow: open tab, send to kitchen, no charge yet ──
+    if (paymentTiming === 'later') {
+      const openTabData = {
+        source: 'mesas' as const,
+        status: 'preparando' as const,
+        items: items.map(item => ({
+          id: `oi-${Date.now()}-${item.product.id}`,
+          product: item.product,
+          quantity: item.quantity,
+          price: item.product.salePrice,
+          notes: item.notes
+        })),
+        subtotal,
+        discount,
+        tips,
+        total,
+        paymentMethod,
+        orderType: orderType as any,
+        tableName: tableName || undefined,
+        customerName: orderType === 'delivery' ? deliveryName : undefined,
+        customerPhone: orderType === 'delivery' ? deliveryPhone : undefined,
+        customerAddress: orderType === 'delivery' ? deliveryAddress : undefined,
+        orderNote,
+        paid: false
+      };
+
+      await addOrder(openTabData as any);
+
+      if (selectedTableId) {
+        await updateTableStatus(selectedTableId, 'esperando_comida');
+      }
+
+      // Reset cart and close
+      useCartStore.setState({
+        items: [],
+        customer: null,
+        discount: 0,
+        tips: 0,
+        paymentMethod: 'efectivo',
+        orderType: 'salon',
+        selectedTableId: null,
+        orderNote: ''
+      });
+      setDeliveryName('');
+      setDeliveryPhone('');
+      setDeliveryAddress('');
+      setIsCheckoutOpen(false);
+      return;
+    }
+
+    // ── "Pagar ahora" flow: charge immediately ──
     const orderData = {
-      source: 'mesas' as const,
+      source: 'pos' as const,
       status: 'entregado' as const,
       items: items.map(item => ({
         id: `oi-${Date.now()}-${item.product.id}`,
@@ -160,8 +219,11 @@ export default function POS() {
       tips,
       total,
       paymentMethod,
-      orderType: 'salon' as const,
+      orderType: orderType as any,
       tableName: tableName || (activeOrderIdBeingPaid ? orders.find(o => o.id === activeOrderIdBeingPaid)?.tableName : undefined),
+      customerName: orderType === 'delivery' ? deliveryName : undefined,
+      customerPhone: orderType === 'delivery' ? deliveryPhone : undefined,
+      customerAddress: orderType === 'delivery' ? deliveryAddress : undefined,
       orderNote,
       paid: true
     };
@@ -169,36 +231,30 @@ export default function POS() {
     let orderId = '';
     let orderNumber = '';
     if (activeOrderIdBeingPaid) {
-      // 1. Update existing order in Supabase
       const res = await addOrder(orderData as any, activeOrderIdBeingPaid);
-      // 2. Close and mark order as paid
       await closeOrder(activeOrderIdBeingPaid, paymentMethod);
       orderId = res.id;
       orderNumber = res.orderNumber;
       setActiveOrderIdBeingPaid(null);
     } else {
-      // Create new order
       const res = await addOrder(orderData as any);
       orderId = res.id;
       orderNumber = res.orderNumber;
     }
 
     if (selectedTableId) {
-      // Free the table in store & Supabase
       await updateTableStatus(selectedTableId, 'libre');
     }
 
-    // Add transaction amount directly to current cash sessions for any payment method
-    const desc = activeOrderIdBeingPaid 
+    const desc = activeOrderIdBeingPaid
       ? `Cobro Comanda (Mesa ${tableName || 'S/M'}) (Pedido #${orderNumber}) [${paymentMethod.toUpperCase()}]`
       : `Venta Directa POS (Pedido #${orderNumber}) [${paymentMethod.toUpperCase()}]`;
-    
-    // Add movement to cash log (we track all POS sales in cash movements log, not just cash/efectivo)
+
     await addMovement('ingreso', total, desc, user?.branchId || 'default');
 
     setLastOrderDetails({
       id: orderId,
-      orderNumber: orderNumber,
+      orderNumber,
       items: [...items],
       subtotal,
       discountAmount,
@@ -210,10 +266,6 @@ export default function POS() {
       time: new Date().toLocaleTimeString()
     });
 
-    // Update customer display & reset cart atomically (single render)
-    // Batch both mutations so the UI never renders an intermediate
-    // state where lastCompletedOrder is set but items are still present
-    // (or vice-versa), which caused the "total flickers to 0" bug.
     useCartStore.setState({
       lastCompletedOrder: orderNumber,
       items: [],
@@ -225,7 +277,10 @@ export default function POS() {
       selectedTableId: null,
       orderNote: ''
     });
-    // Clear customer display after 15 seconds
+    setDeliveryName('');
+    setDeliveryPhone('');
+    setDeliveryAddress('');
+
     setTimeout(() => {
       const currentLast = useCartStore.getState().lastCompletedOrder;
       if (currentLast === orderNumber) {
@@ -233,7 +288,6 @@ export default function POS() {
       }
     }, 15000);
 
-    // Reset checkout UI
     setIsCheckoutOpen(false);
     setIsReceiptOpen(true);
   };
@@ -550,6 +604,32 @@ export default function POS() {
                 ))}
               </select>
             )}
+
+            {orderType === 'delivery' && (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Nombre del cliente"
+                  value={deliveryName}
+                  onChange={(e) => setDeliveryName(e.target.value)}
+                  className="w-full h-9 text-xs bg-muted/40 border border-border/50 rounded-xl px-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all"
+                />
+                <input
+                  type="text"
+                  placeholder="Teléfono de contacto"
+                  value={deliveryPhone}
+                  onChange={(e) => setDeliveryPhone(e.target.value)}
+                  className="w-full h-9 text-xs bg-muted/40 border border-border/50 rounded-xl px-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all"
+                />
+                <input
+                  type="text"
+                  placeholder="Dirección de entrega"
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  className="w-full h-9 text-xs bg-muted/40 border border-border/50 rounded-xl px-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all"
+                />
+              </div>
+            )}
             
             <textarea
               placeholder="Añadir novedad opcional al pedido..."
@@ -637,9 +717,9 @@ export default function POS() {
       {/* Checkout Payment modal drawer */}
       {isCheckoutOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-card rounded-2xl border border-border p-6 shadow-2xl space-y-6 animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-lg bg-card rounded-2xl border border-border p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center">
-              <h3 className="font-extrabold text-base">Registrar Cobro y Factura</h3>
+              <h3 className="font-extrabold text-base">Cobro / Factura</h3>
               <button 
                 onClick={() => setIsCheckoutOpen(false)}
                 className="p-1 hover:bg-muted rounded-lg text-muted-foreground"
@@ -648,41 +728,73 @@ export default function POS() {
               </button>
             </div>
 
-            {/* Methods list */}
-            <div className="space-y-4">
-              <label className="text-[10px] text-muted-foreground uppercase font-bold block">Selecciona Método de Pago</label>
-              
+            {/* ── PAYMENT TIMING ── */}
+            <div className="space-y-2">
+              <label className="text-[10px] text-muted-foreground uppercase font-bold block">¿Cuándo paga el cliente?</label>
               <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'efectivo', label: 'Efectivo', icon: DollarSign },
-                  { id: 'debito', label: 'Tarjeta Débito', icon: CreditCard },
-                  { id: 'credito', label: 'Tarjeta Crédito', icon: CreditCard },
-                  { id: 'qr', label: 'Código QR / Transferencia', icon: QrCode },
-                  { id: 'mercado_pago', label: 'Mercado Pago', icon: CheckCircle2 },
-                  { id: 'mixto', label: 'Pago Mixto (Variados)', icon: QrCode },
-                ].map((item) => {
-                  const Icon = item.icon;
-                  const isSelected = paymentMethod === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setPaymentMethod(item.id)}
-                      className={`flex items-center gap-3 p-3.5 border rounded-xl text-left transition-all ${
-                        isSelected
-                          ? 'border-primary bg-primary/5 text-primary shadow-sm shadow-primary/5'
-                          : 'border-border hover:bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="font-bold text-xs text-foreground">{item.label}</span>
-                    </button>
-                  );
-                })}
+                <button
+                  onClick={() => setPaymentTiming('now')}
+                  className={`py-3 px-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                    paymentTiming === 'now'
+                      ? 'bg-primary/10 border-primary text-primary'
+                      : 'bg-muted/40 border-border/50 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Pagar Ahora
+                  <span className="text-[9px] font-normal opacity-70">Cobro inmediato</span>
+                </button>
+                <button
+                  onClick={() => setPaymentTiming('later')}
+                  className={`py-3 px-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                    paymentTiming === 'later'
+                      ? 'bg-amber-500/10 border-amber-500 text-amber-500'
+                      : 'bg-muted/40 border-border/50 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  Pagar al Final
+                  <span className="text-[9px] font-normal opacity-70">Abrir comanda</span>
+                </button>
               </div>
             </div>
 
-            {/* Split Payment / Quick notes view */}
-            {paymentMethod === 'mixto' && (
+            {/* ── PAYMENT METHOD (only if paying now) ── */}
+            {paymentTiming === 'now' && (
+              <div className="space-y-3">
+                <label className="text-[10px] text-muted-foreground uppercase font-bold block">Método de Pago</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'efectivo', label: 'Efectivo', icon: DollarSign },
+                    { id: 'debito', label: 'Tarjeta Débito', icon: CreditCard },
+                    { id: 'credito', label: 'Tarjeta Crédito', icon: CreditCard },
+                    { id: 'qr', label: 'QR / Transferencia', icon: QrCode },
+                    { id: 'mercado_pago', label: 'Mercado Pago', icon: CheckCircle2 },
+                    { id: 'mixto', label: 'Pago Mixto', icon: QrCode },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    const isSelected = paymentMethod === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setPaymentMethod(item.id)}
+                        className={`flex items-center gap-2 p-3 border rounded-xl text-left transition-all ${
+                          isSelected
+                            ? 'border-primary bg-primary/5 text-primary shadow-sm'
+                            : 'border-border hover:bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="font-bold text-xs text-foreground">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Split Payment */}
+            {paymentTiming === 'now' && paymentMethod === 'mixto' && (
               <div className="p-3 rounded-xl bg-muted/60 border border-border space-y-2 text-xs">
                 <div className="flex justify-between items-center text-muted-foreground">
                   <span>Efectivo</span>
@@ -695,7 +807,7 @@ export default function POS() {
               </div>
             )}
 
-            {(paymentMethod === 'qr' || paymentMethod === 'mercado_pago') && (
+            {paymentTiming === 'now' && (paymentMethod === 'qr' || paymentMethod === 'mercado_pago') && (
               <div className="p-4 bg-muted/50 border border-border rounded-xl flex flex-col items-center gap-2">
                 {qrPaymentImage ? (
                   <>
@@ -714,9 +826,14 @@ export default function POS() {
 
             <div className="border-t border-border pt-4 text-xs space-y-2">
               <div className="flex justify-between font-black text-sm text-foreground">
-                <span>Total a Cobrar</span>
+                <span>{paymentTiming === 'later' ? 'Total de la Comanda' : 'Total a Cobrar'}</span>
                 <span className="text-primary">${total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
               </div>
+              {paymentTiming === 'later' && (
+                <p className="text-[10px] text-amber-500 font-semibold text-center">
+                  ⚠️ La comanda irá a cocina sin cobrar. Se podrá cobrar desde "Comandas por Cobrar".
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -728,9 +845,13 @@ export default function POS() {
               </button>
               <button
                 onClick={submitOrder}
-                className="py-3 rounded-xl text-xs font-bold text-white gradient-bg hover:opacity-90 shadow-lg shadow-primary/20"
+                className={`py-3 rounded-xl text-xs font-bold text-white hover:opacity-90 shadow-lg ${
+                  paymentTiming === 'later'
+                    ? 'bg-amber-500 shadow-amber-500/20'
+                    : 'gradient-bg shadow-primary/20'
+                }`}
               >
-                Confirmar Venta & Ticket
+                {paymentTiming === 'later' ? '📋 Abrir Comanda → Cocina' : '✅ Confirmar Venta & Ticket'}
               </button>
             </div>
           </div>
