@@ -109,8 +109,8 @@ export const useCashStore = create<CashState>((set, get) => ({
           set({ currentSession: null, movements: [] });
         }
 
-        // Subscribe to real-time changes of cash sessions
-        cashService.subscribeToCashSessions(async () => {
+        // Helper to reload data when change detected
+        const reloadCashData = async () => {
           const updatedSession = await cashService.getCurrentSession(branchId);
           if (updatedSession) {
             const rawMoves = await cashService.getMovements(updatedSession.id);
@@ -118,7 +118,12 @@ export const useCashStore = create<CashState>((set, get) => ({
           } else {
             set({ currentSession: null, movements: [] });
           }
-        }, branchId);
+        };
+
+        // Subscribe to real-time changes of cash sessions
+        cashService.subscribeToCashSessions(reloadCashData, branchId);
+        // Subscribe to real-time changes of cash movements
+        cashService.subscribeToCashMovements(reloadCashData);
 
       } else {
         // ── localStorage only ──

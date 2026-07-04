@@ -221,8 +221,23 @@ export const cashService = {
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'cash_sessions',
-        ...(branchId ? { filter: `branch_id=eq.${branchId}` } : {})
+        table: 'cash_sessions'
+      }, () => {
+        onUpdate();
+      })
+      .subscribe();
+  },
+
+  subscribeToCashMovements(onUpdate: () => void) {
+    if (!isSupabaseConfigured()) return null;
+
+    const channelName = `cash-movements-realtime-${Date.now()}`;
+    return supabase
+      .channel(channelName)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'cash_movements'
       }, () => {
         onUpdate();
       })
