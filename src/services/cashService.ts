@@ -160,10 +160,28 @@ export const cashService = {
   ): Promise<void> {
     if (!isSupabaseConfigured()) return;
 
-    // 1. Insert the movement record
+    // 1. Resolve tenant_id and valid branch_id from the session first
+    const { data: sessionData, error: sessError } = await supabase
+      .from('cash_sessions')
+      .select('tenant_id, branch_id')
+      .eq('id', sessionId)
+      .single();
+
+    if (sessError || !sessionData) {
+      console.error('[cashService.addMovement] Fetch session metadata failed', sessError);
+      return;
+    }
+
+    const resolvedTenantId = sessionData.tenant_id;
+    // Ensure branch_id is a valid UUID or fallback to session's branch_id
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(branchId);
+    const resolvedBranchId = isUuid ? branchId : sessionData.branch_id;
+
+    // 2. Insert the movement record with non-nullable tenant_id
     const { error: moveError } = await supabase.from('cash_movements').insert({
       session_id: sessionId,
-      branch_id: branchId,
+      tenant_id: resolvedTenantId,
+      branch_id: resolvedBranchId,
       type,
       amount,
       description
