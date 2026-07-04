@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useCashStore } from '../../store/useCashStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useOrdersStore } from '../../store/useOrdersStore';
+import { CreditCard, QrCode } from 'lucide-react';
 
 interface Toast {
   id: string;
@@ -24,6 +26,7 @@ interface Toast {
 
 export default function Cash() {
   const { currentSession, movements, openRegister, closeRegister, addMovement, loading, initializeCash } = useCashStore();
+  const { orders, initializeStore: initializeOrders } = useOrdersStore();
   const { user } = useAuthStore();
 
   const [openingBalance, setOpeningBalance] = useState<number>(0);
@@ -93,6 +96,7 @@ export default function Cash() {
   const handleRefresh = async () => {
     setRefreshing(true);
     await initializeCash(user?.branchId || 'default');
+    await initializeOrders();
     setTimeout(() => setRefreshing(false), 600);
   };
 
@@ -100,8 +104,49 @@ export default function Cash() {
     ? Math.floor((Date.now() - new Date(currentSession.openedAt).getTime()) / 60000)
     : 0;
 
+  // Parse and calculate detailed metrics
   const ingresos = movements.filter(m => m.type === 'ingreso').reduce((a, m) => a + m.amount, 0);
   const egresos = movements.filter(m => m.type !== 'ingreso').reduce((a, m) => a + m.amount, 0);
+
+  // Breakdown by payment methods based on descriptions tags
+  const cashSales = movements
+    .filter(m => m.type === 'ingreso' && (m.description.toLowerCase().includes('[efectivo]') || m.description.toLowerCase().includes('apertura')))
+    .reduce((a, m) => a + m.amount, 0);
+
+  const debitSales = movements
+    .filter(m => m.type === 'ingreso' && m.description.toLowerCase().includes('[debito]'))
+    .reduce((a, m) => a + m.amount, 0);
+
+  const creditSales = movements
+    .filter(m => m.type === 'ingreso' && m.description.toLowerCase().includes('[credito]'))
+    .reduce((a, m) => a + m.amount, 0);
+
+  const qrSales = movements
+    .filter(m => m.type === 'ingreso' && (m.description.toLowerCase().includes('[qr]') || m.description.toLowerCase().includes('[mercado_pago]')))
+    .reduce((a, m) => a + m.amount, 0);
+
+  // Fallback/other income (manual movements or unclassified)
+  const otherIncome = movements
+    .filter(m => m.type === 'ingreso' && 
+                 !m.description.toLowerCase().includes('[efectivo]') &&
+                 !m.description.toLowerCase().includes('apertura') &&
+                 !m.description.toLowerCase().includes('[debito]') &&
+                 !m.description.toLowerCase().includes('[credito]') &&
+                 !m.description.toLowerCase().includes('[qr]') &&
+                 !m.description.toLowerCase().includes('[mercado_pago]'))
+    .reduce((a, m) => a + m.amount, 0);
+
+  // Active customer debts (unpaid orders)
+  const activeDebts = orders
+    .filter(o => !o.paid && o.status !== 'cancelado')
+    .reduce((a, o) => a + o.total, 0);
+
+  // Estimative total profit (Total cash/digital collections + active unpaid orders)
+  const estimatedEarnings = ingresos + activeDebts;
+
+  // Net Profit (collected income minus manual egresos/withdrawals minus starting balance)
+  const startingBalance = currentSession?.initialBalance || 0;
+  const netProfit = Math.max(0, ingresos - egresos - startingBalance);
 
   return (
     <div className="space-y-6">
@@ -256,7 +301,7 @@ export default function Cash() {
                     <TrendingUp className="w-4 h-4 text-green-500" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-green-500 font-bold uppercase">Total Ingresos</p>
+                    <p className="text-[10px] text-green-500 font-bold uppercase">Total Cobrado (Ingresos)</p>
                     <p className="text-sm font-extrabold text-green-500">${ingresos.toFixed(2)}</p>
                   </div>
                 </div>
@@ -265,8 +310,54 @@ export default function Cash() {
                     <TrendingDown className="w-4 h-4 text-red-500" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-red-500 font-bold uppercase">Total Egresos</p>
+                    <p className="text-[10px] text-red-500 font-bold uppercase">Total Egresos / Gastos</p>
                     <p className="text-sm font-extrabold text-red-500">${egresos.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arqueo y Desglose Completo */}
+              <div className="pt-2 space-y-3">
+                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Desglose de Caja y Arqueo</h4>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 bg-muted/30 border border-border/60 rounded-xl text-xs space-y-1">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase flex items-center gap-1"><DollarSign className="w-3 h-3 text-emerald-500" /> Efectivo</span>
+                    <p className="font-extrabold text-foreground">${cashSales.toFixed(2)}</p>
+                  </div>
+                  <div className="p-3 bg-muted/30 border border-border/60 rounded-xl text-xs space-y-1">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase flex items-center gap-1"><CreditCard className="w-3 h-3 text-blue-500" /> T. Débito</span>
+                    <p className="font-extrabold text-foreground">${debitSales.toFixed(2)}</p>
+                  </div>
+                  <div className="p-3 bg-muted/30 border border-border/60 rounded-xl text-xs space-y-1">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase flex items-center gap-1"><CreditCard className="w-3 h-3 text-indigo-500" /> T. Crédito</span>
+                    <p className="font-extrabold text-foreground">${creditSales.toFixed(2)}</p>
+                  </div>
+                  <div className="p-3 bg-muted/30 border border-border/60 rounded-xl text-xs space-y-1">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase flex items-center gap-1"><QrCode className="w-3 h-3 text-purple-500" /> QR / MP</span>
+                    <p className="font-extrabold text-foreground">${qrSales.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {otherIncome > 0 && (
+                  <div className="p-2.5 bg-muted/20 border border-border/40 rounded-xl text-xs flex justify-between">
+                    <span className="text-muted-foreground font-semibold">Otros ingresos (Manuales):</span>
+                    <span className="font-bold text-foreground">${otherIncome.toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-xs space-y-1">
+                    <span className="text-[9px] font-bold text-amber-500 uppercase">Deudas (Comandas Abiertas)</span>
+                    <p className="font-black text-amber-600">${activeDebts.toFixed(2)}</p>
+                  </div>
+                  <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl text-xs space-y-1">
+                    <span className="text-[9px] font-bold text-emerald-500 uppercase">Ganancia Neta Turno</span>
+                    <p className="font-black text-emerald-600">${netProfit.toFixed(2)}</p>
+                  </div>
+                  <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl text-xs space-y-1">
+                    <span className="text-[9px] font-bold text-primary uppercase">Ganancia Estimada Total</span>
+                    <p className="font-black text-primary">${estimatedEarnings.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
