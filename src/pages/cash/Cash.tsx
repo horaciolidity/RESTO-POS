@@ -44,66 +44,6 @@ export default function Cash() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   };
 
-  // Automatically fetch cash sessions and movements when the page loads
-  useEffect(() => {
-    if (user?.branchId) {
-      initializeCash(user.branchId);
-    }
-  }, [user?.branchId, initializeCash]);
-
-  // When session opens, pre-fill closing amount with current expected
-  useEffect(() => {
-    if (currentSession?.status === 'open') {
-      setClosingActualAmount(currentSession.expectedBalance);
-    }
-  }, [currentSession?.expectedBalance, currentSession?.status]);
-
-  const handleOpenRegister = async () => {
-    if (openingBalance < 0) {
-      showToast('El fondo inicial no puede ser negativo.', 'error');
-      return;
-    }
-    await openRegister(
-      user?.name || 'Cajero',
-      user?.id || '',
-      openingBalance,
-      user?.branchId || 'default'
-    );
-    showToast(`Caja abierta por ${user?.name || 'Cajero'} con fondo inicial de $${openingBalance.toFixed(2)}.`);
-  };
-
-  const handleCloseRegister = async () => {
-    await closeRegister(closingActualAmount, user?.branchId || 'default');
-    setShowCloseConfirm(false);
-    showToast('Caja cerrada y arqueo guardado correctamente.');
-  };
-
-  const handleAddMovement = async () => {
-    if (moveAmount <= 0) {
-      showToast('El monto debe ser mayor a $0.', 'error');
-      return;
-    }
-    if (!moveDescription.trim()) {
-      showToast('Ingresa una descripción para el movimiento.', 'error');
-      return;
-    }
-    await addMovement(moveType, moveAmount, moveDescription, user?.branchId || 'default');
-    showToast(`Movimiento de ${moveType} por $${moveAmount.toFixed(2)} registrado.`);
-    setMoveAmount(0);
-    setMoveDescription('');
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await initializeCash(user?.branchId || 'default');
-    await initializeOrders();
-    setTimeout(() => setRefreshing(false), 600);
-  };
-
-  const sessionElapsed = currentSession?.openedAt
-    ? Math.floor((Date.now() - new Date(currentSession.openedAt).getTime()) / 60000)
-    : 0;
-
   // Parse and calculate detailed metrics
   const ingresos = movements.filter(m => m.type === 'ingreso').reduce((a, m) => a + m.amount, 0);
   const egresos = movements.filter(m => m.type !== 'ingreso').reduce((a, m) => a + m.amount, 0);
@@ -141,12 +81,77 @@ export default function Cash() {
     .filter(o => !o.paid && o.status !== 'cancelado')
     .reduce((a, o) => a + o.total, 0);
 
+  // Calculations for cash vs digital payments
+  const expectedCash = cashSales + otherIncome - egresos;
+  const expectedDigital = debitSales + creditSales + qrSales;
+
   // Estimative total profit (Total cash/digital collections + active unpaid orders)
   const estimatedEarnings = ingresos + activeDebts;
 
   // Net Profit (collected income minus manual egresos/withdrawals minus starting balance)
   const startingBalance = currentSession?.initialBalance || 0;
   const netProfit = Math.max(0, ingresos - egresos - startingBalance);
+
+  // Automatically fetch cash sessions and movements when the page loads
+  useEffect(() => {
+    if (user?.branchId) {
+      initializeCash(user.branchId);
+    }
+  }, [user?.branchId, initializeCash]);
+
+  // When session opens, pre-fill closing amount with expected physical cash
+  useEffect(() => {
+    if (currentSession?.status === 'open') {
+      setClosingActualAmount(expectedCash);
+    }
+  }, [expectedCash, currentSession?.status]);
+
+  const handleOpenRegister = async () => {
+    if (openingBalance < 0) {
+      showToast('El fondo inicial no puede ser negativo.', 'error');
+      return;
+    }
+    await openRegister(
+      user?.name || 'Cajero',
+      user?.id || '',
+      openingBalance,
+      user?.branchId || 'default'
+    );
+    showToast(`Caja abierta por ${user?.name || 'Cajero'} con fondo inicial de $${openingBalance.toFixed(2)}.`);
+  };
+
+  const handleCloseRegister = async () => {
+    // Send counted cash + digital expected to closeRegister so it matches total expected in DB
+    await closeRegister(closingActualAmount + expectedDigital, user?.branchId || 'default');
+    setShowCloseConfirm(false);
+    showToast('Caja cerrada y arqueo guardado correctamente.');
+  };
+
+  const handleAddMovement = async () => {
+    if (moveAmount <= 0) {
+      showToast('El monto debe ser mayor a $0.', 'error');
+      return;
+    }
+    if (!moveDescription.trim()) {
+      showToast('Ingresa una descripción para el movimiento.', 'error');
+      return;
+    }
+    await addMovement(moveType, moveAmount, moveDescription, user?.branchId || 'default');
+    showToast(`Movimiento de ${moveType} por $${moveAmount.toFixed(2)} registrado.`);
+    setMoveAmount(0);
+    setMoveDescription('');
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await initializeCash(user?.branchId || 'default');
+    await initializeOrders();
+    setTimeout(() => setRefreshing(false), 600);
+  };
+
+  const sessionElapsed = currentSession?.openedAt
+    ? Math.floor((Date.now() - new Date(currentSession.openedAt).getTime()) / 60000)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -192,18 +197,26 @@ export default function Cash() {
             <div className="space-y-2 text-xs">
               <div className="p-3 bg-muted/50 rounded-xl border border-border space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Saldo esperado:</span>
-                  <span className="font-bold">${currentSession?.expectedBalance.toFixed(2)}</span>
+                  <span className="text-muted-foreground font-semibold">Efectivo Esperado:</span>
+                  <span className="font-bold">${expectedCash.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Efectivo contado:</span>
+                  <span className="text-muted-foreground font-semibold">Efectivo Contado:</span>
                   <span className="font-bold text-primary">${closingActualAmount.toFixed(2)}</span>
                 </div>
                 <div className={`flex justify-between font-bold pt-1 border-t border-border ${
-                  closingActualAmount - (currentSession?.expectedBalance || 0) >= 0 ? 'text-green-500' : 'text-red-500'
+                  (closingActualAmount - expectedCash) >= 0 ? 'text-green-500' : 'text-red-500'
                 }`}>
-                  <span>Diferencia:</span>
-                  <span>{closingActualAmount - (currentSession?.expectedBalance || 0) >= 0 ? '+' : ''}${(closingActualAmount - (currentSession?.expectedBalance || 0)).toFixed(2)}</span>
+                  <span>Dif. Efectivo:</span>
+                  <span>{(closingActualAmount - expectedCash) >= 0 ? '+' : ''}${(closingActualAmount - expectedCash).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between pt-1.5 border-t border-dashed border-border/80 text-[10px]">
+                  <span className="text-muted-foreground">Tarjetas & QR (Banco):</span>
+                  <span className="font-bold">${expectedDigital.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-muted-foreground">Total Turno Esperado:</span>
+                  <span className="font-bold">${(expectedCash + expectedDigital).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -288,9 +301,9 @@ export default function Cash() {
                   <span className="text-[10px] text-muted-foreground block font-bold uppercase">Fondo Inicial</span>
                   <span className="text-sm font-black text-foreground">${currentSession.initialBalance.toFixed(2)}</span>
                 </div>
-                <div className="p-3 bg-primary/5 rounded-xl border border-primary/20 text-center">
-                  <span className="text-[10px] text-primary block font-bold uppercase">Saldo Esperado</span>
-                  <span className="text-sm font-black text-primary">${currentSession.expectedBalance.toFixed(2)}</span>
+                <div className="p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/20 text-center">
+                  <span className="text-[10px] text-emerald-600 block font-bold uppercase">Efectivo en Caja</span>
+                  <span className="text-sm font-black text-emerald-600">${expectedCash.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -439,22 +452,22 @@ export default function Cash() {
                 </div>
 
                 <div className="p-3 bg-muted/40 rounded-xl border border-border/50 space-y-2 leading-snug text-xs">
-                  <span className="text-[10px] text-muted-foreground block font-bold uppercase">Cálculo de Diferencia</span>
+                  <span className="text-[10px] text-muted-foreground block font-bold uppercase">Cálculo de Diferencia de Efectivo</span>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Saldo esperado:</span>
-                    <span className="font-bold">${currentSession.expectedBalance.toFixed(2)}</span>
+                    <span className="text-muted-foreground">Efectivo esperado:</span>
+                    <span className="font-bold">${expectedCash.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Efectivo contado:</span>
                     <span className="font-bold text-primary">${closingActualAmount.toFixed(2)}</span>
                   </div>
                   <div className={`flex justify-between font-extrabold pt-1 border-t border-border ${
-                    closingActualAmount - currentSession.expectedBalance >= 0 ? 'text-green-500' : 'text-red-500'
+                    closingActualAmount - expectedCash >= 0 ? 'text-green-500' : 'text-red-500'
                   }`}>
                     <span>Diferencia:</span>
                     <span>
-                      {closingActualAmount - currentSession.expectedBalance >= 0 ? '+' : ''}
-                      ${(closingActualAmount - currentSession.expectedBalance).toFixed(2)}
+                      {closingActualAmount - expectedCash >= 0 ? '+' : ''}
+                      ${(closingActualAmount - expectedCash).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -530,18 +543,29 @@ export default function Cash() {
               <p className="font-extrabold">${currentSession.initialBalance.toFixed(2)}</p>
             </div>
             <div className="p-3 bg-muted/40 rounded-xl border border-border text-center">
-              <p className="text-[10px] text-muted-foreground uppercase font-bold">Contado</p>
-              <p className="font-extrabold">${currentSession.actualBalance?.toFixed(2) ?? '—'}</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold">Efec. Contado</p>
+              <p className="font-extrabold">${((currentSession.actualBalance ?? 0) - expectedDigital).toFixed(2)}</p>
             </div>
             <div className={`p-3 rounded-xl border text-center ${
               (currentSession.difference ?? 0) >= 0
                 ? 'bg-green-500/5 border-green-500/20'
                 : 'bg-red-500/5 border-red-500/20'
             }`}>
-              <p className={`text-[10px] uppercase font-bold ${(currentSession.difference ?? 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>Diferencia</p>
+              <p className={`text-[10px] uppercase font-bold ${(currentSession.difference ?? 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>Dif. Efectivo</p>
               <p className={`font-extrabold ${(currentSession.difference ?? 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {(currentSession.difference ?? 0) >= 0 ? '+' : ''}${currentSession.difference?.toFixed(2) ?? '0.00'}
               </p>
+            </div>
+          </div>
+
+          <div className="p-3 bg-muted/20 border border-border/60 rounded-2xl text-left text-xs space-y-1.5">
+            <div className="flex justify-between text-muted-foreground text-[11px]">
+              <span>Tarjetas & QR (Banco):</span>
+              <span className="font-semibold text-foreground">${expectedDigital.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-t border-border/50 pt-1 font-bold text-[11px]">
+              <span className="text-muted-foreground">Total Arqueo Turno:</span>
+              <span className="text-primary">${currentSession.actualBalance?.toFixed(2) ?? '0.00'}</span>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">Para iniciar un nuevo turno, completa los datos a continuación.</p>

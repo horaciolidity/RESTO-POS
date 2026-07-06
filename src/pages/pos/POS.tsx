@@ -246,9 +246,10 @@ export default function POS() {
       await updateTableStatus(selectedTableId, 'libre');
     }
 
+    const productSummary = items.map(item => `${item.product.name} x${item.quantity}`).join(', ');
     const desc = activeOrderIdBeingPaid
-      ? `Cobro Comanda (Mesa ${tableName || 'S/M'}) (Pedido #${orderNumber}) [${paymentMethod.toUpperCase()}]`
-      : `Venta Directa POS (Pedido #${orderNumber}) [${paymentMethod.toUpperCase()}]`;
+      ? `Cobro Comanda (Mesa ${tableName || 'S/M'}) (Pedido #${orderNumber}) [${paymentMethod.toUpperCase()}] - ${productSummary}`
+      : `Venta Directa POS (Pedido #${orderNumber}) [${paymentMethod.toUpperCase()}] - ${productSummary}`;
 
     await addMovement('ingreso', total, desc, user?.branchId || 'default');
 
