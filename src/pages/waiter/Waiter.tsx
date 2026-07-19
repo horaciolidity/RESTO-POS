@@ -410,7 +410,7 @@ export default function Waiter() {
 
     await addOrder({
       source: 'mesas',
-      status: 'entregado',
+      status: 'preparando',
       tableName: `Mesa ${activeTable.number}`,
       waiterName: user?.name || 'Mozo',
       items: selectedItems.map(item => ({

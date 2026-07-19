@@ -11,7 +11,7 @@ import { useOrdersStore, RestaurantTable } from '../../store/useOrdersStore';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function Tables() {
-  const { tables, updateTableStatus, orders, closeOrder, addIncident } = useOrdersStore();
+  const { tables, updateTableStatus, orders, closeOrder, updateOrderStatus, addIncident } = useOrdersStore();
   const { user } = useAuthStore();
   const [selectedZone, setSelectedZone] = useState<string>('Todos');
   const [activeTableDetail, setActiveTableDetail] = useState<RestaurantTable | null>(null);
@@ -22,6 +22,7 @@ export default function Tables() {
     const activeOrder = getTableOrder(table);
     if (activeOrder) {
       await closeOrder(activeOrder.id);
+      await updateOrderStatus(activeOrder.id, 'entregado');
     }
     await updateTableStatus(table.id, 'libre');
     if (novedadText.trim()) {

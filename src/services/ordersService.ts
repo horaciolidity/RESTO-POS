@@ -95,7 +95,7 @@ export const ordersService = {
 
     const { error } = await supabase
       .from('orders')
-      .update({ paid: true, status: 'entregado', payment_method: paymentMethod || 'Efectivo' })
+      .update({ paid: true, payment_method: paymentMethod || 'Efectivo' })
       .eq('id', orderId);
 
     if (error) console.error('[ordersService.closeOrder]', error);

@@ -249,6 +249,15 @@ export default function KDS() {
                       ✅ Listo para Retirar
                     </button>
                   )}
+
+                  {order.status === 'listo' && (
+                    <button
+                      onClick={() => updateOrderStatus(order.id, 'entregado')}
+                      className="flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-wide bg-violet-600 hover:bg-violet-500 active:scale-95 text-white transition-all shadow-lg shadow-violet-600/20 flex items-center justify-center gap-2"
+                    >
+                      📦 Entregar Pedido
+                    </button>
+                  )}
                 </div>
               </div>
             );

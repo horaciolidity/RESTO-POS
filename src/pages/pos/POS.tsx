@@ -206,7 +206,7 @@ export default function POS() {
     // ── "Pagar ahora" flow: charge immediately ──
     const orderData = {
       source: 'pos' as const,
-      status: 'entregado' as const,
+      status: 'preparando' as const,
       items: items.map(item => ({
         id: `oi-${Date.now()}-${item.product.id}`,
         product: item.product,
