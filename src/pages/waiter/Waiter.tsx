@@ -296,7 +296,7 @@ export default function Waiter() {
     const existingOrder = getTableOrder(activeTable);
     const existingOrderId = existingOrder?.id;
 
-    const { id: orderId } = await addOrder({
+    const { id: orderId, orderNumber } = await addOrder({
       source: 'mesas',
       status: 'preparando',
       tableName: `Mesa ${activeTable.number}`,
@@ -318,6 +318,77 @@ export default function Waiter() {
     // Update table status to pending
     await updateTableStatus(activeTable.id, 'esperando_comida', orderId);
 
+    // Automatically print kitchen ticket if configured in hardware settings
+    try {
+      const raw = localStorage.getItem('hardware_config');
+      if (raw) {
+        const hwConfig = JSON.parse(raw);
+        if (hwConfig && hwConfig.kitchenPrinterName) {
+          const win = window.open('', '_blank', 'width=320,height=500');
+          if (win) {
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const width = hwConfig.kitchenPrinterWidth || '80';
+            win.document.write(`
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <title>Comanda Cocina #${orderNumber}</title>
+                <style>
+                  @page { size: ${width}mm auto; margin: 4mm; }
+                  body { font-family: monospace; font-size: 12px; width: ${width}mm; margin: 0; padding: 0; text-transform: uppercase; color: #000; }
+                  .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px; }
+                  .title { font-size: 14px; font-weight: bold; margin: 0; }
+                  .info { font-size: 12px; font-weight: bold; margin-bottom: 8px; }
+                  .separator { border-top: 1px dashed #000; margin: 6px 0; }
+                  .table-header { font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 4px; display: flex; }
+                  .item-row { display: flex; margin-top: 6px; font-weight: bold; }
+                  .qty { width: 20%; text-align: left; font-size: 13px; }
+                  .name { width: 80%; font-size: 13px; }
+                  .notes { margin-left: 20%; font-style: italic; font-size: 11px; font-weight: normal; }
+                </style>
+              </head>
+              <body>
+                <div class="header">
+                  <h1 class="title">COMANDA DE COCINA</h1>
+                </div>
+                <div class="info">
+                  <p style="margin: 2px 0; font-size: 14px;"><strong>TICKET N°: ${orderNumber}</strong></p>
+                  <p style="margin: 2px 0;">ORIGEN: MESA ${activeTable.number}</p>
+                  <p style="margin: 2px 0;">MOZO: ${user?.name || 'Mozo'}</p>
+                  <p style="margin: 2px 0;">HORA: ${time}</p>
+                </div>
+                <div class="separator"></div>
+                <div class="table-header">
+                  <div style="width: 20%;">CANT</div>
+                  <div style="width: 80%;">PRODUCTO</div>
+                </div>
+                ${selectedItems.map(item => `
+                  <div class="item-row">
+                    <div class="qty">x${item.quantity}</div>
+                    <div class="name">${item.product.name}</div>
+                  </div>
+                  ${item.notes ? `<div class="notes">OBS: ${item.notes}</div>` : ''}
+                `).join('')}
+                <div class="separator" style="margin-top: 12px;"></div>
+                <div style="text-align: center; font-weight: bold; margin-top: 8px;">
+                  -- FIN DE COMANDA --
+                </div>
+                <script>
+                  window.onload = () => {
+                    window.print();
+                    setTimeout(() => { window.close(); }, 500);
+                  };
+                </script>
+              </body>
+              </html>
+            `);
+            win.document.close();
+          }
+        }
+      }
+    } catch (printErr) {
+      console.error('Error printing automatic kitchen ticket:', printErr);
+    }
 
     setSendSuccess(true);
     setTimeout(() => setSendSuccess(false), 3500);
