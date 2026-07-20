@@ -74,6 +74,29 @@ export const cashService = {
   },
 
   /**
+   * Fetch all cash sessions for a branch.
+   */
+  async getAllSessions(branchId?: string): Promise<SupabaseCashSession[]> {
+    if (!isSupabaseConfigured()) return [];
+
+    let query = supabase
+      .from('cash_sessions')
+      .select('*')
+      .order('opened_at', { ascending: false });
+
+    if (branchId && branchId !== 'local-branch' && branchId !== 'default') {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('[cashService.getAllSessions]', error);
+      return [];
+    }
+    return data as SupabaseCashSession[];
+  },
+
+  /**
    * Open a new cash register session.
    * Returns the new session ID on success, null on failure.
    */
