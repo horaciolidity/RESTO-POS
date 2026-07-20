@@ -20,7 +20,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useCashStore } from '../../store/useCashStore';
 import { supabase } from '../../services/supabase';
-import { tableCallService, TableCallEvent } from '../../services/tableCallService';
+import { tableCallService, TableCallEvent, CustomerOrderEvent, CustomerOrderItem } from '../../services/tableCallService';
 import { useNavigate } from 'react-router-dom';
 
 // Admin exit lock modal
@@ -118,6 +118,10 @@ export default function Waiter() {
   const [waiterNovedadType, setWaiterNovedadType] = useState<'incidente' | 'reclamo' | 'rotura' | 'error_cocina'>('incidente');
   const [tableCallAlert, setTableCallAlert] = useState<TableCallEvent | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // Tracks table tokens that have an active unanswered call (table card turns amber)
+  const [callingTableTokens, setCallingTableTokens] = useState<Set<string>>(new Set());
+  // Pending customer QR orders waiting for waiter confirmation, keyed by tableToken
+  const [pendingCustomerOrders, setPendingCustomerOrders] = useState<Map<string, CustomerOrderEvent>>(new Map());
   const callChannelRef = useRef<any>(null);
   const { currentSession, initializeCash, loading: cashLoading } = useCashStore();
   const navigate = useNavigate();
@@ -138,10 +142,11 @@ export default function Waiter() {
   // Subscribe to table call events (customers calling the waiter)
   useEffect(() => {
     if (!user?.branchId) return;
+
+    // 1. Subscribe to waiter CALL events
     const channel = tableCallService.subscribeToTableCalls(
       user.branchId,
       (event: TableCallEvent) => {
-        // Only alert if mozo has this table assigned (or no restriction in demo)
         const { employees } = useSettingsStore.getState();
         const myEmployee = employees.find((e: any) =>
           `${e.firstName} ${e.lastName}`.trim() === user.name?.trim()
@@ -149,12 +154,29 @@ export default function Waiter() {
         const myTables: string[] = myEmployee?.assignedTables || [];
         if (myTables.length === 0 || myTables.includes(event.tableId)) {
           setTableCallAlert(event);
+          // Mark this table as actively calling (amber card color)
+          setCallingTableTokens(prev => new Set(prev).add(event.tableToken));
           tableCallService.playAlarm();
           tableCallService.vibrate();
         }
       }
     );
     callChannelRef.current = channel;
+
+    // 2. Subscribe to CUSTOMER_ORDER events
+    tableCallService.subscribeToCustomerOrders(
+      user.branchId,
+      (event: CustomerOrderEvent) => {
+        setPendingCustomerOrders(prev => {
+          const next = new Map(prev);
+          next.set(event.tableToken, event);
+          return next;
+        });
+        tableCallService.playAlarm();
+        tableCallService.vibrate();
+      }
+    );
+
     return () => {
       tableCallService.unsubscribeAll();
     };
@@ -171,6 +193,12 @@ export default function Waiter() {
       },
       user.branchId
     );
+    // Remove from the calling set so the card returns to normal color
+    setCallingTableTokens(prev => {
+      const next = new Set(prev);
+      next.delete(tableCallAlert.tableToken);
+      return next;
+    });
     setTableCallAlert(null);
     setConfirming(false);
   };
@@ -472,7 +500,11 @@ export default function Waiter() {
     return map[s] || s;
   };
 
-  const statusColor = (s: string) => {
+  const statusColor = (s: string, isBeingCalled = false, hasPendingOrder = false) => {
+    // Highest priority: active customer call
+    if (isBeingCalled) return 'border-amber-400/60 bg-amber-400/10 text-amber-400 ring-2 ring-amber-400/30 animate-pulse';
+    // Second priority: pending customer QR order
+    if (hasPendingOrder) return 'border-violet-500/60 bg-violet-500/10 text-violet-400 ring-2 ring-violet-400/30';
     if (s === 'libre') return 'border-green-500/25 bg-green-500/5 text-green-500';
     if (s === 'esperando_comida') return 'border-orange-500/25 bg-orange-500/5 text-orange-500';
     if (s === 'comiendo') return 'border-blue-500/25 bg-blue-500/5 text-blue-500';
@@ -829,6 +861,9 @@ export default function Waiter() {
                   {tables.map((table: RestaurantTable) => {
                     const isSelected = activeTable?.id === table.id;
                     const tableOrder = getTableOrder(table);
+                    const qrToken = table.qr_token || '';
+                    const isBeingCalled = qrToken ? callingTableTokens.has(qrToken) : false;
+                    const hasPendingOrder = qrToken ? pendingCustomerOrders.has(qrToken) : false;
 
                     return (
                       <button
@@ -837,13 +872,13 @@ export default function Waiter() {
                         className={`p-3 rounded-2xl border text-center flex flex-col justify-between items-center h-24 transition-all ${
                           isSelected
                             ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/30'
-                            : statusColor(table.status)
+                            : statusColor(table.status, isBeingCalled, hasPendingOrder)
                         }`}
                       >
                         <span className="text-xs font-black">Mesa {table.number}</span>
                         <span className="text-[9px] font-medium opacity-80">{table.zone.split(' ')[0]}</span>
                         <span className="text-[9px] font-black uppercase tracking-wider">
-                          {statusLabel(table.status)}
+                          {isBeingCalled ? '🔔 Llamando' : hasPendingOrder ? '📱 Pedido QR' : statusLabel(table.status)}
                         </span>
                         {tableOrder && (
                           <span className="text-[8px] font-bold opacity-70">#{tableOrder.orderNumber}</span>
@@ -866,7 +901,63 @@ export default function Waiter() {
                     <button onClick={() => { setActiveTable(null); setSelectedItems([]); }} className="text-xs text-red-500 font-bold hover:underline">Cambiar</button>
                   </div>
 
-                  {/* Show existing order for this table if any */}
+                  {/* ── QR Customer Order Preview ── */}
+                  {(() => {
+                    const qrToken = activeTable.qr_token || '';
+                    const customerOrder = qrToken ? pendingCustomerOrders.get(qrToken) : undefined;
+                    if (!customerOrder) return null;
+                    return (
+                      <div className="p-3 bg-violet-500/10 border border-violet-500/30 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-violet-400 flex items-center gap-1.5">
+                            📱 Pedido del Cliente via QR
+                            {customerOrder.orderNumber && <span className="opacity-70">#{customerOrder.orderNumber}</span>}
+                          </p>
+                          <button
+                            onClick={() => {
+                              setPendingCustomerOrders(prev => {
+                                const next = new Map(prev);
+                                next.delete(qrToken);
+                                return next;
+                              });
+                            }}
+                            className="text-[10px] text-red-400 font-bold hover:underline"
+                          >
+                            Descartar
+                          </button>
+                        </div>
+                        <div className="space-y-1">
+                          {customerOrder.items.map((item: CustomerOrderItem, idx: number) => (
+                            <div key={idx} className="text-[10px] flex justify-between text-muted-foreground">
+                              <span className="font-semibold">{item.productName}</span>
+                              <span className="font-black">x{item.quantity}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => {
+                            // Pre-load the customer's items into the comanda
+                            const itemsToLoad = customerOrder.items.map((i: CustomerOrderItem) => {
+                              const prod = products.find((p: Product) => p.id === i.productId);
+                              return prod ? { product: prod, quantity: i.quantity, notes: i.notes || '' } : null;
+                            }).filter(Boolean) as { product: Product; quantity: number; notes: string }[];
+                            setSelectedItems(itemsToLoad);
+                            // Remove from pending after loading
+                            setPendingCustomerOrders(prev => {
+                              const next = new Map(prev);
+                              next.delete(qrToken);
+                              return next;
+                            });
+                          }}
+                          className="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors"
+                        >
+                          ✓ Cargar en Comanda y Revisar
+                        </button>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Show existing active order for this table if any */}
                   {(() => {
                     const existingOrder = getTableOrder(activeTable);
                     if (existingOrder && existingOrder.items.length > 0) {

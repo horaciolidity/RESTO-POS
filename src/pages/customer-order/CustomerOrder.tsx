@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { ShoppingCart, Plus, Minus, Trash2, CheckCircle2, ChefHat, Search } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, CheckCircle2, ChefHat, Search, Smartphone } from 'lucide-react';
 import { useInventoryStore, Product } from '../../store/useInventoryStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { isSupabaseConfigured } from '../../services/supabase';
 import { ordersService } from '../../services/ordersService';
 import { tablesService } from '../../services/tablesService';
 import { productsService } from '../../services/productsService';
+import { tableCallService } from '../../services/tableCallService';
 
 interface CartItem {
   product: Product;
@@ -14,28 +15,52 @@ interface CartItem {
   notes: string;
 }
 
+interface LocalCategory {
+  id: string;
+  name: string;
+}
+
+/** Maps a raw Supabase product row (snake_case) to the frontend Product shape (camelCase) */
+function mapDbProduct(p: any): Product {
+  return {
+    id: p.id,
+    name: p.name,
+    code: p.code || '',
+    sku: p.sku || '',
+    categoryId: p.category_id || '',
+    categoryName: p.categories?.name || 'Varios',
+    costPrice: Number(p.cost_price ?? 0),
+    salePrice: Number(p.sale_price ?? 0),
+    taxRate: Number(p.tax_rate ?? 0),
+    imageUrl: p.image_url || '',
+    description: p.description || '',
+    type: p.type ?? 'producto',
+    active: p.active ?? true,
+    stockMin: p.stock_min ?? 0,
+    stockCritical: p.stock_critical ?? 0,
+    currentStock: p.current_stock ?? 999,
+  };
+}
+
 export default function CustomerOrder() {
   const { tableToken } = useParams<{ tableToken: string }>();
-  
+
   // Local state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'menu' | 'cart' | 'success'>('menu');
-  const [tableInfo, setTableInfo] = useState<{ number: number; zone: string; branchId?: string; tenantId?: string } | null>(null);
+  const [tableInfo, setTableInfo] = useState<{
+    number: number;
+    zone: string;
+    id?: string;
+    branchId?: string;
+    tenantId?: string;
+    qrToken?: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [orderId, setOrderId] = useState<string | null>(null);
-  const [globalNote, setGlobalNote] = useState('');
-  
-  // Log order ID to suppress unused warning
-  useEffect(() => {
-    if (orderId) {
-      console.log('Customer order created successfully:', orderId);
-    }
-  }, [orderId]);
-
-
+  const [localCategories, setLocalCategories] = useState<LocalCategory[]>([]);
 
   // Fall back to Zustand in demo mode
   const { products: localProducts, categories } = useInventoryStore();
@@ -48,24 +73,40 @@ export default function CustomerOrder() {
       setLoading(true);
       try {
         if (isSupabaseConfigured() && tableToken) {
-          // Real mode: fetch from Supabase
-          const [tableData, productsData] = await Promise.all([
-            tablesService.getByQrToken(tableToken),
-            productsService.getPublicMenu()
-          ]);
-          if (tableData) setTableInfo({
-            number: tableData.number,
-            zone: tableData.zone,
-            branchId: tableData.branch_id,
-            tenantId: tableData.tenant_id
-          });
-          setProducts(productsData as any as Product[]);
+          // Real mode: fetch table first, then products filtered by that branch
+          const tableData = await tablesService.getByQrToken(tableToken);
+          if (tableData) {
+            setTableInfo({
+              number: tableData.number,
+              zone: tableData.zone,
+              id: tableData.id,
+              branchId: tableData.branch_id,
+              tenantId: tableData.tenant_id,
+              qrToken: tableToken,
+            });
+            // Fetch products scoped to this branch
+            const productsData = await productsService.getPublicMenu(tableData.branch_id);
+            const mapped = productsData.map(mapDbProduct);
+            setProducts(mapped);
+            // Build category list directly from product data (no auth required)
+            const catMap = new Map<string, string>();
+            productsData.forEach((p: any) => {
+              if (p.category_id && p.categories?.name) {
+                catMap.set(p.category_id, p.categories.name);
+              }
+            });
+            setLocalCategories(Array.from(catMap.entries()).map(([id, name]) => ({ id, name })));
+          }
         } else {
           // Demo mode: parse token as "table-{number}"
           const tableNum = parseInt(tableToken?.replace('table-', '') || '1');
           const t = tables.find(t => t.number === tableNum) || tables[0];
-          if (t) setTableInfo({ number: t.number, zone: t.zone });
-          setProducts(localProducts.filter(p => p.active && p.type !== 'insumo'));
+          if (t) {
+            setTableInfo({ number: t.number, zone: t.zone, id: t.id, qrToken: tableToken });
+          }
+          const demoProducts = localProducts.filter(p => p.active && p.type !== 'insumo');
+          setProducts(demoProducts);
+          setLocalCategories(categories.map(c => ({ id: c.id, name: c.name })));
         }
       } finally {
         setLoading(false);
@@ -74,7 +115,7 @@ export default function CustomerOrder() {
     init();
   }, [tableToken]);
 
-  // ── Cart Helpers ──
+  // â”€â”€ Cart Helpers â”€â”€
   const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(i => i.product.id === product.id);
@@ -115,19 +156,20 @@ export default function CustomerOrder() {
         notes: i.notes
       }));
 
+      let createdOrderId: string | null = null;
+      let createdOrderNumber = '';
+
       if (isSupabaseConfigured()) {
         const created = await ordersService.create(
           {
-            // Use real branch/tenant from the QR table, fallback to demo only if missing
             branch_id: tableInfo?.branchId || 'b1000000-0000-0000-0000-000000000001',
             tenant_id: tableInfo?.tenantId,
-            // order_number is generated internally by ordersService.create — do NOT pass it here
             order_number: '',
             source: 'mesas',
             status: 'pendiente',
             table_name: tableInfo ? `Mesa ${tableInfo.number} (${tableInfo.zone})` : 'Mesa QR',
             order_type: 'salon',
-            order_note: globalNote,
+            order_note: '',
             subtotal,
             discount: 0,
             tips: 0,
@@ -137,14 +179,15 @@ export default function CustomerOrder() {
           },
           orderItems
         );
-        setOrderId(created ? created.id : null);
+        createdOrderId = created ? created.id : null;
+        createdOrderNumber = created ? (created as any).order_number || '' : '';
       } else {
-        // Demo mode: add to local Zustand store
+        // Demo mode
         const res = await addOrder({
           source: 'mesas',
           status: 'pendiente',
           tableName: tableInfo ? `Mesa ${tableInfo.number}` : 'Mesa QR',
-          orderNote: globalNote,
+          orderNote: '',
           orderType: 'salon',
           items: cart.map(i => ({
             id: `oi-${Date.now()}-${i.product.id}`,
@@ -156,10 +199,28 @@ export default function CustomerOrder() {
           subtotal, discount: 0, tips: 0, total: subtotal,
           paid: false
         } as any);
-        setOrderId(res.id);
+        createdOrderId = res.id;
+        createdOrderNumber = res.orderNumber;
       }
 
-
+      // Notify waiter via Realtime (Supabase) or BroadcastChannel (demo)
+      if (tableInfo) {
+        await tableCallService.notifyCustomerOrder({
+          tableToken: tableInfo.qrToken || tableToken || '',
+          tableNumber: tableInfo.number,
+          tableId: tableInfo.id || '',
+          branchId: tableInfo.branchId || 'demo-branch',
+          orderId: createdOrderId || '',
+          orderNumber: createdOrderNumber,
+          items: cart.map(i => ({
+            productId: i.product.id,
+            productName: i.product.name,
+            quantity: i.quantity,
+            unitPrice: i.product.salePrice,
+            notes: i.notes,
+          })),
+        });
+      }
 
       setCart([]);
       setActiveView('success');
@@ -176,7 +237,7 @@ export default function CustomerOrder() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <ChefHat className="w-12 h-12 text-primary mx-auto animate-bounce" />
-          <p className="text-muted-foreground text-sm font-semibold">Cargando el menú...</p>
+          <p className="text-muted-foreground text-sm font-semibold">Cargando el menÃº...</p>
         </div>
       </div>
     );
@@ -190,16 +251,20 @@ export default function CustomerOrder() {
             <CheckCircle2 className="w-10 h-10 text-green-500" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-foreground">¡Pedido Enviado!</h2>
-            <p className="text-muted-foreground text-sm mt-2">Tu pedido fue enviado a la cocina. Un momento por favor.</p>
+            <h2 className="text-2xl font-black text-foreground">Â¡Pedido Enviado!</h2>
+            <p className="text-muted-foreground text-sm mt-2">Tu pedido fue enviado al mozo. En breve recibirÃ¡s atenciÃ³n.</p>
           </div>
           {tableInfo && (
             <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl">
-              <p className="text-primary font-bold text-sm">Mesa {tableInfo.number} — {tableInfo.zone}</p>
+              <p className="text-primary font-bold text-sm">Mesa {tableInfo.number} â€” {tableInfo.zone}</p>
             </div>
           )}
+          <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex items-center gap-2 text-left">
+            <Smartphone className="w-4 h-4 text-amber-500 shrink-0" />
+            <p className="text-xs text-amber-600 font-semibold">El mozo revisarÃ¡ y confirmarÃ¡ tu pedido antes de enviarlo a cocina.</p>
+          </div>
           <button
-            onClick={() => { setActiveView('menu'); setOrderId(null); }}
+            onClick={() => setActiveView('menu')}
             className="w-full py-3 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity"
           >
             Hacer otro pedido
@@ -218,10 +283,9 @@ export default function CustomerOrder() {
             <div className="flex items-center gap-2">
               <ChefHat className="w-5 h-5 text-primary" />
               <span className="font-black text-base">MesaHub</span>
-
             </div>
             {tableInfo && (
-              <p className="text-[11px] text-muted-foreground font-semibold">Mesa {tableInfo.number} · {tableInfo.zone}</p>
+              <p className="text-[11px] text-muted-foreground font-semibold">Mesa {tableInfo.number} Â· {tableInfo.zone}</p>
             )}
           </div>
           <button
@@ -243,12 +307,12 @@ export default function CustomerOrder() {
           <input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Buscar en el menú..."
+            placeholder="Buscar en el menÃº..."
             className="w-full pl-9 pr-4 py-2 bg-muted rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
 
-        {/* Category filters */}
+        {/* Category filters â€” built from actual DB products, no auth needed */}
         <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-none">
           <button
             onClick={() => setSelectedCategory(null)}
@@ -258,7 +322,7 @@ export default function CustomerOrder() {
           >
             Todos
           </button>
-          {categories.map(cat => (
+          {localCategories.map(cat => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
@@ -272,9 +336,23 @@ export default function CustomerOrder() {
         </div>
       </div>
 
+      {/* No products fallback */}
+      {activeView === 'menu' && products.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center px-6">
+          <ChefHat className="w-16 h-16 text-muted-foreground/30" />
+          <p className="font-bold text-muted-foreground">El menÃº no estÃ¡ disponible en este momento.</p>
+          <p className="text-xs text-muted-foreground/70">Por favor consultÃ¡ con el personal del local.</p>
+        </div>
+      )}
+
       {/* Menu Grid - Card View */}
-      {activeView === 'menu' && (
+      {activeView === 'menu' && products.length > 0 && (
         <div className="p-4 grid grid-cols-2 gap-3">
+          {filteredProducts.length === 0 && (
+            <div className="col-span-2 text-center py-12 text-muted-foreground text-sm">
+              Sin resultados para &quot;{searchQuery}&quot;
+            </div>
+          )}
           {filteredProducts.map(product => {
             const inCart = cart.find(i => i.product.id === product.id);
             const outOfStock = product.currentStock <= product.stockCritical && product.type !== 'combo';
@@ -299,6 +377,9 @@ export default function CustomerOrder() {
                 <div className="p-2.5 flex-1 flex flex-col justify-between gap-2">
                   <div>
                     <p className="font-bold text-xs leading-snug">{product.name}</p>
+                    {product.description && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{product.description}</p>
+                    )}
                     <p className="text-primary font-black text-sm mt-0.5">${product.salePrice.toFixed(2)}</p>
                   </div>
                   {!outOfStock && (
@@ -329,14 +410,14 @@ export default function CustomerOrder() {
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-black">Tu Pedido</h2>
-            <button onClick={() => setActiveView('menu')} className="text-xs text-primary font-bold">← Volver al menú</button>
+            <button onClick={() => setActiveView('menu')} className="text-xs text-primary font-bold">â† Volver al menÃº</button>
           </div>
 
           {cart.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground space-y-3">
               <ShoppingCart className="w-12 h-12 mx-auto opacity-30" />
-              <p className="font-semibold">Tu carrito está vacío</p>
-              <button onClick={() => setActiveView('menu')} className="text-primary font-bold text-sm">Ver el menú</button>
+              <p className="font-semibold">Tu carrito estÃ¡ vacÃ­o</p>
+              <button onClick={() => setActiveView('menu')} className="text-primary font-bold text-sm">Ver el menÃº</button>
             </div>
           ) : (
             <>
@@ -364,15 +445,12 @@ export default function CustomerOrder() {
                 ))}
               </div>
 
-              {/* Global Note */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-muted-foreground">Nota o aclaración al pedido (opcional)</label>
-                <textarea
-                  value={globalNote}
-                  onChange={e => setGlobalNote(e.target.value)}
-                  placeholder="Ej: Sin sal, alergia al gluten, etc."
-                  className="w-full h-16 bg-card border border-border rounded-xl p-3 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-                />
+              {/* Waiter confirmation notice */}
+              <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex items-start gap-2">
+                <Smartphone className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-600 font-semibold leading-relaxed">
+                  Tu pedido serÃ¡ revisado por el mozo antes de enviarse a cocina.
+                </p>
               </div>
 
               {/* Total */}
@@ -386,7 +464,7 @@ export default function CustomerOrder() {
                 disabled={submitting}
                 className="w-full py-4 bg-primary text-white font-black text-base rounded-2xl shadow-xl shadow-primary/30 hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {submitting ? 'Enviando...' : '🍽️ Confirmar Pedido'}
+                {submitting ? 'Enviando...' : 'ðŸ½ï¸ Confirmar Pedido'}
               </button>
             </>
           )}
