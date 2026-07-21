@@ -1,10 +1,9 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { ShoppingCart, Plus, Minus, Trash2, CheckCircle2, ChefHat, Search, Smartphone } from 'lucide-react';
 import { useInventoryStore, Product } from '../../store/useInventoryStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { isSupabaseConfigured } from '../../services/supabase';
-import { ordersService } from '../../services/ordersService';
 import { tablesService } from '../../services/tablesService';
 import { productsService } from '../../services/productsService';
 import { tableCallService } from '../../services/tableCallService';
@@ -64,7 +63,7 @@ export default function CustomerOrder() {
 
   // Fall back to Zustand in demo mode
   const { products: localProducts, categories } = useInventoryStore();
-  const { addOrder, tables } = useOrdersStore();
+  const { tables } = useOrdersStore();
 
   const [products, setProducts] = useState<Product[]>([]);
 
@@ -115,7 +114,7 @@ export default function CustomerOrder() {
     init();
   }, [tableToken]);
 
-  // â”€â”€ Cart Helpers â”€â”€
+  // ── Cart Helpers ──
   const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(i => i.product.id === product.id);
@@ -147,61 +146,9 @@ export default function CustomerOrder() {
     setSubmitting(true);
 
     try {
-      const subtotal = total;
-      const orderItems = cart.map(i => ({
-        product_id: i.product.id,
-        product_name: i.product.name,
-        quantity: i.quantity,
-        unit_price: i.product.salePrice,
-        notes: i.notes
-      }));
-
-      let createdOrderId: string | null = null;
-      let createdOrderNumber = '';
-
-      if (isSupabaseConfigured()) {
-        const created = await ordersService.create(
-          {
-            branch_id: tableInfo?.branchId || 'b1000000-0000-0000-0000-000000000001',
-            tenant_id: tableInfo?.tenantId,
-            order_number: '',
-            source: 'mesas',
-            status: 'pendiente',
-            table_name: tableInfo ? `Mesa ${tableInfo.number} (${tableInfo.zone})` : 'Mesa QR',
-            order_type: 'salon',
-            order_note: '',
-            subtotal,
-            discount: 0,
-            tips: 0,
-            total: subtotal,
-            paid: false,
-            source_device: 'customer_qr'
-          },
-          orderItems
-        );
-        createdOrderId = created ? created.id : null;
-        createdOrderNumber = created ? (created as any).order_number || '' : '';
-      } else {
-        // Demo mode
-        const res = await addOrder({
-          source: 'mesas',
-          status: 'pendiente',
-          tableName: tableInfo ? `Mesa ${tableInfo.number}` : 'Mesa QR',
-          orderNote: '',
-          orderType: 'salon',
-          items: cart.map(i => ({
-            id: `oi-${Date.now()}-${i.product.id}`,
-            product: i.product,
-            quantity: i.quantity,
-            price: i.product.salePrice,
-            notes: i.notes
-          })),
-          subtotal, discount: 0, tips: 0, total: subtotal,
-          paid: false
-        } as any);
-        createdOrderId = res.id;
-        createdOrderNumber = res.orderNumber;
-      }
+      // Ephemeral mock IDs to avoid database order creation
+      const createdOrderId = `temp-qr-${Date.now()}`;
+      const createdOrderNumber = `QR-${Math.floor(1000 + Math.random() * 9000)}`;
 
       // Notify waiter via Realtime (Supabase) or BroadcastChannel (demo)
       if (tableInfo) {
@@ -210,7 +157,7 @@ export default function CustomerOrder() {
           tableNumber: tableInfo.number,
           tableId: tableInfo.id || '',
           branchId: tableInfo.branchId || 'demo-branch',
-          orderId: createdOrderId || '',
+          orderId: createdOrderId,
           orderNumber: createdOrderNumber,
           items: cart.map(i => ({
             productId: i.product.id,
@@ -237,7 +184,7 @@ export default function CustomerOrder() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <ChefHat className="w-12 h-12 text-primary mx-auto animate-bounce" />
-          <p className="text-muted-foreground text-sm font-semibold">Cargando el menÃº...</p>
+          <p className="text-muted-foreground text-sm font-semibold">Cargando el menú...</p>
         </div>
       </div>
     );
@@ -251,17 +198,17 @@ export default function CustomerOrder() {
             <CheckCircle2 className="w-10 h-10 text-green-500" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-foreground">Â¡Pedido Enviado!</h2>
-            <p className="text-muted-foreground text-sm mt-2">Tu pedido fue enviado al mozo. En breve recibirÃ¡s atenciÃ³n.</p>
+            <h2 className="text-2xl font-black text-foreground">¡Pedido Enviado!</h2>
+            <p className="text-muted-foreground text-sm mt-2">Tu pedido fue enviado al mozo. En breve recibirás atención.</p>
           </div>
           {tableInfo && (
             <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl">
-              <p className="text-primary font-bold text-sm">Mesa {tableInfo.number} â€” {tableInfo.zone}</p>
+              <p className="text-primary font-bold text-sm">Mesa {tableInfo.number} — {tableInfo.zone}</p>
             </div>
           )}
           <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex items-center gap-2 text-left">
             <Smartphone className="w-4 h-4 text-amber-500 shrink-0" />
-            <p className="text-xs text-amber-600 font-semibold">El mozo revisarÃ¡ y confirmarÃ¡ tu pedido antes de enviarlo a cocina.</p>
+            <p className="text-xs text-amber-600 font-semibold">El mozo revisará y confirmará tu pedido antes de enviarlo a cocina.</p>
           </div>
           <button
             onClick={() => setActiveView('menu')}
@@ -285,7 +232,7 @@ export default function CustomerOrder() {
               <span className="font-black text-base">MesaHub</span>
             </div>
             {tableInfo && (
-              <p className="text-[11px] text-muted-foreground font-semibold">Mesa {tableInfo.number} Â· {tableInfo.zone}</p>
+              <p className="text-[11px] text-muted-foreground font-semibold">Mesa {tableInfo.number} · {tableInfo.zone}</p>
             )}
           </div>
           <button
@@ -307,12 +254,12 @@ export default function CustomerOrder() {
           <input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Buscar en el menÃº..."
+            placeholder="Buscar en el menú..."
             className="w-full pl-9 pr-4 py-2 bg-muted rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
 
-        {/* Category filters â€” built from actual DB products, no auth needed */}
+        {/* Category filters — built from actual DB products, no auth needed */}
         <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-none">
           <button
             onClick={() => setSelectedCategory(null)}
@@ -340,8 +287,8 @@ export default function CustomerOrder() {
       {activeView === 'menu' && products.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-center px-6">
           <ChefHat className="w-16 h-16 text-muted-foreground/30" />
-          <p className="font-bold text-muted-foreground">El menÃº no estÃ¡ disponible en este momento.</p>
-          <p className="text-xs text-muted-foreground/70">Por favor consultÃ¡ con el personal del local.</p>
+          <p className="font-bold text-muted-foreground">El menú no está disponible en este momento.</p>
+          <p className="text-xs text-muted-foreground/70">Por favor consultá con el personal del local.</p>
         </div>
       )}
 
@@ -410,14 +357,14 @@ export default function CustomerOrder() {
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-black">Tu Pedido</h2>
-            <button onClick={() => setActiveView('menu')} className="text-xs text-primary font-bold">â† Volver al menÃº</button>
+            <button onClick={() => setActiveView('menu')} className="text-xs text-primary font-bold">← Volver al menú</button>
           </div>
 
           {cart.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground space-y-3">
               <ShoppingCart className="w-12 h-12 mx-auto opacity-30" />
-              <p className="font-semibold">Tu carrito estÃ¡ vacÃ­o</p>
-              <button onClick={() => setActiveView('menu')} className="text-primary font-bold text-sm">Ver el menÃº</button>
+              <p className="font-semibold">Tu carrito está vacío</p>
+              <button onClick={() => setActiveView('menu')} className="text-primary font-bold text-sm">Ver el menú</button>
             </div>
           ) : (
             <>
@@ -449,7 +396,7 @@ export default function CustomerOrder() {
               <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex items-start gap-2">
                 <Smartphone className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-600 font-semibold leading-relaxed">
-                  Tu pedido serÃ¡ revisado por el mozo antes de enviarse a cocina.
+                  Tu pedido será revisado por el mozo antes de enviarse a cocina.
                 </p>
               </div>
 
@@ -464,7 +411,7 @@ export default function CustomerOrder() {
                 disabled={submitting}
                 className="w-full py-4 bg-primary text-white font-black text-base rounded-2xl shadow-xl shadow-primary/30 hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {submitting ? 'Enviando...' : 'ðŸ½ï¸ Confirmar Pedido'}
+                {submitting ? 'Enviando...' : '🍽️ Confirmar Pedido'}
               </button>
             </>
           )}

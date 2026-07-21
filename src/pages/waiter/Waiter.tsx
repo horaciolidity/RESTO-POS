@@ -143,7 +143,6 @@ export default function Waiter() {
   useEffect(() => {
     if (!user?.branchId) return;
 
-    // 1. Subscribe to waiter CALL events
     const channel = tableCallService.subscribeToTableCalls(
       user.branchId,
       (event: TableCallEvent) => {
@@ -159,13 +158,8 @@ export default function Waiter() {
           tableCallService.playAlarm();
           tableCallService.vibrate();
         }
-      }
-    );
-    callChannelRef.current = channel;
-
-    // 2. Subscribe to CUSTOMER_ORDER events
-    tableCallService.subscribeToCustomerOrders(
-      user.branchId,
+      },
+      undefined,
       (event: CustomerOrderEvent) => {
         setPendingCustomerOrders(prev => {
           const next = new Map(prev);
@@ -176,6 +170,7 @@ export default function Waiter() {
         tableCallService.vibrate();
       }
     );
+    callChannelRef.current = channel;
 
     return () => {
       tableCallService.unsubscribeAll();

@@ -42,7 +42,6 @@ export interface CustomerOrderEvent {
 
 let callSubscription: any = null;
 let confirmSubscription: any = null;
-let customerOrderSubscription: any = null;
 
 export const tableCallService = {
   /**
@@ -106,20 +105,24 @@ export const tableCallService = {
   },
 
   /**
-   * Waiter subscribes to incoming table calls for their branch.
+   * Waiter subscribes to incoming table calls and customer orders for their branch.
    * Returns the channel so it can be unsubscribed.
    */
   subscribeToTableCalls(
     branchId: string,
     onCall: (event: TableCallEvent) => void,
-    onConfirmSent?: (event: TableCallConfirmEvent) => void
+    onConfirmSent?: (event: TableCallConfirmEvent) => void,
+    onCustomerOrder?: (event: CustomerOrderEvent) => void
   ) {
     if (!isSupabaseConfigured()) {
       // Demo mode fallback
       const bc = new BroadcastChannel('mesa_hub_calls');
       bc.onmessage = (msg) => {
         if (msg.data?.type === 'TABLE_CALL') onCall(msg.data as TableCallEvent);
+        else if (msg.data?.type === 'TABLE_CALL_CONFIRM' && onConfirmSent) onConfirmSent(msg.data as TableCallConfirmEvent);
+        else if (msg.data?.type === 'CUSTOMER_ORDER' && onCustomerOrder) onCustomerOrder(msg.data as CustomerOrderEvent);
       };
+      callSubscription = bc;
       return bc;
     }
 
@@ -131,36 +134,12 @@ export const tableCallService = {
       .on('broadcast', { event: 'TABLE_CALL_CONFIRM' }, ({ payload }) => {
         if (onConfirmSent) onConfirmSent(payload as TableCallConfirmEvent);
       })
-      .subscribe();
-
-    callSubscription = channel;
-    return channel;
-  },
-
-  /**
-   * Subscribe to customer order events for the waiter's branch.
-   */
-  subscribeToCustomerOrders(
-    branchId: string,
-    onOrder: (event: CustomerOrderEvent) => void
-  ) {
-    if (!isSupabaseConfigured()) {
-      const bc = new BroadcastChannel('mesa_hub_calls');
-      bc.onmessage = (msg) => {
-        if (msg.data?.type === 'CUSTOMER_ORDER') onOrder(msg.data as CustomerOrderEvent);
-      };
-      customerOrderSubscription = bc;
-      return bc;
-    }
-
-    const channel = supabase
-      .channel(`branch-${branchId}-orders`)
       .on('broadcast', { event: 'CUSTOMER_ORDER' }, ({ payload }) => {
-        onOrder(payload as CustomerOrderEvent);
+        if (onCustomerOrder) onCustomerOrder(payload as CustomerOrderEvent);
       })
       .subscribe();
 
-    customerOrderSubscription = channel;
+    callSubscription = channel;
     return channel;
   },
 
@@ -205,11 +184,6 @@ export const tableCallService = {
       if (isSupabaseConfigured()) supabase.removeChannel(confirmSubscription);
       else (confirmSubscription as BroadcastChannel).close?.();
       confirmSubscription = null;
-    }
-    if (customerOrderSubscription) {
-      if (isSupabaseConfigured()) supabase.removeChannel(customerOrderSubscription);
-      else (customerOrderSubscription as BroadcastChannel).close?.();
-      customerOrderSubscription = null;
     }
   },
 
