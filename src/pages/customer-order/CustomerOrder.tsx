@@ -60,6 +60,7 @@ export default function CustomerOrder() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [localCategories, setLocalCategories] = useState<LocalCategory[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   // Fall back to Zustand in demo mode
   const { products: localProducts, categories } = useInventoryStore();
@@ -70,6 +71,7 @@ export default function CustomerOrder() {
   useEffect(() => {
     async function init() {
       setLoading(true);
+      setError(null);
       try {
         if (isSupabaseConfigured() && tableToken) {
           // Real mode: fetch table first, then products filtered by that branch
@@ -95,6 +97,8 @@ export default function CustomerOrder() {
               }
             });
             setLocalCategories(Array.from(catMap.entries()).map(([id, name]) => ({ id, name })));
+          } else {
+            setError('Mesa no encontrada. Verificá el código QR.');
           }
         } else {
           // Demo mode: parse token as "table-{number}"
@@ -107,6 +111,9 @@ export default function CustomerOrder() {
           setProducts(demoProducts);
           setLocalCategories(categories.map(c => ({ id: c.id, name: c.name })));
         }
+      } catch (err) {
+        console.error('Error initialization:', err);
+        setError('Error al cargar la información. Intentá de nuevo.');
       } finally {
         setLoading(false);
       }
@@ -178,6 +185,19 @@ export default function CustomerOrder() {
       setSubmitting(false);
     }
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
+            <span className="text-red-500 font-black text-2xl">!</span>
+          </div>
+          <p className="text-foreground font-bold">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
