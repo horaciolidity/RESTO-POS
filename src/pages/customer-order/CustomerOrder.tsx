@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { ShoppingCart, Plus, Minus, Trash2, CheckCircle2, ChefHat, Search, Smartphone } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, CheckCircle2, ChefHat, Search, Smartphone, Bell, UtensilsCrossed } from 'lucide-react';
 import { useInventoryStore, Product } from '../../store/useInventoryStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { isSupabaseConfigured } from '../../services/supabase';
@@ -61,6 +61,59 @@ export default function CustomerOrder() {
   const [submitting, setSubmitting] = useState(false);
   const [localCategories, setLocalCategories] = useState<LocalCategory[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const [callState, setCallState] = useState<'idle' | 'calling' | 'confirmed'>('idle');
+  const [waiterName, setWaiterName] = useState<string>('');
+  const channelRef = useRef<any>(null);
+
+  const disconnectChannel = () => {
+    if (channelRef.current) {
+      if ((channelRef.current as any).__timeout) {
+        clearTimeout((channelRef.current as any).__timeout);
+      }
+      if (typeof channelRef.current.unsubscribe === 'function') {
+        channelRef.current.unsubscribe();
+      } else if (typeof channelRef.current.close === 'function') {
+        channelRef.current.close();
+      }
+      channelRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      disconnectChannel();
+    };
+  }, []);
+
+  const handleCallWaiter = async () => {
+    if (!tableInfo || !tableToken || callState !== 'idle') return;
+    setCallState('calling');
+
+    await tableCallService.callWaiter({
+      tableToken: tableInfo.qrToken || tableToken || '',
+      tableNumber: tableInfo.number,
+      tableId: tableInfo.id || '',
+      branchId: tableInfo.branchId || 'demo-branch',
+    });
+
+    const channel = tableCallService.subscribeToConfirmations(
+      tableInfo.branchId || 'demo-branch',
+      tableInfo.qrToken || tableToken || '',
+      (event: any) => {
+        setWaiterName(event.waiterName);
+        setCallState('confirmed');
+        disconnectChannel();
+      }
+    );
+    channelRef.current = channel;
+
+    const timeoutId = setTimeout(() => {
+      disconnectChannel();
+    }, 2 * 60 * 1000);
+
+    (channelRef.current as any).__timeout = timeoutId;
+  };
 
   // Fall back to Zustand in demo mode
   const { products: localProducts, categories } = useInventoryStore();
@@ -213,28 +266,74 @@ export default function CustomerOrder() {
   if (activeView === 'success') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center space-y-6 max-w-sm">
-          <div className="w-20 h-20 rounded-full bg-green-500/10 border-2 border-green-500/20 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-10 h-10 text-green-500" />
+        <div className="text-center space-y-6 max-w-sm w-full">
+          <div className="w-20 h-20 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center mx-auto animate-pulse">
+            <UtensilsCrossed className="w-10 h-10 text-primary" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-foreground">¡Pedido Enviado!</h2>
-            <p className="text-muted-foreground text-sm mt-2">Tu pedido fue enviado al mozo. En breve recibirás atención.</p>
+            <h2 className="text-2xl font-black text-foreground">¡Pre-pedido Enviado!</h2>
+            <p className="text-muted-foreground text-xs mt-2 leading-relaxed">
+              Tu pre-pedido se registró correctamente. Para confirmarlo y que la cocina empiece a prepararlo, por favor solicitá la confirmación del mozo.
+            </p>
           </div>
+
           {tableInfo && (
-            <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl">
-              <p className="text-primary font-bold text-sm">Mesa {tableInfo.number} — {tableInfo.zone}</p>
+            <div className="p-4 bg-muted border border-border rounded-2xl">
+              <p className="text-foreground font-black text-sm">Mesa {tableInfo.number} — {tableInfo.zone}</p>
             </div>
           )}
-          <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex items-center gap-2 text-left">
-            <Smartphone className="w-4 h-4 text-amber-500 shrink-0" />
-            <p className="text-xs text-amber-600 font-semibold">El mozo revisará y confirmará tu pedido antes de enviarlo a cocina.</p>
+
+          {/* Waiter Call Status Flow */}
+          <div className="space-y-3">
+            {callState === 'idle' && (
+              <button
+                onClick={handleCallWaiter}
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white font-black text-sm rounded-2xl shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 transition-all"
+              >
+                <Bell className="w-4 h-4 animate-bounce" /> Llamar al Mozo para Confirmar
+              </button>
+            )}
+
+            {callState === 'calling' && (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-2xl space-y-2">
+                <div className="flex items-center justify-center gap-2 font-bold text-sm">
+                  <span className="w-2 h-2 bg-amber-500 rounded-full animate-ping"></span>
+                  Llamando al mozo...
+                </div>
+                <p className="text-[10px] opacity-85">Esperando que el mozo confirme tu llamada en su celular.</p>
+              </div>
+            )}
+
+            {callState === 'confirmed' && (
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 rounded-2xl space-y-1.5 animate-fade-in">
+                <div className="flex items-center justify-center gap-1.5 font-bold text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  ¡Llamada Confirmada!
+                </div>
+                <p className="text-[11px] font-medium">
+                  {waiterName ? `Mozo (${waiterName}) en camino a tu mesa.` : 'El mozo está en camino a tu mesa.'}
+                </p>
+              </div>
+            )}
           </div>
+
+          <div className="p-3 bg-card border border-border rounded-2xl flex items-center gap-2.5 text-left">
+            <Smartphone className="w-4 h-4 text-primary shrink-0" />
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Recordá que tus platos no irán a la cocina hasta que el mozo se acerque a confirmar y envíe la comanda definitiva.
+            </p>
+          </div>
+
           <button
-            onClick={() => setActiveView('menu')}
-            className="w-full py-3 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity"
+            onClick={() => {
+              disconnectChannel();
+              setCallState('idle');
+              setWaiterName('');
+              setActiveView('menu');
+            }}
+            className="w-full py-3 bg-muted hover:bg-muted/80 border border-border text-foreground font-bold text-xs rounded-2xl transition-colors"
           >
-            Hacer otro pedido
+            ← Volver al Menú / Hacer otro pedido
           </button>
         </div>
       </div>
