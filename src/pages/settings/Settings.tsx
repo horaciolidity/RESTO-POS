@@ -707,7 +707,7 @@ export default function Settings() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {tables.map(t => {
               const baseUrl = window.location.origin;
-              const qrUrl = `${baseUrl}/mesa/table-${t.number}`;
+              const qrUrl = `${baseUrl}/mesa/${t.qr_token || 'table-' + t.number}`;
               return (
                 <div key={t.id} className="bg-card border border-border rounded-2xl p-5 space-y-4">
                   <div className="flex justify-between items-start">
