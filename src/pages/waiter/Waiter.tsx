@@ -117,6 +117,7 @@ export default function Waiter() {
   const [waiterNovedad, setWaiterNovedad] = useState('');
   const [waiterNovedadType, setWaiterNovedadType] = useState<'incidente' | 'reclamo' | 'rotura' | 'error_cocina'>('incidente');
   const [tableCallAlert, setTableCallAlert] = useState<TableCallEvent | null>(null);
+  const [customerOrderAlert, setCustomerOrderAlert] = useState<CustomerOrderEvent | null>(null);
   const [confirming, setConfirming] = useState(false);
   // Tracks table tokens that have an active unanswered call (table card turns amber)
   const [callingTableTokens, setCallingTableTokens] = useState<Set<string>>(new Set());
@@ -161,13 +162,21 @@ export default function Waiter() {
       },
       undefined,
       (event: CustomerOrderEvent) => {
-        setPendingCustomerOrders(prev => {
-          const next = new Map(prev);
-          next.set(event.tableToken, event);
-          return next;
-        });
-        tableCallService.playAlarm();
-        tableCallService.vibrate();
+        const { employees } = useSettingsStore.getState();
+        const myEmployee = employees.find((e: any) =>
+          `${e.firstName} ${e.lastName}`.trim() === user.name?.trim()
+        );
+        const myTables: string[] = myEmployee?.assignedTables || [];
+        if (myTables.length === 0 || myTables.includes(event.tableId)) {
+          setPendingCustomerOrders(prev => {
+            const next = new Map(prev);
+            next.set(event.tableToken, event);
+            return next;
+          });
+          setCustomerOrderAlert(event);
+          tableCallService.playAlarm();
+          tableCallService.vibrate();
+        }
       }
     );
     callChannelRef.current = channel;
@@ -594,6 +603,55 @@ export default function Waiter() {
                 className="w-full py-2.5 bg-white/5 border border-white/10 text-slate-400 font-bold text-sm rounded-2xl hover:bg-white/10 transition-all"
               >
                 Descartar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📱 CUSTOMER QR ORDER ALERT MODAL — full screen overlay */}
+      {customerOrderAlert && (
+        <div className="fixed inset-0 z-[99] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-64 h-64 rounded-full bg-violet-500/10 animate-ping [animation-duration:1.2s]" />
+          </div>
+          <div className="relative bg-[#18181b] border-2 border-violet-400/50 rounded-3xl p-7 w-full max-w-sm space-y-5 shadow-2xl shadow-violet-500/20 text-center">
+            <div className="w-24 h-24 mx-auto rounded-full bg-violet-400/10 border-2 border-violet-400/40 flex items-center justify-center">
+              <span className="text-5xl animate-bounce">📱</span>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-violet-400/70 font-bold uppercase tracking-widest">¡Pre-pedido QR!</p>
+              <h2 className="text-3xl font-black text-white">Mesa {customerOrderAlert.tableNumber}</h2>
+              <p className="text-slate-400 text-sm">El cliente envió un pre-pedido para que lo revises antes de enviarlo a cocina.</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 space-y-1.5 text-left max-h-36 overflow-y-auto">
+              {customerOrderAlert.items.map((item, idx) => (
+                <div key={idx} className="flex justify-between text-xs text-slate-300">
+                  <span className="font-semibold">{item.productName}</span>
+                  <span className="font-black text-violet-400">x{item.quantity}</span>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  const qrToken = customerOrderAlert.tableToken;
+                  const matchedTable = tables.find(t => t.qr_token === qrToken);
+                  if (matchedTable) {
+                    setActiveTable(matchedTable);
+                    setActiveTab('pedido');
+                  }
+                  setCustomerOrderAlert(null);
+                }}
+                className="w-full py-4 bg-gradient-to-r from-violet-600 to-violet-500 text-white font-black text-sm rounded-2xl shadow-xl shadow-violet-500/30 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-5 h-5" /> Ver y Cargar en Comanda
+              </button>
+              <button
+                onClick={() => setCustomerOrderAlert(null)}
+                className="w-full py-2.5 bg-white/5 border border-white/10 text-slate-400 font-bold text-sm rounded-2xl hover:bg-white/10 transition-all"
+              >
+                Revisar después
               </button>
             </div>
           </div>
