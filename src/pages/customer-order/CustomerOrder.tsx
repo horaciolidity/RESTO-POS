@@ -3,10 +3,11 @@ import { useParams } from 'react-router-dom';
 import { ShoppingCart, Plus, Minus, Trash2, CheckCircle2, ChefHat, Search, Smartphone, Bell, UtensilsCrossed } from 'lucide-react';
 import { useInventoryStore, Product } from '../../store/useInventoryStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
-import { isSupabaseConfigured } from '../../services/supabase';
+import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { tablesService } from '../../services/tablesService';
 import { productsService } from '../../services/productsService';
 import { tableCallService } from '../../services/tableCallService';
+import { ordersService } from '../../services/ordersService';
 
 interface CartItem {
   product: Product;
@@ -65,7 +66,55 @@ export default function CustomerOrder() {
   const [callState, setCallState] = useState<'idle' | 'calling' | 'confirmed'>('idle');
   const [waiterName, setWaiterName] = useState<string>('');
   const [submittedOrder, setSubmittedOrder] = useState<CartItem[]>([]);
+  const [activeOrder, setActiveOrder] = useState<any | null>(null);
+  const [showMenu, setShowMenu] = useState<boolean>(false);
   const channelRef = useRef<any>(null);
+
+  const fetchActiveOrder = async (currentOrderId: string) => {
+    try {
+      if (isSupabaseConfigured()) {
+        const order = await ordersService.getById(currentOrderId);
+        if (order && !order.paid && order.status !== 'cancelado') {
+          setActiveOrder({
+            id: order.id,
+            orderNumber: order.orderNumber || order.order_number,
+            status: order.status,
+            total: Number(order.total),
+            items: (order.order_items || []).map((oi: any) => ({
+              productName: oi.product_name || oi.product?.name || 'Producto',
+              quantity: oi.quantity,
+              price: Number(oi.unit_price),
+              notes: oi.notes || ''
+            }))
+          });
+        } else {
+          setActiveOrder(null);
+        }
+      } else {
+        // Demo mode fallback using Zustand orders
+        const { orders } = useOrdersStore.getState();
+        const order = orders.find(o => o.id === currentOrderId && !o.paid && o.status !== 'cancelado');
+        if (order) {
+          setActiveOrder({
+            id: order.id,
+            orderNumber: order.orderNumber,
+            status: order.status,
+            total: order.total,
+            items: order.items.map(oi => ({
+              productName: oi.product.name,
+              quantity: oi.quantity,
+              price: oi.price,
+              notes: oi.notes || ''
+            }))
+          });
+        } else {
+          setActiveOrder(null);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching active order:', err);
+    }
+  };
 
   const disconnectChannel = () => {
     if (channelRef.current) {
@@ -151,6 +200,11 @@ export default function CustomerOrder() {
               }
             });
             setLocalCategories(Array.from(catMap.entries()).map(([id, name]) => ({ id, name })));
+
+            // Fetch initial active order if exists
+            if (tableData.current_order_id) {
+              await fetchActiveOrder(tableData.current_order_id);
+            }
           } else {
             setError('Mesa no encontrada. Verificá el código QR.');
           }
@@ -160,6 +214,9 @@ export default function CustomerOrder() {
           const t = tables.find(t => t.number === tableNum) || tables[0];
           if (t) {
             setTableInfo({ number: t.number, zone: t.zone, id: t.id, qrToken: tableToken });
+            if (t.currentOrderId) {
+              await fetchActiveOrder(t.currentOrderId);
+            }
           }
           const demoProducts = localProducts.filter(p => p.active && p.type !== 'insumo');
           setProducts(demoProducts);
@@ -174,6 +231,68 @@ export default function CustomerOrder() {
     }
     init();
   }, [tableToken]);
+
+  // Realtime subscriptions for Table and Active Order updates
+  useEffect(() => {
+    if (!tableInfo?.id || !isSupabaseConfigured()) return;
+
+    const channel = supabase
+      .channel(`table-status-customer-${tableInfo.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'restaurant_tables',
+        filter: `id=eq.${tableInfo.id}`
+      }, async (payload: any) => {
+        const newTable = payload.new;
+        if (newTable.current_order_id) {
+          await fetchActiveOrder(newTable.current_order_id);
+        } else {
+          setActiveOrder(null);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tableInfo?.id]);
+
+  useEffect(() => {
+    if (!activeOrder?.id || !isSupabaseConfigured()) return;
+
+    const channel = supabase
+      .channel(`order-status-customer-${activeOrder.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'orders',
+        filter: `id=eq.${activeOrder.id}`
+      }, async (payload: any) => {
+        const updatedOrder = payload.new;
+        if (updatedOrder.paid || updatedOrder.status === 'cancelado') {
+          setActiveOrder(null);
+        } else {
+          setActiveOrder((prev: any) => prev ? { ...prev, status: updatedOrder.status } : null);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeOrder?.id]);
+
+  // Sync demo mode order state via Zustand tables changes
+  useEffect(() => {
+    if (isSupabaseConfigured() || !tableInfo) return;
+    const t = tables.find(tab => tab.id === tableInfo.id);
+    if (t?.currentOrderId) {
+      fetchActiveOrder(t.currentOrderId);
+    } else {
+      setActiveOrder(null);
+    }
+  }, [tables, tableInfo]);
 
   // ── Cart Helpers ──
   const addToCart = (product: Product) => {
@@ -260,6 +379,112 @@ export default function CustomerOrder() {
         <div className="text-center space-y-4">
           <ChefHat className="w-12 h-12 text-primary mx-auto animate-bounce" />
           <p className="text-muted-foreground text-sm font-semibold">Cargando el menú...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeOrder && !showMenu) {
+    const orderItems = activeOrder.items || [];
+    return (
+      <div className="min-h-screen bg-background text-foreground pb-8">
+        {/* Header */}
+        <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border px-4 py-4 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <ChefHat className="w-5 h-5 text-primary" />
+              <span className="font-black text-base">MesaHub</span>
+            </div>
+            {tableInfo && (
+              <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">Mesa {tableInfo.number} · {tableInfo.zone}</p>
+            )}
+          </div>
+          <span className="bg-emerald-500/10 text-emerald-500 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-500/30">
+            Pedido Confirmado
+          </span>
+        </div>
+
+        <div className="p-4 space-y-4 max-w-md mx-auto">
+          {/* Active order banner */}
+          <div className="text-center space-y-3 py-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border-2 border-emerald-500/20 flex items-center justify-center mx-auto animate-pulse">
+              <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-foreground">Pedido Activo #{activeOrder.orderNumber}</h2>
+              <p className="text-muted-foreground text-xs mt-1">
+                Estado actual: <span className="font-black text-primary uppercase">{activeOrder.status}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Items summary */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <p className="text-xs font-black uppercase tracking-wide text-muted-foreground">Productos en Preparación</p>
+              <span className="text-xs font-black text-primary">${activeOrder.total.toFixed(2)}</span>
+            </div>
+            <div className="divide-y divide-border">
+              {orderItems.map((item: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between px-4 py-2.5">
+                  <div className="min-w-0 pr-2">
+                    <p className="font-bold text-sm truncate">{item.productName}</p>
+                    {item.notes && <p className="text-[10px] text-primary italic">{item.notes}</p>}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-black text-sm">x{item.quantity}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Waiter Call Status Flow */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">¿Necesitás algo más?</p>
+
+            {callState === 'idle' && (
+              <button
+                onClick={handleCallWaiter}
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white font-black text-sm rounded-2xl shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                <Bell className="w-4 h-4 animate-bounce" /> Llamar al Mozo
+              </button>
+            )}
+
+            {callState === 'calling' && (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-2xl space-y-2">
+                <div className="flex items-center justify-center gap-2 font-bold text-sm">
+                  <span className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
+                  Llamando al mozo...
+                </div>
+                <p className="text-[10px] opacity-85 text-center">Esperando confirmación.</p>
+              </div>
+            )}
+
+            {callState === 'confirmed' && (
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 rounded-2xl space-y-1.5">
+                <div className="flex items-center justify-center gap-1.5 font-bold text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  ¡Llamada Confirmada!
+                </div>
+                <p className="text-[11px] font-medium text-center">
+                  El mozo está en camino a tu mesa.
+                </p>
+                <button onClick={() => setCallState('idle')} className="w-full text-[10px] text-emerald-700 font-bold mt-1 hover:underline">
+                  Volver a llamar
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Add more items / menu button */}
+          <button
+            onClick={() => setShowMenu(true)}
+            className="w-full py-3.5 bg-primary text-white font-black text-sm rounded-2xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Hacer otro pedido
+          </button>
         </div>
       </div>
     );
@@ -396,6 +621,7 @@ export default function CustomerOrder() {
     <div className="min-h-screen bg-background text-foreground pb-32">
       {/* Header */}
       <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border px-4 pt-safe">
+        {/* Header */}
         <div className="flex items-center justify-between py-4">
           <div>
             <div className="flex items-center gap-2">
@@ -406,17 +632,28 @@ export default function CustomerOrder() {
               <p className="text-[11px] text-muted-foreground font-semibold">Mesa {tableInfo.number} · {tableInfo.zone}</p>
             )}
           </div>
-          <button
-            onClick={() => setActiveView('cart')}
-            className="relative p-3 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20"
-          >
-            <ShoppingCart className="w-5 h-5" />
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center">
-                {cartCount}
-              </span>
+          <div className="flex items-center gap-2">
+            {activeOrder && (
+              <button
+                onClick={() => setShowMenu(false)}
+                className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-emerald-500/20 flex items-center gap-1 transition-all"
+              >
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                Pedido Activo: #{activeOrder.orderNumber}
+              </button>
             )}
-          </button>
+            <button
+              onClick={() => setActiveView('cart')}
+              className="relative p-3 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Search */}
