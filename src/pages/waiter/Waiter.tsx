@@ -117,7 +117,6 @@ export default function Waiter() {
   const [waiterNovedad, setWaiterNovedad] = useState('');
   const [waiterNovedadType, setWaiterNovedadType] = useState<'incidente' | 'reclamo' | 'rotura' | 'error_cocina'>('incidente');
   const [tableCallAlert, setTableCallAlert] = useState<TableCallEvent | null>(null);
-  const [customerOrderAlert, setCustomerOrderAlert] = useState<CustomerOrderEvent | null>(null);
   const [confirming, setConfirming] = useState(false);
   // Tracks table tokens that have an active unanswered call (table card turns amber)
   const [callingTableTokens, setCallingTableTokens] = useState<Set<string>>(new Set());
@@ -173,7 +172,6 @@ export default function Waiter() {
             next.set(event.tableToken, event);
             return next;
           });
-          setCustomerOrderAlert(event);
           tableCallService.playAlarm();
           tableCallService.vibrate();
         }
@@ -609,52 +607,87 @@ export default function Waiter() {
         </div>
       )}
 
-      {/* 📱 CUSTOMER QR ORDER ALERT MODAL — full screen overlay */}
-      {customerOrderAlert && (
-        <div className="fixed inset-0 z-[99] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-64 h-64 rounded-full bg-violet-500/10 animate-ping [animation-duration:1.2s]" />
-          </div>
-          <div className="relative bg-[#18181b] border-2 border-violet-400/50 rounded-3xl p-7 w-full max-w-sm space-y-5 shadow-2xl shadow-violet-500/20 text-center">
-            <div className="w-24 h-24 mx-auto rounded-full bg-violet-400/10 border-2 border-violet-400/40 flex items-center justify-center">
-              <span className="text-5xl animate-bounce">📱</span>
+
+      {/* 📱 CUSTOMER QR ORDER NOTIFICATIONS — compact stacked cards, bottom-right */}
+      {pendingCustomerOrders.size > 0 && (
+        <div className="fixed bottom-4 right-4 z-[99] flex flex-col gap-2 max-w-[280px] w-full">
+          {/* Counter badge if more than 1 */}
+          {pendingCustomerOrders.size > 1 && (
+            <div className="flex justify-end">
+              <span className="bg-violet-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg">
+                {pendingCustomerOrders.size} pre-pedidos pendientes
+              </span>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs text-violet-400/70 font-bold uppercase tracking-widest">¡Pre-pedido QR!</p>
-              <h2 className="text-3xl font-black text-white">Mesa {customerOrderAlert.tableNumber}</h2>
-              <p className="text-slate-400 text-sm">El cliente envió un pre-pedido para que lo revises antes de enviarlo a cocina.</p>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 space-y-1.5 text-left max-h-36 overflow-y-auto">
-              {customerOrderAlert.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between text-xs text-slate-300">
-                  <span className="font-semibold">{item.productName}</span>
-                  <span className="font-black text-violet-400">x{item.quantity}</span>
+          )}
+          {Array.from(pendingCustomerOrders.entries()).map(([token, event]) => {
+            const totalItems = event.items.reduce((acc, i) => acc + i.quantity, 0);
+            return (
+              <div
+                key={token}
+                className="bg-[#1c1c24] border border-violet-500/40 rounded-2xl p-3 shadow-xl shadow-violet-900/30 flex flex-col gap-2"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📱</span>
+                    <div>
+                      <p className="text-[10px] text-violet-400/70 font-bold uppercase tracking-wider">Pre-pedido QR</p>
+                      <p className="text-sm font-black text-white leading-tight">Mesa {event.tableNumber}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="bg-violet-600/20 text-violet-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-violet-500/30">
+                      {totalItems} item{totalItems !== 1 ? 's' : ''}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setPendingCustomerOrders(prev => {
+                          const next = new Map(prev);
+                          next.delete(token);
+                          return next;
+                        });
+                      }}
+                      className="text-slate-500 hover:text-slate-300 p-0.5 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
-            <div className="space-y-3">
-              <button
-                onClick={() => {
-                  const qrToken = customerOrderAlert.tableToken;
-                  const matchedTable = tables.find(t => t.qr_token === qrToken);
-                  if (matchedTable) {
-                    setActiveTable(matchedTable);
-                    setActiveTab('pedido');
-                  }
-                  setCustomerOrderAlert(null);
-                }}
-                className="w-full py-4 bg-gradient-to-r from-violet-600 to-violet-500 text-white font-black text-sm rounded-2xl shadow-xl shadow-violet-500/30 active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 className="w-5 h-5" /> Ver y Cargar en Comanda
-              </button>
-              <button
-                onClick={() => setCustomerOrderAlert(null)}
-                className="w-full py-2.5 bg-white/5 border border-white/10 text-slate-400 font-bold text-sm rounded-2xl hover:bg-white/10 transition-all"
-              >
-                Revisar después
-              </button>
-            </div>
-          </div>
+
+                {/* Items preview — max 3 */}
+                <div className="space-y-0.5">
+                  {event.items.slice(0, 3).map((item, idx) => (
+                    <div key={idx} className="flex justify-between text-[10px] text-slate-400">
+                      <span className="truncate mr-2">{item.productName}</span>
+                      <span className="font-black text-violet-400 shrink-0">x{item.quantity}</span>
+                    </div>
+                  ))}
+                  {event.items.length > 3 && (
+                    <p className="text-[10px] text-slate-500 italic">+{event.items.length - 3} más...</p>
+                  )}
+                </div>
+
+                {/* Action button */}
+                <button
+                  onClick={() => {
+                    const matchedTable = tables.find(t => t.qr_token === token);
+                    if (matchedTable) {
+                      setActiveTable(matchedTable);
+                      setActiveTab('pedido');
+                    }
+                    setPendingCustomerOrders(prev => {
+                      const next = new Map(prev);
+                      next.delete(token);
+                      return next;
+                    });
+                  }}
+                  className="w-full py-1.5 bg-violet-600 hover:bg-violet-500 text-white font-black text-[11px] rounded-xl flex items-center justify-center gap-1 transition-colors active:scale-95"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Cargar en Comanda
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
