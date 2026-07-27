@@ -674,6 +674,12 @@ export default function Waiter() {
                     if (matchedTable) {
                       setActiveTable(matchedTable);
                       setActiveTab('pedido');
+                      // Pre-load the customer's items into the comanda
+                      const itemsToLoad = event.items.map(i => {
+                        const prod = products.find((p: Product) => p.id === i.productId);
+                        return prod ? { product: prod, quantity: i.quantity, notes: i.notes || '' } : null;
+                      }).filter(Boolean) as { product: any; quantity: number; notes: string }[];
+                      if (itemsToLoad.length > 0) setSelectedItems(itemsToLoad);
                     }
                     setPendingCustomerOrders(prev => {
                       const next = new Map(prev);
@@ -894,11 +900,16 @@ export default function Waiter() {
         <div className="grid grid-cols-3 border-b border-border text-xs bg-card flex-shrink-0">
           <button
             onClick={() => setActiveTab('mesas')}
-            className={`py-3 font-bold border-b-2 transition-all ${
+            className={`py-3 font-bold border-b-2 transition-all relative ${
               activeTab === 'mesas' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
             }`}
           >
             Mesas ({tables.filter((t: RestaurantTable) => t.status === 'libre').length} libres)
+            {(callingTableTokens.size + pendingCustomerOrders.size) > 0 && (
+              <span className="absolute top-2 right-2 w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] flex items-center justify-center font-black animate-pulse">
+                {callingTableTokens.size + pendingCustomerOrders.size}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('pedido')}
@@ -933,6 +944,85 @@ export default function Waiter() {
           {/* Mesas list tab */}
           {activeTab === 'mesas' && (
             <div className="space-y-4">
+
+              {/* ── Queue Alerts Panel ── */}
+              {(callingTableTokens.size > 0 || pendingCustomerOrders.size > 0) && (
+                <div className="space-y-2">
+                  <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+                    <BellRing className="w-3.5 h-3.5" />
+                    Alertas en Cola ({callingTableTokens.size + pendingCustomerOrders.size})
+                  </h3>
+
+                  {/* Waiter calls */}
+                  {callingTableTokens.size > 0 && Array.from(callingTableTokens).map(token => {
+                    const t = tables.find((tb: RestaurantTable) => tb.qr_token === token);
+                    return (
+                      <div key={token} className="flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                        <div className="flex items-center gap-2">
+                          <BellRing className="w-4 h-4 text-amber-400 animate-bounce shrink-0" />
+                          <div>
+                            <p className="text-xs font-black text-amber-400">🔔 Llamada — Mesa {t?.number ?? '?'}</p>
+                            <p className="text-[9px] text-amber-400/70">Cliente solicita atención</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setCallingTableTokens(prev => { const n = new Set(prev); n.delete(token); return n; });
+                          }}
+                          className="text-[9px] font-black text-amber-500 bg-amber-500/20 px-2 py-1 rounded-lg hover:bg-amber-500/30 transition-colors"
+                        >
+                          ✓ Atendida
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  {/* QR Pre-orders */}
+                  {pendingCustomerOrders.size > 0 && Array.from(pendingCustomerOrders.entries()).map(([token, event]) => {
+                    const t = tables.find((tb: RestaurantTable) => tb.qr_token === token);
+                    const totalItems = event.items.reduce((acc, i) => acc + i.quantity, 0);
+                    return (
+                      <div key={token} className="p-3 bg-violet-500/10 border border-violet-500/30 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">📱</span>
+                            <div>
+                              <p className="text-xs font-black text-violet-400">Pre-pedido QR — Mesa {event.tableNumber}</p>
+                              <p className="text-[9px] text-violet-400/70">{totalItems} ítem{totalItems !== 1 ? 's' : ''} · {event.items.slice(0,2).map(i => i.productName).join(', ')}{event.items.length > 2 ? '...' : ''}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setPendingCustomerOrders(prev => { const n = new Map(prev); n.delete(token); return n; })}
+                            className="text-slate-500 hover:text-slate-300 p-0.5"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (t) {
+                              setActiveTable(t);
+                              setActiveTab('pedido');
+                              const itemsToLoad = event.items.map(i => {
+                                const prod = products.find((p: Product) => p.id === i.productId);
+                                return prod ? { product: prod, quantity: i.quantity, notes: i.notes || '' } : null;
+                              }).filter(Boolean) as { product: any; quantity: number; notes: string }[];
+                              if (itemsToLoad.length > 0) setSelectedItems(itemsToLoad);
+                            }
+                            setPendingCustomerOrders(prev => { const n = new Map(prev); n.delete(token); return n; });
+                          }}
+                          className="w-full py-1.5 bg-violet-600 hover:bg-violet-500 text-white font-black text-[10px] rounded-xl flex items-center justify-center gap-1 transition-colors active:scale-95"
+                        >
+                          <CheckCircle2 className="w-3 h-3" /> Cargar en Comanda de Mesa {t?.number ?? event.tableNumber}
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  <div className="border-t border-border/50 pt-1" />
+                </div>
+              )}
+
               <h3 className="text-xs font-bold text-muted-foreground uppercase">Selecciona una mesa para tomar pedido</h3>
               {tables.length === 0 ? (
                 <div className="py-12 text-center text-xs text-muted-foreground space-y-2">

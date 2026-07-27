@@ -64,6 +64,7 @@ export default function CustomerOrder() {
 
   const [callState, setCallState] = useState<'idle' | 'calling' | 'confirmed'>('idle');
   const [waiterName, setWaiterName] = useState<string>('');
+  const [submittedOrder, setSubmittedOrder] = useState<CartItem[]>([]);
   const channelRef = useRef<any>(null);
 
   const disconnectChannel = () => {
@@ -229,6 +230,7 @@ export default function CustomerOrder() {
         });
       }
 
+      setSubmittedOrder([...cart]);
       setCart([]);
       setActiveView('success');
     } catch (err) {
@@ -264,76 +266,126 @@ export default function CustomerOrder() {
   }
 
   if (activeView === 'success') {
+    const submittedTotal = submittedOrder.reduce((acc, i) => acc + i.product.salePrice * i.quantity, 0);
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center space-y-6 max-w-sm w-full">
-          <div className="w-20 h-20 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center mx-auto animate-pulse">
-            <UtensilsCrossed className="w-10 h-10 text-primary" />
+      <div className="min-h-screen bg-background text-foreground pb-8">
+        {/* Header */}
+        <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border px-4 py-4">
+          <div className="flex items-center gap-2">
+            <ChefHat className="w-5 h-5 text-primary" />
+            <span className="font-black text-base">MesaHub</span>
           </div>
-          <div>
-            <h2 className="text-2xl font-black text-foreground">¡Pre-pedido Enviado!</h2>
-            <p className="text-muted-foreground text-xs mt-2 leading-relaxed">
-              Tu pre-pedido se registró correctamente. Para confirmarlo y que la cocina empiece a prepararlo, por favor solicitá la confirmación del mozo.
-            </p>
+          {tableInfo && (
+            <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">Mesa {tableInfo.number} · {tableInfo.zone}</p>
+          )}
+        </div>
+
+        <div className="p-4 space-y-4 max-w-md mx-auto">
+          {/* Success banner */}
+          <div className="text-center space-y-3 py-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center mx-auto">
+              <UtensilsCrossed className="w-8 h-8 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-foreground">¡Pre-pedido Enviado!</h2>
+              <p className="text-muted-foreground text-xs mt-1 leading-relaxed">
+                El mozo confirmará y enviará tu pedido a cocina.
+              </p>
+            </div>
           </div>
 
-          {tableInfo && (
-            <div className="p-4 bg-muted border border-border rounded-2xl">
-              <p className="text-foreground font-black text-sm">Mesa {tableInfo.number} — {tableInfo.zone}</p>
+          {/* Submitted order summary */}
+          {submittedOrder.length > 0 && (
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                <p className="text-xs font-black uppercase tracking-wide text-muted-foreground">Tu pedido</p>
+                <span className="text-xs font-black text-primary">${submittedTotal.toFixed(2)}</span>
+              </div>
+              <div className="divide-y divide-border">
+                {submittedOrder.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-3 px-4 py-2.5">
+                    <img
+                      src={item.product.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=60&auto=format&fit=crop'}
+                      alt={item.product.name}
+                      className="w-10 h-10 rounded-xl object-cover flex-shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=60&auto=format&fit=crop'; }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate">{item.product.name}</p>
+                      {item.notes && <p className="text-[10px] text-primary italic">{item.notes}</p>}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-black text-sm">x{item.quantity}</p>
+                      <p className="text-[10px] text-muted-foreground">${(item.product.salePrice * item.quantity).toFixed(2)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Waiter Call Status Flow */}
+          {/* Status notice */}
+          <div className="p-3 bg-card border border-border rounded-2xl flex items-center gap-2.5">
+            <Smartphone className="w-4 h-4 text-primary shrink-0" />
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Tus platos no irán a cocina hasta que el mozo confirme y envíe la comanda definitiva.
+            </p>
+          </div>
+
+          {/* Waiter Call Status Flow — always available */}
           <div className="space-y-3">
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">¿Necesitás al mozo?</p>
+
             {callState === 'idle' && (
               <button
                 onClick={handleCallWaiter}
-                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white font-black text-sm rounded-2xl shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 transition-all"
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white font-black text-sm rounded-2xl shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 transition-all active:scale-95"
               >
-                <Bell className="w-4 h-4 animate-bounce" /> Llamar al Mozo para Confirmar
+                <Bell className="w-4 h-4 animate-bounce" /> Llamar al Mozo
               </button>
             )}
 
             {callState === 'calling' && (
               <div className="p-4 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-2xl space-y-2">
                 <div className="flex items-center justify-center gap-2 font-bold text-sm">
-                  <span className="w-2 h-2 bg-amber-500 rounded-full animate-ping"></span>
+                  <span className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
                   Llamando al mozo...
                 </div>
-                <p className="text-[10px] opacity-85">Esperando que el mozo confirme tu llamada en su celular.</p>
+                <p className="text-[10px] opacity-85 text-center">Esperando que el mozo confirme tu llamada.</p>
               </div>
             )}
 
             {callState === 'confirmed' && (
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 rounded-2xl space-y-1.5 animate-fade-in">
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 rounded-2xl space-y-1.5">
                 <div className="flex items-center justify-center gap-1.5 font-bold text-sm">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                   ¡Llamada Confirmada!
                 </div>
-                <p className="text-[11px] font-medium">
-                  {waiterName ? `Mozo (${waiterName}) en camino a tu mesa.` : 'El mozo está en camino a tu mesa.'}
+                <p className="text-[11px] font-medium text-center">
+                  {waiterName ? `Mozo (${waiterName}) en camino.` : 'El mozo está en camino a tu mesa.'}
                 </p>
+                <button
+                  onClick={() => setCallState('idle')}
+                  className="w-full text-[10px] text-emerald-700 font-bold mt-1 hover:underline"
+                >
+                  Volver a llamar si necesitás
+                </button>
               </div>
             )}
           </div>
 
-          <div className="p-3 bg-card border border-border rounded-2xl flex items-center gap-2.5 text-left">
-            <Smartphone className="w-4 h-4 text-primary shrink-0" />
-            <p className="text-[10px] text-muted-foreground leading-relaxed">
-              Recordá que tus platos no irán a la cocina hasta que el mozo se acerque a confirmar y envíe la comanda definitiva.
-            </p>
-          </div>
-
+          {/* Add more items */}
           <button
             onClick={() => {
               disconnectChannel();
               setCallState('idle');
               setWaiterName('');
+              setCart([]);
               setActiveView('menu');
             }}
-            className="w-full py-3 bg-muted hover:bg-muted/80 border border-border text-foreground font-bold text-xs rounded-2xl transition-colors"
+            className="w-full py-3.5 bg-primary text-white font-black text-sm rounded-2xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-2"
           >
-            ← Volver al Menú / Hacer otro pedido
+            <Plus className="w-4 h-4" /> Agregar más al pedido
           </button>
         </div>
       </div>
