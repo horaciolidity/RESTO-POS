@@ -77,7 +77,7 @@ export default function CustomerOrder() {
         if (order && !order.paid && order.status !== 'cancelado') {
           setActiveOrder({
             id: order.id,
-            orderNumber: order.orderNumber || order.order_number,
+            orderNumber: order.order_number,
             status: order.status,
             total: Number(order.total),
             items: (order.order_items || []).map((oi: any) => ({
