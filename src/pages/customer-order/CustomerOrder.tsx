@@ -411,13 +411,13 @@ export default function CustomerOrder() {
               <CheckCircle2 className="w-8 h-8 text-emerald-500" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-foreground">Pedido Activo #{activeOrder.orderNumber}</h2>
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">Tu Turno de Espera</span>
+              <h2 className="text-2xl font-black text-foreground mt-1">Turno #{activeOrder.orderNumber}</h2>
               <p className="text-muted-foreground text-xs mt-1">
-                Estado actual: <span className="font-black text-primary uppercase">{activeOrder.status}</span>
+                Estado en cocina: <span className="font-black text-primary uppercase">{activeOrder.status}</span>
               </p>
             </div>
           </div>
-
           {/* Items summary */}
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-border flex items-center justify-between">
@@ -483,7 +483,7 @@ export default function CustomerOrder() {
             onClick={() => setShowMenu(true)}
             className="w-full py-3.5 bg-primary text-white font-black text-sm rounded-2xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Hacer otro pedido
+            <Plus className="w-4 h-4" /> Ver Menú y Pedir Más
           </button>
         </div>
       </div>
@@ -610,7 +610,7 @@ export default function CustomerOrder() {
             }}
             className="w-full py-3.5 bg-primary text-white font-black text-sm rounded-2xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Agregar más al pedido
+            <Plus className="w-4 h-4" /> Ir al menú / Agregar productos
           </button>
         </div>
       </div>
@@ -639,7 +639,7 @@ export default function CustomerOrder() {
                 className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-emerald-500/20 flex items-center gap-1 transition-all"
               >
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
-                Pedido Activo: #{activeOrder.orderNumber}
+                Turno: #{activeOrder.orderNumber}
               </button>
             )}
             <button
@@ -655,6 +655,22 @@ export default function CustomerOrder() {
             </button>
           </div>
         </div>
+
+        {/* Turno de Espera Banner */}
+        {activeOrder && (
+          <div className="mb-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between text-emerald-500 text-xs font-bold shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+              <span>Tu Turno de Espera: <strong className="text-sm font-black">#{activeOrder.orderNumber}</strong></span>
+            </div>
+            <button 
+              onClick={() => setShowMenu(false)}
+              className="bg-emerald-500/20 hover:bg-emerald-500/30 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase transition-all"
+            >
+              Ver Estado
+            </button>
+          </div>
+        )}
 
         {/* Search */}
         <div className="relative pb-3">
