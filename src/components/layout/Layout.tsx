@@ -82,16 +82,19 @@ export default function Layout() {
   if (!user) return null;
 
   const menuItems = [
+    // — Top 4 (main navigation) —
     { path: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['super_admin', 'admin', 'supervisor'] },
     { path: '/pos', label: 'Punto de Venta (POS)', icon: Coffee, roles: ['super_admin', 'admin', 'cajero', 'supervisor'] },
+    { path: '/cash', label: 'Caja & Arqueos', icon: Wallet, roles: ['super_admin', 'admin', 'cajero', 'supervisor'] },
+    { path: '/history', label: 'Historial General', icon: History, roles: ['super_admin', 'admin', 'supervisor'] },
+    // — Middle section —
     { path: '/tables', label: 'Salón & Mesas', icon: Layers, roles: ['super_admin', 'admin', 'mozo', 'supervisor'] },
     { path: '/waiter', label: 'Toma Pedido (Mozo)', icon: User, roles: ['super_admin', 'admin', 'mozo', 'supervisor'] },
     { path: '/delivery', label: 'Delivery & Repartos', icon: Truck, roles: ['super_admin', 'admin', 'cajero', 'delivery', 'supervisor'] },
     { path: '/inventory', label: 'Inventario & Stock', icon: Package, roles: ['super_admin', 'admin', 'supervisor'] },
-    { path: '/cash', label: 'Caja & Arqueos', icon: Wallet, roles: ['super_admin', 'admin', 'cajero', 'supervisor'] },
     { path: '/audit', label: 'Centro Conciliación', icon: ShieldCheck, roles: ['super_admin', 'admin', 'supervisor'] },
     { path: '/incidents', label: 'Incidencias & Turno', icon: AlertTriangle, roles: ['super_admin', 'admin', 'cajero', 'mozo', 'cocina', 'delivery', 'supervisor'] },
-    { path: '/history', label: 'Historial General', icon: History, roles: ['super_admin', 'admin', 'supervisor'] },
+    // — Bottom —
     { path: '/settings', label: 'Ajustes & Personal', icon: Settings2, roles: ['super_admin', 'admin', 'supervisor'] },
   ];
 
