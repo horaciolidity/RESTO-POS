@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Product } from './useInventoryStore';
-import { supabase } from '../services/supabase';
+import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { ordersService } from '../services/ordersService';
 import { tablesService } from '../services/tablesService';
 import { useAuthStore } from './useAuthStore';
@@ -263,6 +263,31 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       return { id: existingOrderId, orderNumber: found?.orderNumber || existingOrderId.slice(-4) };
     }
 
+    // Intercept in demo mode (when Supabase is not configured)
+    if (!isSupabaseConfigured()) {
+      const fallbackNum = String(Math.floor(Math.random() * 9000) + 1000);
+      const tempId = `temp-order-${Date.now()}`;
+      const newOrder: Order = {
+        id: tempId,
+        orderNumber: fallbackNum,
+        source: order.source,
+        status: order.status,
+        tableName: order.tableName,
+        waiterName: order.waiterName,
+        items: order.items as any,
+        subtotal: order.subtotal,
+        discount: order.discount,
+        tips: order.tips,
+        total: order.total,
+        paid: order.paid,
+        createdAt: new Date().toISOString()
+      };
+      set((state) => ({
+        orders: [newOrder, ...state.orders]
+      }));
+      return { id: tempId, orderNumber: fallbackNum };
+    }
+
     // Limit check for free plan
     if (planType === 'free') {
       const { count, error } = await supabase
@@ -395,6 +420,9 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
   },
 
   updateTableStatus: async (id, status, currentOrderId) => {
+    set((state) => ({
+      tables: state.tables.map(t => t.id === id ? { ...t, status, currentOrderId } : t)
+    }));
     await tablesService.updateStatus(id, status, currentOrderId);
   },
 

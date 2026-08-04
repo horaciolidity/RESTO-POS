@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { ShoppingCart, Plus, Minus, Trash2, CheckCircle2, ChefHat, Search, Smartphone, Bell, UtensilsCrossed } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, CheckCircle2, ChefHat, Search, Smartphone, Bell, UtensilsCrossed, X } from 'lucide-react';
 import { useInventoryStore, Product } from '../../store/useInventoryStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
@@ -50,6 +50,7 @@ export default function CustomerOrder() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'menu' | 'cart' | 'success'>('menu');
+  const [selectedDetailProduct, setSelectedDetailProduct] = useState<Product | null>(null);
   const [tableInfo, setTableInfo] = useState<{
     number: number;
     zone: string;
@@ -610,7 +611,7 @@ export default function CustomerOrder() {
             }}
             className="w-full py-3.5 bg-primary text-white font-black text-sm rounded-2xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Ir al menú / Agregar productos
+            🍽️ Volver al Menú / Pedir Más
           </button>
         </div>
       </div>
@@ -730,29 +731,42 @@ export default function CustomerOrder() {
             return (
               <div
                 key={product.id}
-                className={`bg-card border rounded-2xl overflow-hidden flex flex-col ${outOfStock ? 'opacity-50 border-red-500/20' : 'border-border'}`}
+                className={`bg-card border rounded-2xl overflow-hidden flex flex-col justify-between ${outOfStock ? 'opacity-50 border-red-500/20' : 'border-border'}`}
               >
-                <div className="relative h-28 bg-muted overflow-hidden">
-                  <img
-                    src={product.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&auto=format&fit=crop'}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&auto=format&fit=crop'; }}
-                  />
-                  {outOfStock && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <span className="text-white text-[10px] font-black">SIN STOCK</span>
-                    </div>
-                  )}
-                </div>
-                <div className="p-2.5 flex-1 flex flex-col justify-between gap-2">
+                {/* Clickable Image + Info */}
+                <div 
+                  onClick={() => setSelectedDetailProduct(product)}
+                  className="cursor-pointer flex-1 flex flex-col justify-between"
+                  title="Ver detalles e ingredientes"
+                >
                   <div>
-                    <p className="font-bold text-xs leading-snug">{product.name}</p>
-                    {product.description && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{product.description}</p>
-                    )}
-                    <p className="text-primary font-black text-sm mt-0.5">${product.salePrice.toFixed(2)}</p>
+                    <div className="relative h-28 bg-muted overflow-hidden">
+                      <img
+                        src={product.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&auto=format&fit=crop'}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&auto=format&fit=crop'; }}
+                      />
+                      {outOfStock && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <span className="text-white text-[10px] font-black">SIN STOCK</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2.5 space-y-1">
+                      <p className="font-bold text-xs leading-snug text-foreground">{product.name}</p>
+                      {product.description && (
+                        <p className="text-[10px] text-muted-foreground leading-normal line-clamp-2 italic">{product.description}</p>
+                      )}
+                    </div>
                   </div>
+                  <div className="p-2.5 pt-0">
+                    <p className="text-primary font-black text-sm">${product.salePrice.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {/* Bottom Action Area (Always visible, not triggering details) */}
+                <div className="p-2.5 pt-0">
                   {!outOfStock && (
                     inCart ? (
                       <div className="flex items-center justify-between bg-primary/10 border border-primary/20 rounded-xl px-2 py-1">
@@ -853,6 +867,89 @@ export default function CustomerOrder() {
             <span>Ver mi pedido</span>
             <span className="font-black">${total.toFixed(2)}</span>
           </button>
+        </div>
+      )}
+
+      {/* Product Detail Modal */}
+      {selectedDetailProduct && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border rounded-3xl overflow-hidden w-full max-w-sm flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            {/* Image */}
+            <div className="relative h-48 bg-muted overflow-hidden">
+              <img
+                src={selectedDetailProduct.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop'}
+                alt={selectedDetailProduct.name}
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop'; }}
+              />
+              <button 
+                onClick={() => setSelectedDetailProduct(null)}
+                className="absolute top-3 right-3 p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Details */}
+            <div className="p-5 space-y-4">
+              <div>
+                <h3 className="font-black text-lg text-foreground">{selectedDetailProduct.name}</h3>
+                <p className="text-primary font-black text-base mt-0.5">${selectedDetailProduct.salePrice.toFixed(2)}</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Detalles / Ingredientes</p>
+                {selectedDetailProduct.description ? (
+                  <p className="text-xs text-muted-foreground leading-relaxed bg-muted/50 p-3 rounded-xl border border-border italic">
+                    {selectedDetailProduct.description}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground/60 italic">No se especificaron ingredientes para este producto.</p>
+                )}
+              </div>
+
+              {/* Action Area */}
+              <div className="pt-1">
+                {(() => {
+                  const inCart = cart.find(i => i.product.id === selectedDetailProduct.id);
+                  const outOfStock = selectedDetailProduct.currentStock <= selectedDetailProduct.stockCritical && selectedDetailProduct.type !== 'combo';
+                  if (outOfStock) {
+                    return (
+                      <div className="w-full py-2 bg-muted text-muted-foreground text-center font-bold text-xs rounded-xl uppercase border border-border">
+                        Sin stock
+                      </div>
+                    );
+                  }
+                  return inCart ? (
+                    <div className="flex items-center justify-between bg-primary/10 border border-primary/20 rounded-xl px-3 py-2">
+                      <button onClick={() => updateQty(selectedDetailProduct.id, -1)} className="text-primary p-0.5"><Minus className="w-3.5 h-3.5" /></button>
+                      <div className="text-center">
+                        <span className="text-primary font-black text-sm">{inCart.quantity}</span>
+                        <span className="text-[9px] text-primary/80 block font-bold leading-none">En el pedido</span>
+                      </div>
+                      <button onClick={() => updateQty(selectedDetailProduct.id, 1)} className="text-primary p-0.5"><Plus className="w-3.5 h-3.5" /></button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        addToCart(selectedDetailProduct);
+                      }}
+                      className="w-full py-2.5 bg-primary text-white font-black text-xs rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-1.5"
+                    >
+                      <Plus className="w-4 h-4" /> Agregar al Pedido
+                    </button>
+                  );
+                })()}
+              </div>
+
+              <button 
+                onClick={() => setSelectedDetailProduct(null)}
+                className="w-full py-2 bg-muted hover:bg-muted/80 text-foreground font-bold text-xs rounded-xl transition-all"
+              >
+                Volver al Menú
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

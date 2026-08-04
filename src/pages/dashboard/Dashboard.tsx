@@ -29,35 +29,23 @@ import {
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 import { useInventoryStore, Product } from '../../store/useInventoryStore';
 
-// Mock charts data
-const hourlySalesData = [
-  { hour: '12:00', sales: 450 },
-  { hour: '13:00', sales: 980 },
-  { hour: '14:00', sales: 1200 },
-  { hour: '15:00', sales: 300 },
-  { hour: '16:00', sales: 250 },
-  { hour: '17:00', sales: 420 },
-  { hour: '18:00', sales: 850 },
-  { hour: '19:00', sales: 1500 },
-  { hour: '20:00', sales: 2100 },
-  { hour: '21:00', sales: 1800 },
-  { hour: '22:00', sales: 1200 },
-  { hour: '23:00', sales: 600 }
-];
+// ── Date helpers ──────────────────────────────────────────────────
+const CATEGORY_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#8b5cf6', '#ef4444', '#14b8a6'];
 
-const categorySalesData = [
-  { name: 'Café & Bebidas', value: 3420, color: '#6366f1' },
-  { name: 'Almuerzos', value: 5890, color: '#ec4899' },
-  { name: 'Desayunos', value: 2110, color: '#f59e0b' },
-  { name: 'Postres', value: 1450, color: '#10b981' }
-];
+function isToday(dateStr: string): boolean {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+}
 
-const employeeSalesData = [
-  { name: 'Carlos M.', sales: 1420 },
-  { name: 'Lucía G.', sales: 1180 },
-  { name: 'Mateo R.', sales: 950 },
-  { name: 'Ana P.', sales: 890 }
-];
+function isThisMonth(dateStr: string): boolean {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth();
+}
 
 export default function Dashboard() {
   const { user } = useAuthStore();
@@ -68,12 +56,65 @@ export default function Dashboard() {
     return <Navigate to="/waiter" replace />;
   }
 
-  // Metrics Calculations
-  const totalSalesToday = orders.reduce((acc: number, o: Order) => o.paid ? acc + o.total : acc, 0);
-  const totalSalesMonth = totalSalesToday * 28;
-  const pendingOrdersCount = orders.filter((o: Order) => o.status === 'pendiente').length;
-  const preparingOrdersCount = orders.filter((o: Order) => o.status === 'preparando').length;
-  const completedOrdersCount = orders.filter((o: Order) => o.status === 'entregado').length;
+  // ── Filtered order sets ──────────────────────────────────────────
+  const paidToday = orders.filter((o: Order) => o.paid && isToday(o.createdAt));
+  const paidThisMonth = orders.filter((o: Order) => o.paid && isThisMonth(o.createdAt));
+  const ordersToday = orders.filter((o: Order) => isToday(o.createdAt));
+
+  // ── KPI Metrics ─────────────────────────────────────────────────
+  const totalSalesToday = paidToday.reduce((acc: number, o: Order) => acc + o.total, 0);
+  const totalSalesMonth = paidThisMonth.reduce((acc: number, o: Order) => acc + o.total, 0);
+  const paidTodayCount = paidToday.length;
+  const ticketPromedio = paidTodayCount > 0 ? totalSalesToday / paidTodayCount : 0;
+  const pendingOrdersCount = ordersToday.filter((o: Order) => o.status === 'pendiente').length;
+  const preparingOrdersCount = ordersToday.filter((o: Order) => o.status === 'preparando').length;
+  const completedOrdersCount = paidTodayCount;
+
+  // ── Dynamic chart data: Sales by Hour ───────────────────────────
+  const hourlySalesData = (() => {
+    const hourMap: Record<string, number> = {};
+    paidToday.forEach((o: Order) => {
+      const h = new Date(o.createdAt).getHours();
+      const key = `${String(h).padStart(2, '0')}:00`;
+      hourMap[key] = (hourMap[key] || 0) + o.total;
+    });
+    // Generate all hours from 8 to 23 so the chart always has a baseline
+    const result = [];
+    for (let i = 8; i <= 23; i++) {
+      const key = `${String(i).padStart(2, '0')}:00`;
+      result.push({ hour: key, sales: Math.round(hourMap[key] || 0) });
+    }
+    return result;
+  })();
+
+  // ── Dynamic chart data: Sales by Category ───────────────────────
+  const categorySalesData = (() => {
+    const catMap: Record<string, number> = {};
+    paidToday.forEach((o: Order) => {
+      o.items.forEach(item => {
+        const cat = item.product?.categoryName || 'Sin categoría';
+        catMap[cat] = (catMap[cat] || 0) + (item.price * item.quantity);
+      });
+    });
+    return Object.entries(catMap).map(([name, value], i) => ({
+      name,
+      value: Math.round(value),
+      color: CATEGORY_COLORS[i % CATEGORY_COLORS.length]
+    }));
+  })();
+  const totalCategorySales = categorySalesData.reduce((s, c) => s + c.value, 0);
+
+  // ── Dynamic chart data: Sales by Waiter ─────────────────────────
+  const employeeSalesData = (() => {
+    const waiterMap: Record<string, number> = {};
+    paidToday.forEach((o: Order) => {
+      const name = o.waiterName || 'POS Directo';
+      waiterMap[name] = (waiterMap[name] || 0) + o.total;
+    });
+    return Object.entries(waiterMap)
+      .map(([name, sales]) => ({ name, sales: Math.round(sales) }))
+      .sort((a, b) => b.sales - a.sales);
+  })();
 
   // Stock alerts filters
   const lowStockProducts = products.filter((p: Product) => p.currentStock <= p.stockMin && p.currentStock > p.stockCritical);
@@ -123,7 +164,7 @@ export default function Dashboard() {
             <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Ventas del Día</span>
             <h3 className="text-2xl font-extrabold">${totalSalesToday.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</h3>
             <span className="text-[10px] text-green-500 font-semibold flex items-center gap-0.5">
-              +12.4% vs ayer
+              {paidTodayCount} {paidTodayCount === 1 ? 'venta' : 'ventas'} cobradas
             </span>
           </div>
           <div className="p-3 rounded-xl bg-primary/10 text-primary">
@@ -135,9 +176,9 @@ export default function Dashboard() {
         <div className="p-5 rounded-2xl bg-card border border-border flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Ticket Promedio</span>
-            <h3 className="text-2xl font-extrabold">${(totalSalesToday / (completedOrdersCount || 1)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</h3>
-            <span className="text-[10px] text-green-500 font-semibold flex items-center gap-0.5">
-              +3.8% vs promedio del mes
+            <h3 className="text-2xl font-extrabold">${ticketPromedio.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</h3>
+            <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-0.5">
+              basado en {paidTodayCount} {paidTodayCount === 1 ? 'venta' : 'ventas'}
             </span>
           </div>
           <div className="p-3 rounded-xl bg-green-500/10 text-green-500">
@@ -149,9 +190,9 @@ export default function Dashboard() {
         <div className="p-5 rounded-2xl bg-card border border-border flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Ventas del Mes</span>
-            <h3 className="text-2xl font-extrabold">${totalSalesMonth.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</h3>
-            <span className="text-[10px] text-green-500 font-semibold flex items-center gap-0.5">
-              Objetivo mensual al 82%
+            <h3 className="text-2xl font-extrabold">${totalSalesMonth.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</h3>
+            <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-0.5">
+              {paidThisMonth.length} {paidThisMonth.length === 1 ? 'venta' : 'ventas'} este mes
             </span>
           </div>
           <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-500">
@@ -281,7 +322,7 @@ export default function Dashboard() {
             
             <div className="absolute flex flex-col items-center">
               <span className="text-[10px] text-muted-foreground uppercase font-bold">Total Facturado</span>
-              <span className="text-xl font-black">$12.8K</span>
+              <span className="text-xl font-black">${totalCategorySales > 1000 ? `${(totalCategorySales / 1000).toFixed(1)}K` : totalCategorySales.toLocaleString('es-AR')}</span>
             </div>
           </div>
 
