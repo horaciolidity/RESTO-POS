@@ -79,35 +79,35 @@ export default function CustomerBillingDisplay() {
       {/* Left side: Branding + Active Table Orders */}
       <div 
         className="hidden lg:flex flex-1 flex-col justify-between p-12 relative overflow-hidden bg-cover bg-center transition-all duration-500"
-        style={{ backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.75)), url(${heroImage})` }}
+        style={{ backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.15), rgba(15, 23, 42, 0.35)), url(${heroImage})` }}
       >
         {/* Decorative glow */}
         <div className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-primary/20 blur-[120px] rounded-full pointer-events-none" />
 
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-6">
+        <div className="relative z-10 p-6 rounded-3xl bg-slate-950/80 border border-white/10 backdrop-blur-md max-w-xl">
+          <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-2xl gradient-bg flex items-center justify-center shadow-lg">
               <Tv className="w-6 h-6 text-white" />
             </div>
             <div>
               <h1 className="text-3xl font-black tracking-tighter gradient-text">MesaHub</h1>
-              <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">Pantalla de Cliente</p>
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-widest">Pantalla de Cliente</p>
             </div>
           </div>
-          <p className="text-xl text-slate-400 font-semibold max-w-md">
+          <p className="text-lg text-slate-100 font-bold leading-relaxed">
             Estamos preparando todo para ti con la mejor calidad y servicio.
           </p>
         </div>
 
         {/* Active restaurant orders display */}
-        <div className="relative z-10 space-y-4">
-          <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+        <div className="relative z-10 space-y-4 p-6 rounded-3xl bg-slate-950/85 border border-white/10 backdrop-blur-md">
+          <h2 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
             <ChefHat className="w-4 h-4 text-primary" /> Estado de Pedidos en Curso
           </h2>
           {activeOrders.length === 0 ? (
-            <div className="p-6 rounded-3xl bg-slate-950/50 border border-white/10 backdrop-blur-md text-center">
+            <div className="p-6 rounded-2xl bg-slate-900/50 border border-white/5 text-center">
               <Sparkles className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-              <p className="text-slate-500 text-sm font-semibold">Sin pedidos activos en este momento</p>
+              <p className="text-slate-400 text-sm font-semibold">Sin pedidos activos en este momento</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
@@ -116,10 +116,10 @@ export default function CustomerBillingDisplay() {
                   key={order.id}
                   className={`p-4 rounded-2xl border backdrop-blur-md ${
                     order.status === 'listo'
-                      ? 'bg-green-500/10 border-green-500/30'
+                      ? 'bg-green-500/20 border-green-500/40 text-green-100'
                       : order.status === 'preparando'
-                      ? 'bg-blue-500/10 border-blue-500/20'
-                      : 'bg-slate-950/50 border-white/10'
+                      ? 'bg-blue-500/20 border-blue-500/30 text-blue-100'
+                      : 'bg-slate-900 border-white/10 text-slate-200'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -131,8 +131,8 @@ export default function CustomerBillingDisplay() {
                     </div>
                     <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
                       order.status === 'listo' ? 'bg-green-500 text-white animate-pulse' :
-                      order.status === 'preparando' ? 'bg-blue-500/20 text-blue-400' :
-                      'bg-orange-500/20 text-orange-400'
+                      order.status === 'preparando' ? 'bg-blue-500/30 text-blue-300' :
+                      'bg-orange-500/30 text-orange-300'
                     }`}>
                       {order.status === 'listo' ? '✓ Listo' :
                        order.status === 'preparando' ? 'Preparando...' : 'Pendiente'}
@@ -140,7 +140,7 @@ export default function CustomerBillingDisplay() {
                   </div>
                   <div className="space-y-0.5">
                     {order.items.slice(0, 3).map(item => (
-                      <p key={item.id} className="text-[10px] text-slate-400">
+                      <p key={item.id} className="text-[10px] text-slate-300">
                         {item.quantity}x {item.product.name}
                       </p>
                     ))}
@@ -155,15 +155,15 @@ export default function CustomerBillingDisplay() {
         </div>
 
         <div className="relative z-10 grid grid-cols-2 gap-4">
-          <div className="p-6 rounded-3xl bg-slate-950/50 border border-white/10 backdrop-blur-md">
+          <div className="p-6 rounded-3xl bg-slate-950/85 border border-white/10 backdrop-blur-md">
             <Star className="w-8 h-8 text-yellow-500 mb-4" />
             <h3 className="font-bold text-lg mb-1">Calidad Premium</h3>
-            <p className="text-sm text-slate-400">Ingredientes frescos todos los días.</p>
+            <p className="text-sm text-slate-300">Ingredientes frescos todos los días.</p>
           </div>
-          <div className="p-6 rounded-3xl bg-slate-950/50 border border-white/10 backdrop-blur-md">
+          <div className="p-6 rounded-3xl bg-slate-950/85 border border-white/10 backdrop-blur-md">
             <ShoppingBag className="w-8 h-8 text-primary mb-4" />
             <h3 className="font-bold text-lg mb-1">Rápido y Seguro</h3>
-            <p className="text-sm text-slate-400">Tu pedido listo en minutos.</p>
+            <p className="text-sm text-slate-300">Tu pedido listo en minutos.</p>
           </div>
         </div>
       </div>

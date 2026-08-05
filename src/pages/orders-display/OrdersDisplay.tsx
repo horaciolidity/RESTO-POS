@@ -73,11 +73,11 @@ export default function OrdersDisplay() {
   return (
     <div 
       className="min-h-screen bg-slate-950 text-white p-6 md:p-12 flex flex-col justify-between font-sans relative bg-cover bg-center transition-all duration-500"
-      style={{ backgroundImage: `linear-gradient(to bottom, rgba(9, 13, 26, 0.55), rgba(9, 13, 26, 0.78)), url(${heroImage})` }}
+      style={{ backgroundImage: `linear-gradient(to bottom, rgba(9, 13, 26, 0.15), rgba(9, 13, 26, 0.35)), url(${heroImage})` }}
     >
       
       {/* Header bar */}
-      <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-8">
+      <div className="flex items-center justify-between p-6 bg-slate-950/85 border border-white/10 rounded-3xl mb-8 backdrop-blur-md relative z-10">
         <div className="flex items-center gap-3">
           <Link to="/" className="p-2 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-slate-300 transition-all">
             <ChevronLeft className="w-5 h-5" />
@@ -119,10 +119,10 @@ export default function OrdersDisplay() {
       </div>
 
       {/* Main 2-column queue display */}
-      <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch mb-8">
+      <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch mb-8 relative z-10">
         
         {/* Preparing Queue Column */}
-        <div className="p-8 rounded-3xl bg-slate-900/40 border border-white/5 flex flex-col justify-between h-[65vh]">
+        <div className="p-8 rounded-3xl bg-slate-950/85 border border-white/10 backdrop-blur-md flex flex-col justify-between h-[65vh]">
           <div>
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
               <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
@@ -142,11 +142,11 @@ export default function OrdersDisplay() {
                   <div 
                     key={order.id} 
                     onClick={() => setSelectedOrder(order)}
-                    className="flex justify-between items-center p-5 bg-slate-900 border border-white/5 rounded-2xl cursor-pointer hover:border-primary/40 transition-all"
+                    className="flex justify-between items-center p-5 bg-slate-900/90 border border-white/5 rounded-2xl cursor-pointer hover:border-primary/40 transition-all"
                     title="Hacer clic para marcar como Listo"
                   >
                     <span className="text-xs text-slate-400 font-bold uppercase">Turno</span>
-                    <span className="font-black text-3xl tracking-widest text-slate-300">
+                    <span className="font-black text-3xl tracking-widest text-slate-200">
                       {order.orderNumber}
                     </span>
                   </div>
@@ -161,7 +161,7 @@ export default function OrdersDisplay() {
         </div>
 
         {/* Ready to Take Queue Column */}
-        <div className="p-8 rounded-3xl bg-green-500/5 border border-green-500/20 flex flex-col justify-between h-[65vh]">
+        <div className="p-8 rounded-3xl bg-slate-950/85 border border-green-500/30 backdrop-blur-md flex flex-col justify-between h-[65vh]">
           <div>
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-green-500/10">
               <div className="w-8 h-8 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center shrink-0">
@@ -181,7 +181,7 @@ export default function OrdersDisplay() {
                   <div
                     key={order.id}
                     onClick={triggerCallSound}
-                    className="flex justify-between items-center p-6 bg-green-500/10 border-2 border-green-500 rounded-3xl cursor-pointer hover:bg-green-500/20 transition-all animate-pulse"
+                    className="flex justify-between items-center p-6 bg-green-500/20 border-2 border-green-500 rounded-3xl cursor-pointer hover:bg-green-500/30 transition-all animate-pulse"
                     title="Hacer sonar aviso para retirar"
                   >
                     <span className="text-sm text-green-600 font-black uppercase">Turno</span>
