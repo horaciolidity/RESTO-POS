@@ -8,6 +8,20 @@ export default function OrdersDisplay() {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [heroImage, setHeroImage] = useState('/mesahub_hero.png');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('mesahub_hero_custom');
+    if (saved) {
+      setHeroImage(saved);
+    }
+    const handleStorageChange = () => {
+      const updated = localStorage.getItem('mesahub_hero_custom');
+      setHeroImage(updated || '/mesahub_hero.png');
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -57,7 +71,10 @@ export default function OrdersDisplay() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6 md:p-12 flex flex-col justify-between font-sans relative">
+    <div 
+      className="min-h-screen bg-slate-950 text-white p-6 md:p-12 flex flex-col justify-between font-sans relative bg-cover bg-center transition-all duration-500"
+      style={{ backgroundImage: `linear-gradient(to bottom, rgba(9, 13, 26, 0.92), rgba(9, 13, 26, 0.97)), url(${heroImage})` }}
+    >
       
       {/* Header bar */}
       <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-8">

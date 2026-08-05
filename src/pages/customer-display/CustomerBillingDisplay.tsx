@@ -10,6 +10,20 @@ export default function CustomerBillingDisplay() {
   const lastCompletedOrder = useCartStore((s) => s.lastCompletedOrder);
   const { orders, initializeStore } = useOrdersStore();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [heroImage, setHeroImage] = useState('/mesahub_hero.png');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('mesahub_hero_custom');
+    if (saved) {
+      setHeroImage(saved);
+    }
+    const handleStorageChange = () => {
+      const updated = localStorage.getItem('mesahub_hero_custom');
+      setHeroImage(updated || '/mesahub_hero.png');
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Explicitly initialize on mount so Realtime subscriptions
   // are always active, even on this public (no-auth) route.
@@ -63,7 +77,10 @@ export default function CustomerBillingDisplay() {
   return (
     <div className="min-h-screen flex bg-slate-950 font-sans text-white overflow-hidden">
       {/* Left side: Branding + Active Table Orders */}
-      <div className="hidden lg:flex flex-1 flex-col justify-between p-12 bg-slate-900 relative overflow-hidden">
+      <div 
+        className="hidden lg:flex flex-1 flex-col justify-between p-12 relative overflow-hidden bg-cover bg-center transition-all duration-500"
+        style={{ backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.94)), url(${heroImage})` }}
+      >
         {/* Decorative glow */}
         <div className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-primary/20 blur-[120px] rounded-full pointer-events-none" />
 

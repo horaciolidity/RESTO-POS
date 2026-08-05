@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings2, Users, Layers, PlayCircle, Plus, Trash2, ShieldCheck, CheckCircle2, QrCode, Copy, ExternalLink, Store, Crown, Zap, Star, Bell, RefreshCw, Check, Printer, ScanLine, ToggleLeft, ToggleRight, ChefHat } from 'lucide-react';
+import { Settings2, Users, Layers, PlayCircle, Plus, Trash2, ShieldCheck, CheckCircle2, QrCode, Copy, ExternalLink, Store, Crown, Zap, Star, Bell, RefreshCw, Check, Printer, ScanLine, ToggleLeft, ToggleRight, ChefHat, Sparkles } from 'lucide-react';
 import { useSettingsStore, Employee } from '../../store/useSettingsStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { useCashStore } from '../../store/useCashStore';
@@ -74,9 +74,35 @@ export default function Settings() {
     win.document.close();
   };
 
-  // QR Payment Image State
   const [qrPaymentImage, setQrPaymentImage] = useState('');
   const [qrSaved, setQrSaved] = useState(false);
+
+  // Hero Display Image State (Saved in LocalStorage only)
+  const [heroImage, setHeroImage] = useState('/mesahub_hero.png');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('mesahub_hero_custom');
+    if (saved) setHeroImage(saved);
+  }, []);
+
+  const handleHeroUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        localStorage.setItem('mesahub_hero_custom', base64);
+        setHeroImage(base64);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleResetHero = () => {
+    localStorage.removeItem('mesahub_hero_custom');
+    setHeroImage('/mesahub_hero.png');
+  };
 
   useEffect(() => {
     loadPlatformConfig();
@@ -408,6 +434,49 @@ export default function Settings() {
                 No has configurado una imagen de QR de Cobro todavía. Se mostrará un QR genérico al cobrar.
               </div>
             )}
+          </div>
+
+          {/* Imagen de Presentación de Fondo */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4 md:col-span-2">
+            <div>
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" /> Imagen de Fondo (Pantalla de Cliente y Turnos)
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Sube una imagen o ilustración urbana divertida para MesaHub que se mostrará como fondo en las pantallas públicas de clientes y turnos.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">Seleccionar Imagen (JPG, PNG)</label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleHeroUpload}
+                    className="w-full text-xs text-slate-400 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary file:cursor-pointer hover:file:bg-primary/20 cursor-pointer"
+                  />
+                </div>
+                <button
+                  onClick={handleResetHero}
+                  className="px-4 py-2 bg-muted hover:bg-muted/80 text-muted-foreground text-xs font-bold rounded-xl transition-all"
+                >
+                  Restablecer Default
+                </button>
+              </div>
+
+              <div className="p-3 bg-muted/40 border border-border rounded-xl flex flex-col items-center gap-2">
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Vista Previa del Fondo</p>
+                <div className="w-full h-36 rounded-lg border border-border relative overflow-hidden bg-slate-900 flex items-center justify-center">
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center transition-all duration-300"
+                    style={{ backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9)), url(${heroImage})` }}
+                  />
+                  <span className="relative z-10 text-xs font-black tracking-widest text-primary uppercase drop-shadow">MesaHub Screen Preview</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
