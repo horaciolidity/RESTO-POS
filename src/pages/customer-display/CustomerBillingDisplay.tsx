@@ -79,7 +79,7 @@ export default function CustomerBillingDisplay() {
       {/* Left side: Branding + Active Table Orders */}
       <div 
         className="hidden lg:flex flex-1 flex-col justify-between p-12 relative overflow-hidden bg-cover bg-center transition-all duration-500"
-        style={{ backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.94)), url(${heroImage})` }}
+        style={{ backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.75)), url(${heroImage})` }}
       >
         {/* Decorative glow */}
         <div className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-primary/20 blur-[120px] rounded-full pointer-events-none" />

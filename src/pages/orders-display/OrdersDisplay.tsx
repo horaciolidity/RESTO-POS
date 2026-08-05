@@ -73,7 +73,7 @@ export default function OrdersDisplay() {
   return (
     <div 
       className="min-h-screen bg-slate-950 text-white p-6 md:p-12 flex flex-col justify-between font-sans relative bg-cover bg-center transition-all duration-500"
-      style={{ backgroundImage: `linear-gradient(to bottom, rgba(9, 13, 26, 0.92), rgba(9, 13, 26, 0.97)), url(${heroImage})` }}
+      style={{ backgroundImage: `linear-gradient(to bottom, rgba(9, 13, 26, 0.55), rgba(9, 13, 26, 0.78)), url(${heroImage})` }}
     >
       
       {/* Header bar */}

@@ -471,7 +471,7 @@ export default function Settings() {
                 <div className="w-full h-36 rounded-lg border border-border relative overflow-hidden bg-slate-900 flex items-center justify-center">
                   <div 
                     className="absolute inset-0 bg-cover bg-center transition-all duration-300"
-                    style={{ backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9)), url(${heroImage})` }}
+                    style={{ backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.75)), url(${heroImage})` }}
                   />
                   <span className="relative z-10 text-xs font-black tracking-widest text-primary uppercase drop-shadow">MesaHub Screen Preview</span>
                 </div>
