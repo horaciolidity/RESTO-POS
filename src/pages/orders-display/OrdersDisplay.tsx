@@ -77,7 +77,7 @@ export default function OrdersDisplay() {
     >
       
       {/* Header bar */}
-      <div className="flex items-center justify-between p-6 bg-slate-950/85 border border-white/10 rounded-3xl mb-8 backdrop-blur-md relative z-10">
+      <div className="flex items-center justify-between p-5 bg-black/20 border border-white/15 rounded-3xl mb-8 backdrop-blur-sm relative z-10" style={{ boxShadow: '0 4px 40px rgba(0,0,0,0.25)' }}>
         <div className="flex items-center gap-3">
           <Link to="/" className="p-2 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-slate-300 transition-all">
             <ChevronLeft className="w-5 h-5" />
@@ -122,31 +122,31 @@ export default function OrdersDisplay() {
       <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch mb-8 relative z-10">
         
         {/* Preparing Queue Column */}
-        <div className="p-8 rounded-3xl bg-slate-950/85 border border-white/10 backdrop-blur-md flex flex-col justify-between h-[65vh]">
+        <div className="p-8 rounded-3xl bg-black/20 border border-white/10 backdrop-blur-sm flex flex-col justify-between h-[65vh]" style={{ boxShadow: '0 4px 40px rgba(0,0,0,0.2)' }}>
           <div>
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
-              <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+              <div className="w-8 h-8 rounded-lg bg-orange-500/15 text-orange-400 flex items-center justify-center shrink-0">
                 <ChefHat className="w-4.5 h-4.5 animate-spin-slow" />
               </div>
               <div>
-                <h3 className="font-black text-xl text-orange-500">Preparando</h3>
-                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">En proceso de cocción</span>
+                <h3 className="font-black text-xl text-orange-400 drop-shadow">Preparando</h3>
+                <span className="text-[9px] text-white/60 uppercase font-bold tracking-wider drop-shadow">En proceso de cocción</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-3 max-h-[45vh] overflow-y-auto pr-2 scrollbar-thin">
               {preparingOrders.length === 0 ? (
-                <p className="py-16 text-center text-slate-500 text-xs font-semibold">No hay comandas en cocción.</p>
+                <p className="py-16 text-center text-white/40 text-xs font-semibold drop-shadow">No hay comandas en cocción.</p>
               ) : (
                 preparingOrders.map((order: Order) => (
                   <div 
                     key={order.id} 
                     onClick={() => setSelectedOrder(order)}
-                    className="flex justify-between items-center p-5 bg-slate-900/90 border border-white/5 rounded-2xl cursor-pointer hover:border-primary/40 transition-all"
+                    className="flex justify-between items-center p-5 bg-black/20 border border-white/10 rounded-2xl cursor-pointer hover:border-primary/50 hover:bg-black/30 transition-all backdrop-blur-sm"
                     title="Hacer clic para marcar como Listo"
                   >
-                    <span className="text-xs text-slate-400 font-bold uppercase">Turno</span>
-                    <span className="font-black text-3xl tracking-widest text-slate-200">
+                    <span className="text-xs text-white/60 font-bold uppercase drop-shadow">Turno</span>
+                    <span className="font-black text-3xl tracking-widest text-white drop-shadow-lg">
                       {order.orderNumber}
                     </span>
                   </div>
@@ -155,37 +155,37 @@ export default function OrdersDisplay() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-white/5 text-slate-500 text-[10px] text-center font-bold tracking-wide uppercase">
+          <div className="pt-4 border-t border-white/10 text-white/30 text-[10px] text-center font-bold tracking-wide uppercase drop-shadow">
             MesaHub Realtime Queue Display
           </div>
         </div>
 
         {/* Ready to Take Queue Column */}
-        <div className="p-8 rounded-3xl bg-slate-950/85 border border-green-500/30 backdrop-blur-md flex flex-col justify-between h-[65vh]">
+        <div className="p-8 rounded-3xl bg-black/20 border border-green-400/25 backdrop-blur-sm flex flex-col justify-between h-[65vh]" style={{ boxShadow: '0 4px 40px rgba(34,197,94,0.1)' }}>
           <div>
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-green-500/10">
-              <div className="w-8 h-8 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4.5 h-4.5 text-green-500 animate-pulse" />
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-green-400/15">
+              <div className="w-8 h-8 rounded-lg bg-green-500/15 text-green-400 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4.5 h-4.5 text-green-400 animate-pulse" />
               </div>
               <div>
-                <h3 className="font-black text-xl text-green-500">Listo para Retirar</h3>
-                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Pasa por el mostrador</span>
+                <h3 className="font-black text-xl text-green-400 drop-shadow">Listo para Retirar</h3>
+                <span className="text-[9px] text-white/60 uppercase font-bold tracking-wider drop-shadow">Pasa por el mostrador</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-3 max-h-[45vh] overflow-y-auto pr-2 scrollbar-thin">
               {readyOrders.length === 0 ? (
-                <p className="py-16 text-center text-slate-500 text-xs font-semibold">No hay pedidos listos aún.</p>
+                <p className="py-16 text-center text-white/40 text-xs font-semibold drop-shadow">No hay pedidos listos aún.</p>
               ) : (
                 readyOrders.map((order: Order) => (
                   <div
                     key={order.id}
                     onClick={triggerCallSound}
-                    className="flex justify-between items-center p-6 bg-green-500/20 border-2 border-green-500 rounded-3xl cursor-pointer hover:bg-green-500/30 transition-all animate-pulse"
+                    className="flex justify-between items-center p-6 bg-green-500/15 border-2 border-green-400/60 rounded-3xl cursor-pointer hover:bg-green-500/25 transition-all animate-pulse backdrop-blur-sm"
                     title="Hacer sonar aviso para retirar"
                   >
-                    <span className="text-sm text-green-600 font-black uppercase">Turno</span>
-                    <span className="font-black text-5xl tracking-widest text-green-400">
+                    <span className="text-sm text-green-300 font-black uppercase drop-shadow">Turno</span>
+                    <span className="font-black text-5xl tracking-widest text-green-300 drop-shadow-lg">
                       {order.orderNumber}
                     </span>
                   </div>
@@ -194,7 +194,7 @@ export default function OrdersDisplay() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-green-500/10 text-green-500 text-[10px] text-center font-black tracking-widest uppercase animate-pulse">
+          <div className="pt-4 border-t border-green-400/15 text-green-400 text-[10px] text-center font-black tracking-widest uppercase animate-pulse drop-shadow">
             •• RECOGE TU PEDIDO AQUÍ ••
           </div>
         </div>

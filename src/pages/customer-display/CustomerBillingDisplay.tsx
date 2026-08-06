@@ -84,42 +84,42 @@ export default function CustomerBillingDisplay() {
         {/* Decorative glow */}
         <div className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-primary/20 blur-[120px] rounded-full pointer-events-none" />
 
-        <div className="relative z-10 p-6 rounded-3xl bg-slate-950/80 border border-white/10 backdrop-blur-md max-w-xl">
+        <div className="relative z-10 p-6 rounded-3xl bg-black/20 border border-white/15 backdrop-blur-sm max-w-xl" style={{ boxShadow: '0 4px 40px rgba(0,0,0,0.3)' }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-2xl gradient-bg flex items-center justify-center shadow-lg">
               <Tv className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tighter gradient-text">MesaHub</h1>
-              <p className="text-xs text-slate-400 uppercase font-bold tracking-widest">Pantalla de Cliente</p>
+              <h1 className="text-3xl font-black tracking-tighter gradient-text drop-shadow-lg">MesaHub</h1>
+              <p className="text-xs text-white/70 uppercase font-bold tracking-widest drop-shadow">Pantalla de Cliente</p>
             </div>
           </div>
-          <p className="text-lg text-slate-100 font-bold leading-relaxed">
+          <p className="text-lg text-white font-bold leading-relaxed drop-shadow">
             Estamos preparando todo para ti con la mejor calidad y servicio.
           </p>
         </div>
 
         {/* Active restaurant orders display */}
-        <div className="relative z-10 space-y-4 p-6 rounded-3xl bg-slate-950/85 border border-white/10 backdrop-blur-md">
-          <h2 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
+        <div className="relative z-10 space-y-4 p-6 rounded-3xl bg-black/20 border border-white/10 backdrop-blur-sm" style={{ boxShadow: '0 4px 40px rgba(0,0,0,0.25)' }}>
+          <h2 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2 drop-shadow">
             <ChefHat className="w-4 h-4 text-primary" /> Estado de Pedidos en Curso
           </h2>
           {activeOrders.length === 0 ? (
-            <div className="p-6 rounded-2xl bg-slate-900/50 border border-white/5 text-center">
-              <Sparkles className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-              <p className="text-slate-400 text-sm font-semibold">Sin pedidos activos en este momento</p>
+            <div className="p-6 rounded-2xl bg-black/15 border border-white/10 text-center">
+              <Sparkles className="w-8 h-8 text-white/40 mx-auto mb-2" />
+              <p className="text-white/60 text-sm font-semibold drop-shadow">Sin pedidos activos en este momento</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
               {activeOrders.map((order: Order) => (
                 <div
                   key={order.id}
-                  className={`p-4 rounded-2xl border backdrop-blur-md ${
+                  className={`p-4 rounded-2xl border backdrop-blur-sm ${
                     order.status === 'listo'
-                      ? 'bg-green-500/20 border-green-500/40 text-green-100'
+                      ? 'bg-green-500/15 border-green-400/40 text-white'
                       : order.status === 'preparando'
-                      ? 'bg-blue-500/20 border-blue-500/30 text-blue-100'
-                      : 'bg-slate-900 border-white/10 text-slate-200'
+                      ? 'bg-blue-500/15 border-blue-400/30 text-white'
+                      : 'bg-black/15 border-white/10 text-white'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -155,15 +155,15 @@ export default function CustomerBillingDisplay() {
         </div>
 
         <div className="relative z-10 grid grid-cols-2 gap-4">
-          <div className="p-6 rounded-3xl bg-slate-950/85 border border-white/10 backdrop-blur-md">
-            <Star className="w-8 h-8 text-yellow-500 mb-4" />
-            <h3 className="font-bold text-lg mb-1">Calidad Premium</h3>
-            <p className="text-sm text-slate-300">Ingredientes frescos todos los días.</p>
+          <div className="p-6 rounded-3xl bg-black/20 border border-white/15 backdrop-blur-sm" style={{ boxShadow: '0 4px 30px rgba(0,0,0,0.2)' }}>
+            <Star className="w-8 h-8 text-yellow-400 mb-4 drop-shadow" />
+            <h3 className="font-bold text-lg mb-1 text-white drop-shadow">Calidad Premium</h3>
+            <p className="text-sm text-white/70 drop-shadow">Ingredientes frescos todos los días.</p>
           </div>
-          <div className="p-6 rounded-3xl bg-slate-950/85 border border-white/10 backdrop-blur-md">
-            <ShoppingBag className="w-8 h-8 text-primary mb-4" />
-            <h3 className="font-bold text-lg mb-1">Rápido y Seguro</h3>
-            <p className="text-sm text-slate-300">Tu pedido listo en minutos.</p>
+          <div className="p-6 rounded-3xl bg-black/20 border border-white/15 backdrop-blur-sm" style={{ boxShadow: '0 4px 30px rgba(0,0,0,0.2)' }}>
+            <ShoppingBag className="w-8 h-8 text-primary mb-4 drop-shadow" />
+            <h3 className="font-bold text-lg mb-1 text-white drop-shadow">Rápido y Seguro</h3>
+            <p className="text-sm text-white/70 drop-shadow">Tu pedido listo en minutos.</p>
           </div>
         </div>
       </div>
