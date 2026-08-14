@@ -8,6 +8,8 @@ export default function CustomerBillingDisplay() {
   const discount = useCartStore((s) => s.discount);
   const tips = useCartStore((s) => s.tips);
   const lastCompletedOrder = useCartStore((s) => s.lastCompletedOrder);
+  const cashAmountPaid = useCartStore((s) => s.cashAmountPaid);
+  const paymentMethod = useCartStore((s) => s.paymentMethod);
   const { orders, initializeStore } = useOrdersStore();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [heroImage, setHeroImage] = useState('/mesahub_hero.png');
@@ -253,6 +255,21 @@ export default function CustomerBillingDisplay() {
                 ${currentTotals.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
               </span>
             </div>
+
+            {paymentMethod === 'efectivo' && cashAmountPaid > 0 && (
+              <div className="pt-3 border-t border-dashed border-white/10 space-y-2 animate-fade-in">
+                <div className="flex justify-between text-sm text-slate-400 font-bold">
+                  <span>Efectivo Recibido</span>
+                  <span>${cashAmountPaid.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                {cashAmountPaid >= currentTotals.total && (
+                  <div className="flex justify-between text-base text-green-400 font-extrabold">
+                    <span>Su Vuelto</span>
+                    <span>${(cashAmountPaid - currentTotals.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

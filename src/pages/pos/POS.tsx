@@ -44,7 +44,9 @@ export default function POS() {
     orderNote,
     setOrderNote,
     clearCart,
-    totals
+    totals,
+    cashAmountPaid,
+    setCashAmountPaid
   } = useCartStore();
   const { addOrder, tables, updateTableStatus, orders, closeOrder, initializeStore } = useOrdersStore();
   const { currentSession, addMovement } = useCashStore();
@@ -262,6 +264,7 @@ export default function POS() {
       tips,
       total,
       paymentMethod,
+      cashAmountPaid,
       orderType,
       orderNote,
       time: new Date().toLocaleTimeString()
@@ -276,7 +279,8 @@ export default function POS() {
       paymentMethod: 'efectivo',
       orderType: 'salon',
       selectedTableId: null,
-      orderNote: ''
+      orderNote: '',
+      cashAmountPaid: 0
     });
     setDeliveryName('');
     setDeliveryPhone('');
@@ -794,6 +798,38 @@ export default function POS() {
               </div>
             )}
 
+            {/* Cash Payment */}
+            {paymentTiming === 'now' && paymentMethod === 'efectivo' && (
+              <div className="p-4 bg-muted/50 border border-border rounded-xl space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] text-muted-foreground uppercase font-bold">Monto Entregado (Efectivo)</label>
+                  {cashAmountPaid > 0 && cashAmountPaid < total && (
+                    <span className="text-[10px] text-red-500 font-bold animate-pulse">Insuficiente</span>
+                  )}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={cashAmountPaid || ''}
+                    onChange={(e) => setCashAmountPaid(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full h-10 pl-7 pr-3 bg-background border border-border rounded-xl text-sm font-bold text-foreground focus:outline-none focus:border-primary transition-all text-right"
+                  />
+                </div>
+                {cashAmountPaid >= total && (
+                  <div className="flex justify-between items-center p-2.5 rounded-lg bg-green-500/10 border border-green-500/20 text-xs">
+                    <span className="font-bold text-green-400">Vuelto a entregar:</span>
+                    <span className="font-black text-sm text-green-400">
+                      ${(cashAmountPaid - total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Split Payment */}
             {paymentTiming === 'now' && paymentMethod === 'mixto' && (
               <div className="p-3 rounded-xl bg-muted/60 border border-border space-y-2 text-xs">
@@ -846,11 +882,12 @@ export default function POS() {
               </button>
               <button
                 onClick={submitOrder}
+                disabled={paymentTiming === 'now' && paymentMethod === 'efectivo' && cashAmountPaid < total}
                 className={`py-3 rounded-xl text-xs font-bold text-white hover:opacity-90 shadow-lg ${
                   paymentTiming === 'later'
                     ? 'bg-amber-500 shadow-amber-500/20'
                     : 'gradient-bg shadow-primary/20'
-                }`}
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
               >
                 {paymentTiming === 'later' ? '📋 Abrir Comanda → Cocina' : '✅ Confirmar Venta & Ticket'}
               </button>
@@ -861,8 +898,8 @@ export default function POS() {
 
       {/* Thermal Ticket Printer Mockup Modal */}
       {isReceiptOpen && lastOrderDetails && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-card rounded-2xl border border-border p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-sm bg-card rounded-2xl border border-border p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 my-auto">
             <div className="flex justify-between items-center pb-2 border-b border-border">
               <h3 className="font-extrabold text-sm text-foreground flex items-center gap-1">
                 <Printer className="w-4 h-4 text-primary" /> Emitir Tickets
@@ -897,7 +934,7 @@ export default function POS() {
 
             {/* Thermal ticket paper container styling */}
             {ticketType === 'fiscal' ? (
-              <div className="p-4 bg-white text-slate-900 border border-slate-300 shadow-sm rounded-lg font-mono text-[10px] leading-relaxed uppercase">
+              <div className="p-4 bg-white text-slate-900 border border-slate-300 shadow-sm rounded-lg font-mono text-[10px] leading-relaxed uppercase overflow-y-auto max-h-[55vh] scrollbar-thin">
                 <div className="text-center space-y-1 mb-3">
                   <h4 className="font-black text-xs">MesaHub S.A.</h4>
                   <p>Sucursal Central CABA</p>
@@ -910,7 +947,7 @@ export default function POS() {
                   <p>Ticket N°: {lastOrderDetails.orderNumber}</p>
                   <p>Fecha: {new Date().toLocaleDateString()}</p>
                   <p>Hora: {lastOrderDetails.time}</p>
-                  <p>Cajero: Ana Cajera</p>
+                  <p>Cajero: Cajero POS</p>
                   <p>---------------------------------</p>
                 </div>
 
@@ -936,6 +973,12 @@ export default function POS() {
                   {lastOrderDetails.tips > 0 && <p>Propina: +${lastOrderDetails.tips.toFixed(2)}</p>}
                   <p className="font-bold text-xs">TOTAL: ${lastOrderDetails.total.toFixed(2)}</p>
                   <p>Pago: {lastOrderDetails.paymentMethod}</p>
+                  {lastOrderDetails.paymentMethod === 'efectivo' && lastOrderDetails.cashAmountPaid > 0 && (
+                    <>
+                      <p>Entregado: ${lastOrderDetails.cashAmountPaid.toFixed(2)}</p>
+                      <p className="font-bold">Vuelto: ${(lastOrderDetails.cashAmountPaid - lastOrderDetails.total).toFixed(2)}</p>
+                    </>
+                  )}
                   <p>---------------------------------</p>
                 </div>
 
@@ -945,7 +988,7 @@ export default function POS() {
                 </div>
               </div>
             ) : (
-              <div className="p-4 bg-white text-slate-900 border border-slate-300 shadow-sm rounded-lg font-mono text-[10px] leading-relaxed uppercase">
+              <div className="p-4 bg-white text-slate-900 border border-slate-300 shadow-sm rounded-lg font-mono text-[10px] leading-relaxed uppercase overflow-y-auto max-h-[55vh] scrollbar-thin">
                 <div className="text-center space-y-1 mb-3">
                   <h4 className="font-black text-sm border-b-2 border-slate-900 pb-1 inline-block">COMANDA DE COCINA</h4>
                 </div>

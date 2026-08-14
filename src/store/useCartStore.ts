@@ -31,6 +31,8 @@ interface CartState {
   totals: () => { subtotal: number; discountAmount: number; total: number };
   lastCompletedOrder: string | null;
   setLastCompletedOrder: (orderNum: string | null) => void;
+  cashAmountPaid: number;
+  setCashAmountPaid: (amount: number) => void;
 }
 
 export const useCartStore = create<CartState>((set: any, get: any) => ({
@@ -43,6 +45,7 @@ export const useCartStore = create<CartState>((set: any, get: any) => ({
   selectedTableId: null,
   orderNote: '',
   lastCompletedOrder: null,
+  cashAmountPaid: 0,
   addItem: (product: Product, quantity = 1, notes = '', modifiers: string[] = []) => set((state: any) => {
     const existingIndex = state.items.findIndex((item: any) => item.product.id === product.id);
     if (existingIndex > -1) {
@@ -70,7 +73,8 @@ export const useCartStore = create<CartState>((set: any, get: any) => ({
   setSelectedTableId: (id: string | null) => set({ selectedTableId: id }),
   setOrderNote: (note: string) => set({ orderNote: note }),
   setLastCompletedOrder: (orderNum: string | null) => set({ lastCompletedOrder: orderNum }),
-  clearCart: () => set({ items: [], customer: null, discount: 0, tips: 0, paymentMethod: 'efectivo', orderType: 'salon', selectedTableId: null, orderNote: '' }),
+  setCashAmountPaid: (amount: number) => set({ cashAmountPaid: amount }),
+  clearCart: () => set({ items: [], customer: null, discount: 0, tips: 0, paymentMethod: 'efectivo', orderType: 'salon', selectedTableId: null, orderNote: '', cashAmountPaid: 0 }),
   totals: () => {
     const items = get().items;
     const discount = get().discount;
@@ -103,7 +107,8 @@ useCartStore.subscribe((state) => {
       orderType: state.orderType,
       selectedTableId: state.selectedTableId,
       orderNote: state.orderNote,
-      lastCompletedOrder: state.lastCompletedOrder
+      lastCompletedOrder: state.lastCompletedOrder,
+      cashAmountPaid: state.cashAmountPaid
     }));
   } catch (_) { /* quota exceeded – ignore */ }
 });
@@ -124,7 +129,8 @@ if (typeof window !== 'undefined') {
           orderType: data.orderType || 'salon',
           selectedTableId: data.selectedTableId || null,
           orderNote: data.orderNote || '',
-          lastCompletedOrder: data.lastCompletedOrder
+          lastCompletedOrder: data.lastCompletedOrder,
+          cashAmountPaid: data.cashAmountPaid || 0
         });
       } catch (_) { /* malformed JSON – ignore */ } finally {
         _suppressStorageWrite = false;
