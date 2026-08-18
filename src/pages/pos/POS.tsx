@@ -882,7 +882,10 @@ export default function POS() {
               </button>
               <button
                 onClick={submitOrder}
-                disabled={paymentTiming === 'now' && paymentMethod === 'efectivo' && cashAmountPaid < total}
+                disabled={
+                  (paymentTiming === 'now' && paymentMethod === 'efectivo' && cashAmountPaid < total) ||
+                  (orderType === 'delivery' && !deliveryAddress.trim())
+                }
                 className={`py-3 rounded-xl text-xs font-bold text-white hover:opacity-90 shadow-lg ${
                   paymentTiming === 'later'
                     ? 'bg-amber-500 shadow-amber-500/20'

@@ -20,6 +20,8 @@ import TableCall from './pages/table-call/TableCall';
 import GlobalHistory from './pages/global-history/GlobalHistory';
 import SuperAdmin from './pages/super-admin/SuperAdmin';
 import ScanOrderHandler from './pages/orders-display/ScanOrderHandler';
+import DeliveryApp from './pages/delivery-app/DeliveryApp';
+import DeliveryLinkHandler from './pages/delivery-app/DeliveryLinkHandler';
 import { useAuthStore } from './store/useAuthStore';
 
 // Protected Route Component
@@ -69,6 +71,9 @@ function App() {
         {/* Public Waiter Link - auto-sets simulated auth */}
         <Route path="/m/:employeeId" element={<WaiterLinkHandler />} />
 
+        {/* Public Delivery Link - auto-sets simulated auth */}
+        <Route path="/d/:employeeId" element={<DeliveryLinkHandler />} />
+
         {/* Super Admin Panel — renders inside Layout like any other page */}
         <Route path="/kds" element={
           <ProtectedRoute allowedRoles={['admin', 'cocina', 'supervisor']}>
@@ -86,6 +91,13 @@ function App() {
         <Route path="/mozo" element={
           <ProtectedRoute allowedRoles={['admin', 'mozo', 'supervisor']}>
             <WaiterPage />
+          </ProtectedRoute>
+        } />
+
+        {/* Rutas de Delivery App - Independientes del Layout */}
+        <Route path="/repartidor" element={
+          <ProtectedRoute allowedRoles={['admin', 'delivery', 'supervisor']}>
+            <DeliveryApp />
           </ProtectedRoute>
         } />
 

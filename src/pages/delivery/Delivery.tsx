@@ -7,26 +7,49 @@ import {
   Navigation,
   CheckCircle2,
 } from 'lucide-react';
+} from 'lucide-react';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { supabase, isSupabaseConfigured } from '../../services/supabase';
 
 export default function Delivery() {
   const { orders, updateOrderStatus } = useOrdersStore();
+  const { employees } = useSettingsStore();
   const [selectedOrderForDriver, setSelectedOrderForDriver] = useState<Order | null>(null);
-  const [assignedDriver, setAssignedDriver] = useState('Pedro Repartidor');
+  
+  // Real drivers from employees with role 'delivery'
+  const realDrivers = employees.filter(e => e.role === 'delivery');
+  const [assignedDriverId, setAssignedDriverId] = useState(realDrivers[0]?.id || '');
 
-  const deliveryOrders = orders.filter((o: Order) => o.source === 'delivery');
+  const deliveryOrders = orders.filter((o: Order) => o.orderType === 'delivery' || o.source === 'delivery');
 
+  const driversList = realDrivers.map(d => {
+    const ordersForDriver = deliveryOrders.filter(o => o.deliveryDriverId === d.id);
+    const activeOrders = ordersForDriver.filter(o => o.deliveryStatus === 'on_route');
+    return {
+      id: d.id,
+      name: `${d.firstName} ${d.lastName}`,
+      status: activeOrders.length > 0 ? 'ocupado' : 'libre',
+      ordersToday: ordersForDriver.length
+    };
+  });
 
-  const driversList = [
-    { name: 'Pedro Repartidor', status: 'libre', ordersToday: 8 },
-    { name: 'Lucas Moto', status: 'ocupado', ordersToday: 12 },
-    { name: 'Marina Bicicleta', status: 'libre', ordersToday: 5 }
-  ];
-
-  const handleAssignDriver = () => {
-    if (selectedOrderForDriver) {
-      updateOrderStatus(selectedOrderForDriver.id, 'preparando');
-      alert(`Repartidor ${assignedDriver} asignado con éxito a Pedido #${selectedOrderForDriver.orderNumber}.`);
+  const handleAssignDriver = async () => {
+    if (selectedOrderForDriver && assignedDriverId) {
+      if (isSupabaseConfigured()) {
+        await supabase
+          .from('orders')
+          .update({ delivery_driver_id: assignedDriverId, delivery_status: 'on_route', status: 'preparando' })
+          .eq('id', selectedOrderForDriver.id);
+      } else {
+        useOrdersStore.getState().updateOrderLocally({
+          ...selectedOrderForDriver,
+          deliveryDriverId: assignedDriverId,
+          deliveryStatus: 'on_route',
+          status: 'preparando'
+        });
+      }
+      alert(`Repartidor asignado con éxito a Pedido #${selectedOrderForDriver.orderNumber}.`);
       setSelectedOrderForDriver(null);
     }
   };
@@ -88,13 +111,18 @@ export default function Delivery() {
                     <span className="font-black text-foreground">${order.total.toFixed(2)}</span>
                     
                     <div className="flex gap-1.5">
-                      {order.status === 'pendiente' && (
+                      {(!order.deliveryDriverId && order.status !== 'entregado' && order.status !== 'pagado') && (
                         <button
                           onClick={() => setSelectedOrderForDriver(order)}
                           className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold text-[10px] flex items-center gap-1 hover:opacity-90 shadow-md shadow-primary/10"
                         >
                           <User className="w-3 h-3" /> Asignar Chofer
                         </button>
+                      )}
+                      {order.deliveryDriverId && order.status !== 'entregado' && order.status !== 'pagado' && (
+                        <span className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-500 font-bold text-[10px] flex items-center gap-1 border border-blue-500/20">
+                          <Navigation className="w-3 h-3" /> En Camino
+                        </span>
                       )}
 
                       {order.status === 'preparando' && (
@@ -187,12 +215,13 @@ export default function Delivery() {
             <p className="text-xs text-muted-foreground">Seleccionar chofer para Pedido #{selectedOrderForDriver.orderNumber} de {selectedOrderForDriver.customerName}:</p>
 
             <select
-              value={assignedDriver}
-              onChange={(e) => setAssignedDriver(e.target.value)}
+              value={assignedDriverId}
+              onChange={(e) => setAssignedDriverId(e.target.value)}
               className="w-full p-3 bg-muted border border-border rounded-xl focus:outline-none focus:ring-1 focus:ring-primary text-xs"
             >
+              <option value="" disabled>-- Seleccione --</option>
               {driversList.map(d => (
-                <option key={d.name} value={d.name}>{d.name} ({d.status})</option>
+                <option key={d.id} value={d.id}>{d.name} ({d.status})</option>
               ))}
             </select>
 

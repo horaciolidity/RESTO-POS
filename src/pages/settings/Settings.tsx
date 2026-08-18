@@ -604,6 +604,7 @@ export default function Settings() {
                 <label className="text-xs font-bold text-muted-foreground">Rol</label>
                 <select value={newEmpRole} onChange={e => setNewEmpRole(e.target.value as any)} className="w-full mt-1 p-2 bg-muted border border-border rounded-xl text-sm">
                   <option value="mozo">Mozo (Salón)</option>
+                  <option value="delivery">Repartidor (Delivery)</option>
                   <option value="cocina">Cocina / Ayudante</option>
                   <option value="cajero">Cajero / Encargado</option>
                   <option value="limpieza">Limpieza / Mantenimiento</option>
@@ -671,6 +672,23 @@ export default function Settings() {
                           <Copy className="w-3 h-3" /> Copiar Enlace del Mozo
                         </button>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Delivery specific settings: Link copy */}
+                  {e.role === 'delivery' && (
+                    <div className="flex-1 sm:ml-8 border-l border-border pl-4 flex items-center">
+                      <button
+                        onClick={() => {
+                          const baseUrl = window.location.origin;
+                          const link = `${baseUrl}/d/${e.id}`;
+                          navigator.clipboard.writeText(link);
+                          alert('Enlace del repartidor copiado al portapapeles. Envíaselo para que acceda a su app.');
+                        }}
+                        className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 rounded-xl text-[10px] font-bold flex items-center gap-1.5 transition-colors"
+                      >
+                        <Copy className="w-3 h-3" /> Copiar Enlace App Repartidor
+                      </button>
                     </div>
                   )}
 
