@@ -7,7 +7,6 @@ import {
   Navigation,
   CheckCircle2,
 } from 'lucide-react';
-} from 'lucide-react';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
