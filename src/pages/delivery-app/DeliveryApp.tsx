@@ -15,7 +15,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 export default function DeliveryApp() {
-  const { orders, updateOrderStatus } = useOrdersStore();
+  const { orders } = useOrdersStore();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -28,9 +28,6 @@ export default function DeliveryApp() {
   
   // Pedidos asignados a este repartidor
   const myOrders = deliveryOrders.filter(o => o.deliveryDriverId === user?.id && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado');
-  
-  // Pedidos completados por este repartidor hoy (simulado local)
-  const myCompleted = deliveryOrders.filter(o => o.deliveryDriverId === user?.id && (o.status === 'entregado' || o.status === 'pagado'));
 
   // Notification for new orders (simulated via state change comparison if needed, but for now we just show them)
   const [lastOrderCount, setLastOrderCount] = useState(pendingOrders.length);

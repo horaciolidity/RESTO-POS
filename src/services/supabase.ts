@@ -31,7 +31,7 @@ export type SupabaseOrder = {
   branch_id: string;
   order_number: string;
   source: 'pos' | 'mesas' | 'delivery' | 'take_away';
-  status: 'pendiente' | 'preparando' | 'listo' | 'entregado' | 'cancelado';
+  status: 'pendiente' | 'preparando' | 'listo' | 'entregado' | 'cancelado' | 'pagado';
   table_id?: string;
   table_name?: string;
   waiter_id?: string;
@@ -41,6 +41,8 @@ export type SupabaseOrder = {
   customer_address?: string;
   order_type?: 'salon' | 'llevar' | 'delivery';
   order_note?: string;
+  delivery_driver_id?: string;
+  delivery_status?: 'pending' | 'on_route' | 'delivered';
   subtotal: number;
   discount: number;
   tips: number;

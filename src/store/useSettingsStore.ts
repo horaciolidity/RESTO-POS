@@ -6,7 +6,7 @@ export interface Employee {
   id: string;
   firstName: string;
   lastName: string;
-  role: 'mozo' | 'cocina' | 'limpieza' | 'cajero' | 'otro';
+  role: 'mozo' | 'cocina' | 'limpieza' | 'cajero' | 'otro' | 'delivery';
   assignedTables?: string[]; // Array of table IDs assigned to this employee (mainly for waiters)
 }
 

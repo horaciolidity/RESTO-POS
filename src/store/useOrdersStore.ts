@@ -17,13 +17,14 @@ export interface Order {
   id: string;
   orderNumber: string;
   source: 'pos' | 'mesas' | 'delivery' | 'take_away';
-  status: 'pendiente' | 'preparando' | 'listo' | 'entregado' | 'cancelado';
+  status: 'pendiente' | 'preparando' | 'listo' | 'entregado' | 'cancelado' | 'pagado';
   tableName?: string;
   waiterName?: string;
   customerName?: string;
   customerPhone?: string;
   customerAddress?: string;
-  deliveryDriver?: string;
+  deliveryDriverId?: string;
+  deliveryStatus?: 'pending' | 'on_route' | 'delivered';
   orderType?: 'salon' | 'llevar' | 'delivery';
   orderNote?: string;
   items: OrderItem[];
@@ -80,6 +81,7 @@ interface OrdersState {
   addIncident: (incident: Omit<Incident, 'id' | 'time'>) => void;
   addAuditAlert: (alert: Omit<AuditAlert, 'id' | 'time'>) => void;
   resolveAuditAlert: (id: string) => void;
+  updateOrderLocally: (order: Order) => void;
 }
 
 export const useOrdersStore = create<OrdersState>((set, get) => ({
@@ -87,6 +89,10 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
   tables: [],
   incidents: [],
   auditAlerts: [],
+
+  updateOrderLocally: (order) => set(state => ({
+    orders: state.orders.map(o => o.id === order.id ? order : o)
+  })),
 
   initializeStore: async () => {
     const user = useAuthStore.getState().user;
@@ -136,6 +142,8 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       customerName: o.customer_name || undefined,
       customerPhone: o.customer_phone || undefined,
       customerAddress: o.customer_address || undefined,
+      deliveryDriverId: o.delivery_driver_id || undefined,
+      deliveryStatus: o.delivery_status || undefined,
       orderType: o.order_type || undefined,
       orderNote: o.order_note || undefined,
       subtotal: Number(o.subtotal),
@@ -185,6 +193,8 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
         customerName: o.customer_name || undefined,
         customerPhone: o.customer_phone || undefined,
         customerAddress: o.customer_address || undefined,
+        deliveryDriverId: o.delivery_driver_id || undefined,
+        deliveryStatus: o.delivery_status || undefined,
         orderType: o.order_type || undefined,
         orderNote: o.order_note || undefined,
         subtotal: Number(o.subtotal),

@@ -6,7 +6,7 @@ export interface DBEmployee {
   branch_id: string;
   first_name: string;
   last_name: string;
-  role: 'mozo' | 'cocina' | 'cajero' | 'limpieza' | 'otro';
+  role: 'mozo' | 'cocina' | 'cajero' | 'limpieza' | 'otro' | 'delivery';
   assigned_tables: string[];
   active: boolean;
   created_at: string;
