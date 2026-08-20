@@ -276,9 +276,9 @@ function OrderCard({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function DeliveryApp() {
-  const { orders } = useOrdersStore();
+  const { orders, initializeStore: initOrders } = useOrdersStore();
   const { user, logout } = useAuthStore();
-  const { businessName } = useSettingsStore();
+  const { businessName, initializeStore: initSettings } = useSettingsStore();
   const { products, categories, initializeStore: initInventory } = useInventoryStore();
   const navigate = useNavigate();
 
@@ -288,10 +288,14 @@ export default function DeliveryApp() {
   const [deliveredOrder, setDeliveredOrder] = useState<Order | null>(null);
   const [menuSearch, setMenuSearch] = useState('');
   const [menuCategory, setMenuCategory] = useState('all');
+  const [newOrderAlert, setNewOrderAlert] = useState<Order | null>(null);
   const prevPendingCount = useRef(0);
+  const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load inventory on mount
+  // Initialize ALL stores on mount so data is fresh for simulated delivery user
   useEffect(() => {
+    initOrders();
+    initSettings();
     initInventory();
   }, []);
 
@@ -310,13 +314,28 @@ export default function DeliveryApp() {
       o.createdAt.startsWith(new Date().toISOString().slice(0, 10))
   );
 
-  // Notification sound
+  // Business name: prefer store value, fall back to user's tenantName from session
+  const displayBusinessName = businessName && businessName !== 'Mi Restaurante'
+    ? businessName
+    : (user?.tenantName || businessName || 'Restaurante');
+
+  // Notification: sound + visual alert when a NEW pending delivery order arrives
   useEffect(() => {
     if (pendingOrders.length > prevPendingCount.current) {
+      const newest = pendingOrders[0]; // most recent unassigned
+      // Play sound
       new Audio('/notification.mp3').play().catch(() => {});
+      // Show visual alert banner
+      setNewOrderAlert(newest ?? null);
+      // Auto-dismiss after 8 seconds
+      if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
+      alertTimerRef.current = setTimeout(() => setNewOrderAlert(null), 8000);
     }
     prevPendingCount.current = pendingOrders.length;
   }, [pendingOrders.length]);
+
+  // Cleanup timer on unmount
+  useEffect(() => () => { if (alertTimerRef.current) clearTimeout(alertTimerRef.current); }, []);
 
   const showError = (msg: string) => { setError(msg); setTimeout(() => setError(null), 4000); };
   const showSuccess = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 3000); };
@@ -406,7 +425,7 @@ export default function DeliveryApp() {
           <div>
             <h1 className="font-extrabold text-sm leading-tight">{user?.name || 'Repartidor'}</h1>
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-              {businessName} · Delivery
+              {displayBusinessName} · Delivery
             </p>
           </div>
         </div>
@@ -420,6 +439,44 @@ export default function DeliveryApp() {
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Conectado" />
         </div>
       </header>
+
+      {/* ─── New Order Alert Banner ─── */}
+      {newOrderAlert && (
+        <div className="mx-4 mt-3 animate-bounce-once">
+          <div className="relative overflow-hidden rounded-2xl border-2 border-amber-500 bg-amber-500/10 shadow-xl shadow-amber-500/20">
+            {/* Animated background pulse */}
+            <div className="absolute inset-0 bg-amber-500/5 animate-pulse" />
+            <div className="relative p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/40">
+                <Bell className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-amber-400 text-sm leading-tight">🛵 ¡NUEVO PEDIDO!</p>
+                <p className="text-[11px] text-amber-300/80 font-semibold truncate mt-0.5">
+                  {newOrderAlert.customerName || 'Cliente'} · {newOrderAlert.customerAddress || 'Sin dirección'}
+                </p>
+                <p className="text-[10px] text-amber-400 font-black mt-0.5">
+                  ${newOrderAlert.total.toLocaleString('es-AR')} · #{newOrderAlert.orderNumber}
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 shrink-0">
+                <button
+                  onClick={() => { setActiveTab('pendientes'); setNewOrderAlert(null); }}
+                  className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-white font-black text-[11px] rounded-xl transition-colors"
+                >
+                  Ver Pedido
+                </button>
+                <button
+                  onClick={() => setNewOrderAlert(null)}
+                  className="px-3 py-1 bg-transparent hover:bg-amber-500/20 text-amber-400 font-bold text-[10px] rounded-xl transition-colors border border-amber-500/30"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── Toast Messages ─── */}
       {(error || successMsg) && (
