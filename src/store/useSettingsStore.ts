@@ -74,17 +74,26 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const user = useAuthStore.getState().user;
     if (!user?.tenantId) return;
     
-    await employeesService.create({
-      tenant_id: user.tenantId,
-      branch_id: user.branchId || '',
-      first_name: emp.firstName,
-      last_name: emp.lastName,
-      role: emp.role,
-      assigned_tables: emp.assignedTables || []
-    });
+    try {
+      await employeesService.create({
+        tenant_id: user.tenantId,
+        branch_id: user.branchId || '',
+        first_name: emp.firstName,
+        last_name: emp.lastName,
+        role: emp.role,
+        assigned_tables: emp.assignedTables || []
+      });
 
-    // Refresh immediately
-    await get().initializeStore();
+      // Refresh immediately
+      await get().initializeStore();
+    } catch (error: any) {
+      console.error('Error adding employee:', error);
+      if (error.message?.includes('employees_role_check')) {
+        alert('Error: La base de datos no aceptó el rol "delivery". ¿Ejecutaste el script update_delivery.sql en Supabase?');
+      } else {
+        alert('Hubo un error al registrar el personal.');
+      }
+    }
   },
 
   updateEmployee: async (id, updatedFields) => {
