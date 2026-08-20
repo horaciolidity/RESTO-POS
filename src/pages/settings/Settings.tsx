@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings2, Users, Layers, PlayCircle, Plus, Trash2, ShieldCheck, CheckCircle2, QrCode, Copy, ExternalLink, Store, Crown, Zap, Star, Bell, RefreshCw, Check, Printer, ScanLine, ToggleLeft, ToggleRight, ChefHat, Sparkles } from 'lucide-react';
+import { Settings2, Users, Layers, PlayCircle, Plus, Trash2, ShieldCheck, CheckCircle2, QrCode, Copy, ExternalLink, Store, Crown, Zap, Star, Bell, RefreshCw, Check, Printer, ScanLine, ToggleLeft, ToggleRight, ChefHat, Sparkles, Truck, Link as LinkIcon } from 'lucide-react';
 import { useSettingsStore, Employee } from '../../store/useSettingsStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { useCashStore } from '../../store/useCashStore';
@@ -589,114 +589,174 @@ export default function Settings() {
       {activeTab === 'personal' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Add Employee Form */}
-          <div className="col-span-1 bg-card border border-border rounded-2xl p-5 space-y-4 h-fit">
-            <h3 className="font-bold text-lg">Nuevo Empleado</h3>
-            <form onSubmit={handleAddEmployee} className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-muted-foreground">Nombre</label>
-                <input required type="text" value={newEmpFirst} onChange={e => setNewEmpFirst(e.target.value)} className="w-full mt-1 p-2 bg-muted border border-border rounded-xl text-sm" placeholder="Ej: Juan" />
+          <div className="col-span-1 space-y-4">
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-4 h-fit">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Plus className="w-4 h-4 text-primary" /> Nuevo Empleado
+              </h3>
+              <form onSubmit={handleAddEmployee} className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground">Nombre</label>
+                  <input required type="text" value={newEmpFirst} onChange={e => setNewEmpFirst(e.target.value)} className="w-full mt-1 p-2 bg-muted border border-border rounded-xl text-sm" placeholder="Ej: Juan" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground">Apellido</label>
+                  <input required type="text" value={newEmpLast} onChange={e => setNewEmpLast(e.target.value)} className="w-full mt-1 p-2 bg-muted border border-border rounded-xl text-sm" placeholder="Ej: Pérez" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground">Rol</label>
+                  <select value={newEmpRole} onChange={e => setNewEmpRole(e.target.value as any)} className="w-full mt-1 p-2 bg-muted border border-border rounded-xl text-sm">
+                    <option value="mozo">Mozo (Salón)</option>
+                    <option value="delivery">🛵 Repartidor (Delivery)</option>
+                    <option value="cocina">Cocina / Ayudante</option>
+                    <option value="cajero">Cajero / Encargado</option>
+                    <option value="limpieza">Limpieza / Mantenimiento</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+                {newEmpRole === 'delivery' && (
+                  <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl text-[11px] text-emerald-600 font-medium space-y-1">
+                    <p className="font-bold text-emerald-500 flex items-center gap-1"><Truck className="w-3 h-3" /> App de Repartidor</p>
+                    <p>Al guardar, se generará un enlace único que deberás copiar y enviarle al repartidor para acceder a su app de entregas.</p>
+                    <p>Podés agregar <strong>múltiples repartidores</strong> sin límite.</p>
+                  </div>
+                )}
+                <button type="submit" className="w-full py-2 bg-primary text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                  <Plus className="w-4 h-4" /> Registrar Personal
+                </button>
+              </form>
+            </div>
+
+            {/* Delivery info card */}
+            {employees.some(e => e.role === 'delivery') && (
+              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-emerald-500" />
+                  <span className="font-bold text-sm text-emerald-600">Repartidores Activos</span>
+                  <span className="ml-auto font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full text-xs border border-emerald-500/20">
+                    {employees.filter(e => e.role === 'delivery').length}
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-600/80">
+                  Cada repartidor tiene su propio enlace de acceso. Copiá el enlace desde la tarjeta del empleado y enviáselo por WhatsApp o mensaje.
+                </p>
               </div>
-              <div>
-                <label className="text-xs font-bold text-muted-foreground">Apellido</label>
-                <input required type="text" value={newEmpLast} onChange={e => setNewEmpLast(e.target.value)} className="w-full mt-1 p-2 bg-muted border border-border rounded-xl text-sm" placeholder="Ej: Pérez" />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-muted-foreground">Rol</label>
-                <select value={newEmpRole} onChange={e => setNewEmpRole(e.target.value as any)} className="w-full mt-1 p-2 bg-muted border border-border rounded-xl text-sm">
-                  <option value="mozo">Mozo (Salón)</option>
-                  <option value="delivery">Repartidor (Delivery)</option>
-                  <option value="cocina">Cocina / Ayudante</option>
-                  <option value="cajero">Cajero / Encargado</option>
-                  <option value="limpieza">Limpieza / Mantenimiento</option>
-                  <option value="otro">Otro</option>
-                </select>
-              </div>
-              <button type="submit" className="w-full py-2 bg-primary text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                <Plus className="w-4 h-4" /> Registrar Personal
-              </button>
-            </form>
+            )}
           </div>
 
           {/* Employee List */}
           <div className="col-span-1 md:col-span-2 bg-card border border-border rounded-2xl p-5">
             <h3 className="font-bold text-lg mb-4">Plantilla de Empleados ({employees.length})</h3>
             <div className="space-y-3">
-              {employees.map(e => (
-                <div key={e.id} className="p-4 border border-border rounded-xl bg-muted/30 flex flex-col sm:flex-row justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-sm uppercase">
-                      {e.firstName[0]}{e.lastName[0]}
-                    </div>
-                    <div>
-                      <span className="font-bold text-sm block">{e.firstName} {e.lastName}</span>
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">{e.role}</span>
-                    </div>
-                  </div>
-                  
-                  {/* Waiter specific settings: Table assignment */}
-                  {e.role === 'mozo' && (
-                    <div className="flex-1 sm:ml-8 border-l border-border pl-4">
-                      <span className="text-[10px] font-bold text-muted-foreground block mb-1">Mesas Asignadas (Opcional):</span>
-                      <div className="flex flex-wrap gap-1">
-                        {e.assignedTables?.map(tId => {
-                          const t = tables.find(tbl => tbl.id === tId);
-                          if (!t) return null;
-                          return (
-                            <span key={tId} onClick={() => unassignTableFromWaiter(e.id, tId)} className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded cursor-pointer hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 text-[10px] font-bold transition-colors">
-                              Mesa {t.number} ✕
-                            </span>
-                          );
-                        })}
-                        <select 
-                          className="px-2 py-0.5 bg-card border border-dashed border-border rounded text-[10px] font-bold outline-none cursor-pointer"
-                          value=""
-                          onChange={(ev) => assignTableToWaiter(e.id, ev.target.value)}
-                        >
-                          <option value="" disabled>+ Asignar Mesa</option>
-                          {tables.filter(t => !e.assignedTables?.includes(t.id)).map(t => (
-                            <option key={t.id} value={t.id}>Mesa {t.number}</option>
-                          ))}
-                        </select>
+              {employees.length === 0 && (
+                <div className="py-10 text-center text-muted-foreground text-sm">
+                  <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p>No hay empleados registrados aún.</p>
+                  <p className="text-xs mt-1">Usá el formulario de la izquierda para agregar personal.</p>
+                </div>
+              )}
+              {employees.map(e => {
+                const isDelivery = e.role === 'delivery';
+                const deliveryLink = `${window.location.origin}/d/${e.id}`;
+                const waiterLink = `${window.location.origin}/m/${e.id}`;
+                return (
+                  <div key={e.id} className={`p-4 border rounded-xl bg-muted/30 flex flex-col gap-3 ${
+                    isDelivery ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border'
+                  }`}>
+                    {/* Employee header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm uppercase ${
+                          isDelivery ? 'bg-emerald-500/10 text-emerald-500' : 'bg-primary/10 text-primary'
+                        }`}>
+                          {e.firstName[0]}{e.lastName[0]}
+                        </div>
+                        <div>
+                          <span className="font-bold text-sm block">{e.firstName} {e.lastName}</span>
+                          <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full ${
+                            isDelivery
+                              ? 'bg-emerald-500/10 text-emerald-500'
+                              : 'text-muted-foreground'
+                          }`}>
+                            {isDelivery ? '🛵 Repartidor' : e.role}
+                          </span>
+                        </div>
                       </div>
-                      
-                      <div className="mt-3 pt-3 border-t border-border/50">
+                      <button onClick={() => removeEmployee(e.id)} className="p-2 text-muted-foreground hover:text-red-500 rounded-lg transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Waiter specific settings: Table assignment */}
+                    {e.role === 'mozo' && (
+                      <div className="border-t border-border/50 pt-3 space-y-2">
+                        <span className="text-[10px] font-bold text-muted-foreground block">Mesas Asignadas (Opcional):</span>
+                        <div className="flex flex-wrap gap-1">
+                          {e.assignedTables?.map(tId => {
+                            const t = tables.find(tbl => tbl.id === tId);
+                            if (!t) return null;
+                            return (
+                              <span key={tId} onClick={() => unassignTableFromWaiter(e.id, tId)} className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded cursor-pointer hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 text-[10px] font-bold transition-colors">
+                                Mesa {t.number} ✕
+                              </span>
+                            );
+                          })}
+                          <select 
+                            className="px-2 py-0.5 bg-card border border-dashed border-border rounded text-[10px] font-bold outline-none cursor-pointer"
+                            value=""
+                            onChange={(ev) => assignTableToWaiter(e.id, ev.target.value)}
+                          >
+                            <option value="" disabled>+ Asignar Mesa</option>
+                            {tables.filter(t => !e.assignedTables?.includes(t.id)).map(t => (
+                              <option key={t.id} value={t.id}>Mesa {t.number}</option>
+                            ))}
+                          </select>
+                        </div>
                         <button
                           onClick={() => {
-                            const baseUrl = window.location.origin;
-                            const link = `${baseUrl}/m/${e.id}`;
-                            navigator.clipboard.writeText(link);
+                            navigator.clipboard.writeText(waiterLink);
                             alert('Enlace del mozo copiado al portapapeles. Envíaselo para que acceda a su panel.');
                           }}
-                          className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl text-[10px] font-bold flex items-center gap-1.5 transition-colors"
+                          className="mt-1 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl text-[10px] font-bold flex items-center gap-1.5 transition-colors"
                         >
                           <Copy className="w-3 h-3" /> Copiar Enlace del Mozo
                         </button>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Delivery specific settings: Link copy */}
-                  {e.role === 'delivery' && (
-                    <div className="flex-1 sm:ml-8 border-l border-border pl-4 flex items-center">
-                      <button
-                        onClick={() => {
-                          const baseUrl = window.location.origin;
-                          const link = `${baseUrl}/d/${e.id}`;
-                          navigator.clipboard.writeText(link);
-                          alert('Enlace del repartidor copiado al portapapeles. Envíaselo para que acceda a su app.');
-                        }}
-                        className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 rounded-xl text-[10px] font-bold flex items-center gap-1.5 transition-colors"
-                      >
-                        <Copy className="w-3 h-3" /> Copiar Enlace App Repartidor
-                      </button>
-                    </div>
-                  )}
-
-                  <button onClick={() => removeEmployee(e.id)} className="p-2 self-start text-muted-foreground hover:text-red-500 rounded-lg transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                    {/* Delivery specific settings */}
+                    {isDelivery && (
+                      <div className="border-t border-emerald-500/20 pt-3 space-y-2">
+                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1">
+                          <LinkIcon className="w-3 h-3" /> Enlace de Acceso a la App
+                        </p>
+                        <div className="flex items-center gap-2 p-2 bg-card border border-border rounded-xl">
+                          <span className="flex-1 text-[10px] font-mono text-muted-foreground truncate">{deliveryLink}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(deliveryLink);
+                              alert(`✅ Enlace de ${e.firstName} copiado.\n\nEnviáselo por WhatsApp o mensaje para que acceda a su App de Repartidor.`);
+                            }}
+                            className="flex-1 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+                          >
+                            <Copy className="w-3 h-3" /> Copiar Enlace
+                          </button>
+                          <button
+                            onClick={() => window.open(deliveryLink, '_blank')}
+                            className="px-3 py-2 bg-muted hover:bg-muted/80 text-muted-foreground border border-border rounded-xl text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+                            title="Abrir App del Repartidor"
+                          >
+                            <ExternalLink className="w-3 h-3" /> Probar
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">Enviá este enlace al repartidor por WhatsApp. Cada vez que lo abra, accede directo a su app.</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
