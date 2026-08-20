@@ -387,7 +387,7 @@ export default function DeliveryApp() {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col select-none">
+    <div className="dark min-h-screen bg-background flex flex-col select-none">
       {/* Delivered Modal */}
       {deliveredOrder && (
         <DeliveredModal
