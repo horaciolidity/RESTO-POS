@@ -350,10 +350,33 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       return { id: '', orderNumber: fallbackNum };
     }
 
-    // The Realtime subscription (subscribeToOrders) will automatically update
-    // the local store when Supabase inserts the row — no need to call
-    // initializeStore() here, which would cancel/recreate subscriptions and
-    // cause a render loop.
+    // Optimistically update local store so it appears instantly
+    // The Realtime subscription will eventually override this with the exact DB state
+    const newOrder: Order = {
+      id: result.id,
+      orderNumber: result.orderNumber,
+      source: order.source,
+      status: order.status,
+      tableName: order.tableName,
+      waiterName: order.waiterName,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      customerAddress: order.customerAddress,
+      orderType: order.orderType,
+      orderNote: order.orderNote,
+      items: order.items as any,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      tips: order.tips,
+      total: order.total,
+      paid: order.paid,
+      createdAt: new Date().toISOString()
+    };
+
+    set((state) => ({
+      orders: [newOrder, ...state.orders]
+    }));
+
     return result;
   },
 

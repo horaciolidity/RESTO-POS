@@ -56,6 +56,10 @@ export default function Dashboard() {
     return <Navigate to="/waiter" replace />;
   }
 
+  if (user?.role === 'delivery') {
+    return <Navigate to="/repartidor" replace />;
+  }
+
   // ── Filtered order sets ──────────────────────────────────────────
   const paidToday = orders.filter((o: Order) => o.paid && isToday(o.createdAt));
   const paidThisMonth = orders.filter((o: Order) => o.paid && isThisMonth(o.createdAt));
