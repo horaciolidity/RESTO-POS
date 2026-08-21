@@ -353,7 +353,8 @@ export default function DeliveryApp() {
       }
       showSuccess('¡Pedido tomado! Aparece en "Mis Entregas".');
       setActiveTab('mis-entregas');
-    } catch {
+    } catch (err) {
+      console.error("Error taking order:", err);
       showError('Error al tomar el pedido. Intentá de nuevo.');
     }
   };
@@ -373,7 +374,8 @@ export default function DeliveryApp() {
         useOrdersStore.getState().updateOrderLocally({ ...order, deliveryStatus: 'delivered', status: 'entregado', orderNote: updatePayload.order_note });
       }
       showSuccess(note ? '¡Entrega registrada con novedad! 🎉' : '¡Entrega registrada! Buen trabajo 🎉');
-    } catch {
+    } catch (err) {
+      console.error("Error marking delivered:", err);
       showError('Error al registrar la entrega.');
     }
   };
