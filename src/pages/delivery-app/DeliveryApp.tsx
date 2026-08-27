@@ -302,7 +302,7 @@ export default function DeliveryApp() {
   // Delivery orders
   const deliveryOrders = orders.filter((o) => o.orderType === 'delivery' || o.source === 'delivery');
   const pendingOrders = deliveryOrders.filter(
-    (o) => !o.deliveryDriverId && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'
+    (o) => !o.deliveryDriverId && o.status === 'listo'
   );
   const myOrders = deliveryOrders.filter(
     (o) => o.deliveryDriverId === user?.id && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'
@@ -345,11 +345,11 @@ export default function DeliveryApp() {
       if (isSupabaseConfigured()) {
         const { error: err } = await supabase
           .from('orders')
-          .update({ delivery_driver_id: user?.id, delivery_status: 'on_route', status: 'preparando' })
+          .update({ delivery_driver_id: user?.id, delivery_status: 'on_route' })
           .eq('id', order.id);
         if (err) throw err;
       } else {
-        useOrdersStore.getState().updateOrderLocally({ ...order, deliveryDriverId: user?.id, deliveryStatus: 'on_route', status: 'preparando' });
+        useOrdersStore.getState().updateOrderLocally({ ...order, deliveryDriverId: user?.id, deliveryStatus: 'on_route' });
       }
       showSuccess('¡Pedido tomado! Aparece en "Mis Entregas".');
       setActiveTab('mis-entregas');
