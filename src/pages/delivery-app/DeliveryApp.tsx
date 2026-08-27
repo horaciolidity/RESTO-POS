@@ -262,10 +262,12 @@ function OrderCard({
             </button>
             <button
               onClick={() => onTake?.(order)}
-              className="py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-500/20"
+              disabled={order.status !== 'listo'}
+              className="py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={order.status !== 'listo' ? 'Esperando que cocina lo marque como Listo' : 'Tomar pedido para entregar'}
             >
               <Truck className="w-3.5 h-3.5" />
-              Tomar Pedido
+              {order.status !== 'listo' ? 'En Cocina...' : 'Tomar Pedido'}
             </button>
           </div>
         )}
@@ -302,7 +304,7 @@ export default function DeliveryApp() {
   // Delivery orders
   const deliveryOrders = orders.filter((o) => o.orderType === 'delivery' || o.source === 'delivery');
   const pendingOrders = deliveryOrders.filter(
-    (o) => !o.deliveryDriverId && o.status === 'listo'
+    (o) => !o.deliveryDriverId && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'
   );
   const myOrders = deliveryOrders.filter(
     (o) => o.deliveryDriverId === user?.id && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'
