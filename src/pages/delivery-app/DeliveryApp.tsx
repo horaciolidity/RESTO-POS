@@ -53,7 +53,7 @@ function QRScannerModal({
         scanner.clear();
         onScan(decodedText);
       },
-      (error) => {}
+      () => {}
     );
     return () => {
       scanner.clear().catch(console.error);
