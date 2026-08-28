@@ -78,7 +78,7 @@ interface OrdersState {
   updateTable: (id: string, updates: Partial<RestaurantTable>) => Promise<void>;
   removeTable: (id: string) => Promise<void>;
   updateTableStatus: (id: string, status: RestaurantTable['status'], currentOrderId?: string) => Promise<void>;
-  addIncident: (incident: Omit<Incident, 'id' | 'time'>) => void;
+  addIncident: (incident: Omit<Incident, 'id' | 'time'>) => Promise<void>;
   addAuditAlert: (alert: Omit<AuditAlert, 'id' | 'time'>) => void;
   resolveAuditAlert: (id: string) => void;
   updateOrderLocally: (order: Order) => void;
@@ -459,16 +459,30 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
     await tablesService.updateStatus(id, status, currentOrderId);
   },
 
-  addIncident: (inc) => set((state) => ({
-    incidents: [
-      {
-        ...inc,
-        id: `i-${Date.now()}`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      },
-      ...state.incidents
-    ]
-  })),
+  addIncident: async (inc) => {
+    const user = useAuthStore.getState().user;
+    if (isSupabaseConfigured() && user?.tenantId) {
+      await supabase.from('incidents').insert({
+        tenant_id: user.tenantId,
+        branch_id: user.branchId || 'b1000000-0000-0000-0000-000000000001',
+        reported_by: user.id,
+        user_name: user.name || inc.user,
+        type: inc.type,
+        description: inc.description
+      });
+    }
+
+    set((state) => ({
+      incidents: [
+        {
+          ...inc,
+          id: `i-${Date.now()}`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        },
+        ...state.incidents
+      ]
+    }));
+  },
 
   addAuditAlert: (alert) => set((state) => ({
     auditAlerts: [

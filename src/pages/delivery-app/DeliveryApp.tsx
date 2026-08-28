@@ -26,10 +26,57 @@ import {
   MessageSquare,
   X,
   Search,
+  QrCode,
+  History,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
-type Tab = 'mis-entregas' | 'pendientes' | 'menu' | 'perfil';
+type Tab = 'mis-entregas' | 'pendientes' | 'historial' | 'menu' | 'perfil';
+
+// ─── Modal: QR Scanner ─────────────────────────────────────────────────────────
+function QRScannerModal({
+  onScan,
+  onClose,
+}: {
+  onScan: (text: string) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const scanner = new Html5QrcodeScanner(
+      'reader',
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      false
+    );
+    scanner.render(
+      (decodedText) => {
+        scanner.clear();
+        onScan(decodedText);
+      },
+      (error) => {}
+    );
+    return () => {
+      scanner.clear().catch(console.error);
+    };
+  }, [onScan]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="w-full max-w-sm bg-card rounded-2xl overflow-hidden shadow-2xl relative">
+        <div className="absolute top-2 right-2 z-[60]">
+          <button onClick={onClose} className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-4 text-center border-b border-border">
+          <h3 className="font-bold">Escanear Comanda</h3>
+          <p className="text-xs text-muted-foreground mt-1">Apunta la cámara al QR del pedido</p>
+        </div>
+        <div id="reader" className="w-full bg-black"></div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Modal: Marcar Entregado con Novedad ───────────────────────────────────────
 function DeliveredModal({
@@ -291,6 +338,7 @@ export default function DeliveryApp() {
   const [menuSearch, setMenuSearch] = useState('');
   const [menuCategory, setMenuCategory] = useState('all');
   const [newOrderAlert, setNewOrderAlert] = useState<Order | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
   const prevPendingCount = useRef(0);
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -314,6 +362,11 @@ export default function DeliveryApp() {
       o.deliveryDriverId === user?.id &&
       (o.status === 'entregado' || o.status === 'pagado') &&
       o.createdAt.startsWith(new Date().toISOString().slice(0, 10))
+  );
+  const myDeliveredAll = deliveryOrders.filter(
+    (o) =>
+      o.deliveryDriverId === user?.id &&
+      (o.status === 'entregado' || o.status === 'pagado')
   );
 
   // Business name: prefer store value, fall back to user's tenantName from session
@@ -367,7 +420,14 @@ export default function DeliveryApp() {
     setDeliveredOrder(null);
     try {
       const updatePayload: any = { delivery_status: 'delivered', status: 'entregado' };
-      if (note) updatePayload.order_note = order.orderNote ? `${order.orderNote} | Repartidor: ${note}` : `Repartidor: ${note}`;
+      if (note) {
+        updatePayload.order_note = order.orderNote ? `${order.orderNote} | Repartidor: ${note}` : `Repartidor: ${note}`;
+        useOrdersStore.getState().addIncident({
+          type: 'incidente',
+          user: user?.name || 'Repartidor',
+          description: `Novedad en pedido #${order.orderNumber}: ${note}`
+        });
+      }
 
       if (isSupabaseConfigured()) {
         const { error: err } = await supabase.from('orders').update(updatePayload).eq('id', order.id);
@@ -379,6 +439,26 @@ export default function DeliveryApp() {
     } catch (err) {
       console.error("Error marking delivered:", err);
       showError('Error al registrar la entrega.');
+    }
+  };
+
+  const handleScanOrder = (scannedId: string) => {
+    setShowScanner(false);
+    // Find the order by id or order number
+    let orderId = scannedId;
+    const urlMatch = scannedId.match(/\/scan\/([0-9a-f-]{36})/i);
+    if (urlMatch) {
+      orderId = urlMatch[1];
+    }
+    const order = pendingOrders.find(o => o.id === orderId || o.orderNumber === orderId);
+    if (order) {
+      if (order.status !== 'listo') {
+        showError('Este pedido aún no está listo en cocina.');
+      } else {
+        handleTakeOrder(order);
+      }
+    } else {
+      showError('Pedido no encontrado o ya fue asignado.');
     }
   };
 
@@ -405,6 +485,7 @@ export default function DeliveryApp() {
   const navItems: { id: Tab; icon: typeof Truck; label: string; badge?: number }[] = [
     { id: 'mis-entregas', icon: Truck, label: 'Mis Entregas', badge: myOrders.length },
     { id: 'pendientes', icon: Clock, label: 'Pendientes', badge: pendingOrders.length },
+    { id: 'historial', icon: History, label: 'Historial' },
     { id: 'menu', icon: UtensilsCrossed, label: 'Menú' },
     { id: 'perfil', icon: User, label: 'Perfil' },
   ];
@@ -417,6 +498,14 @@ export default function DeliveryApp() {
           order={deliveredOrder}
           onConfirm={handleMarkDelivered}
           onCancel={() => setDeliveredOrder(null)}
+        />
+      )}
+
+      {/* QR Scanner Modal */}
+      {showScanner && (
+        <QRScannerModal
+          onScan={handleScanOrder}
+          onClose={() => setShowScanner(false)}
         />
       )}
 
@@ -576,10 +665,19 @@ export default function DeliveryApp() {
         {/* Tab: Pendientes */}
         {activeTab === 'pendientes' && (
           <div className="p-4 space-y-4">
-            <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-              <Clock className="w-3.5 h-3.5 text-amber-500" />
-              Pedidos Disponibles ({pendingOrders.length})
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-amber-500" />
+                Pedidos Disponibles ({pendingOrders.length})
+              </h2>
+              <button
+                onClick={() => setShowScanner(true)}
+                className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-[11px] font-bold rounded-full flex items-center gap-1.5 shadow-md shadow-primary/20 transition-all"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                Escanear QR
+              </button>
+            </div>
             {pendingOrders.length === 0 ? (
               <div className="py-12 flex flex-col items-center gap-3 text-center">
                 <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center">
@@ -696,6 +794,62 @@ export default function DeliveryApp() {
                       </p>
                       <p className="text-[10px] text-muted-foreground">{product.type}</p>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Historial */}
+        {activeTab === 'historial' && (
+          <div className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <History className="w-3.5 h-3.5 text-primary" />
+                Historial Completo
+              </h2>
+              <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                {myDeliveredAll.length} Entregas
+              </span>
+            </div>
+
+            {myDeliveredAll.length === 0 ? (
+              <div className="py-12 flex flex-col items-center gap-3 text-center">
+                <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center">
+                  <CheckCircle2 className="w-10 h-10 text-muted-foreground/40" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground">No hay historial</p>
+                  <p className="text-xs text-muted-foreground mt-1">Aún no has entregado ningún pedido.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {myDeliveredAll.map((order) => (
+                  <div key={order.id} className="p-3 bg-card border border-border rounded-xl space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        <div>
+                          <p className="font-bold text-sm">#{order.orderNumber} · {order.customerName}</p>
+                          <p className="text-[10px] text-muted-foreground">{new Date(order.createdAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                      </div>
+                      <span className="font-black text-emerald-500 text-sm">${order.total.toLocaleString('es-AR')}</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground pl-6">
+                      <MapPin className="w-3.5 h-3.5 mt-0.5 text-primary/70 shrink-0" />
+                      <span>{order.customerAddress || 'Sin dirección'}</span>
+                    </div>
+                    {order.orderNote && order.orderNote.includes('Repartidor:') && (
+                      <div className="pl-6 mt-1">
+                        <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-0.5">Novedad Registrada</p>
+                        <p className="text-xs text-amber-600 font-medium bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                          {order.orderNote.split('Repartidor:')[1]?.trim()}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
