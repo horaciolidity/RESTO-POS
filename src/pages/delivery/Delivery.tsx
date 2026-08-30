@@ -35,18 +35,19 @@ export default function Delivery() {
 
   const handleAssignDriver = async () => {
     if (selectedOrderForDriver && assignedDriverId) {
+      // Optimistic local update
+      useOrdersStore.getState().updateOrderLocally({
+        ...selectedOrderForDriver,
+        deliveryDriverId: assignedDriverId,
+        deliveryStatus: 'on_route',
+        status: 'preparando'
+      });
+
       if (isSupabaseConfigured()) {
         await supabase
           .from('orders')
           .update({ delivery_driver_id: assignedDriverId, delivery_status: 'on_route', status: 'preparando' })
           .eq('id', selectedOrderForDriver.id);
-      } else {
-        useOrdersStore.getState().updateOrderLocally({
-          ...selectedOrderForDriver,
-          deliveryDriverId: assignedDriverId,
-          deliveryStatus: 'on_route',
-          status: 'preparando'
-        });
       }
       alert(`Repartidor asignado con éxito a Pedido #${selectedOrderForDriver.orderNumber}.`);
       setSelectedOrderForDriver(null);

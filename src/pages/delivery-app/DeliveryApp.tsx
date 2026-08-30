@@ -397,14 +397,15 @@ export default function DeliveryApp() {
 
   const handleTakeOrder = async (order: Order) => {
     try {
+      // Optimistic local update
+      useOrdersStore.getState().updateOrderLocally({ ...order, deliveryDriverId: user?.id, deliveryStatus: 'on_route' });
+
       if (isSupabaseConfigured()) {
         const { error: err } = await supabase
           .from('orders')
           .update({ delivery_driver_id: user?.id, delivery_status: 'on_route' })
           .eq('id', order.id);
         if (err) throw err;
-      } else {
-        useOrdersStore.getState().updateOrderLocally({ ...order, deliveryDriverId: user?.id, deliveryStatus: 'on_route' });
       }
       showSuccess('¡Pedido tomado! Aparece en "Mis Entregas".');
       setActiveTab('mis-entregas');
@@ -429,11 +430,17 @@ export default function DeliveryApp() {
         });
       }
 
+      // Optimistic local update
+      useOrdersStore.getState().updateOrderLocally({ 
+        ...order, 
+        deliveryStatus: 'delivered', 
+        status: 'entregado', 
+        orderNote: updatePayload.order_note !== undefined ? updatePayload.order_note : order.orderNote 
+      });
+
       if (isSupabaseConfigured()) {
         const { error: err } = await supabase.from('orders').update(updatePayload).eq('id', order.id);
         if (err) throw err;
-      } else {
-        useOrdersStore.getState().updateOrderLocally({ ...order, deliveryStatus: 'delivered', status: 'entregado', orderNote: updatePayload.order_note });
       }
       showSuccess(note ? '¡Entrega registrada con novedad! 🎉' : '¡Entrega registrada! Buen trabajo 🎉');
     } catch (err) {
