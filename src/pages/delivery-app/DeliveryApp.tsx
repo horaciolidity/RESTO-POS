@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useInventoryStore } from '../../store/useInventoryStore';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
+import { ordersService } from '../../services/ordersService';
 import {
   MapPin,
   Truck,
@@ -325,7 +326,7 @@ function OrderCard({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function DeliveryApp() {
-  const { orders, initializeStore: initOrders } = useOrdersStore();
+  const { orders } = useOrdersStore();
   const { user, logout } = useAuthStore();
   const { businessName, initializeStore: initSettings } = useSettingsStore();
   const { products, categories, initializeStore: initInventory } = useInventoryStore();
@@ -339,18 +340,198 @@ export default function DeliveryApp() {
   const [menuCategory, setMenuCategory] = useState('all');
   const [newOrderAlert, setNewOrderAlert] = useState<Order | null>(null);
   const [showScanner, setShowScanner] = useState(false);
+  // Own realtime orders list — independent of global store to avoid reload issues
+  const [realtimeOrders, setRealtimeOrders] = useState<Order[]>(orders);
+  const [accessRevoked, setAccessRevoked] = useState(false);
   const prevPendingCount = useRef(0);
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const realtimeChannelRef = useRef<any>(null);
+  const accessCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Initialize ALL stores on mount so data is fresh for simulated delivery user
+  // Keep realtimeOrders in sync when global store updates (e.g., optimistic local updates)
   useEffect(() => {
-    initOrders();
+    setRealtimeOrders(orders);
+  }, [orders]);
+
+  // ── Own Supabase Realtime subscription ─────────────────────────────────────
+  // Completely independent of the global store so the delivery panel stays
+  // alive and receives new orders without any page reload.
+  const subscribeToDeliveryOrders = useCallback(async () => {
+    if (!isSupabaseConfigured() || !user) return;
+
+    // Fetch initial data
+    const branchId = user.branchId === 'local-branch' || user.branchId === 'default'
+      ? undefined
+      : user.branchId;
+    const fetched = await ordersService.getAll(branchId);
+    const mapped = fetched.map((o: any) => ({
+      id: o.id,
+      orderNumber: o.order_number,
+      source: o.source,
+      status: o.status,
+      tableName: o.table_name || undefined,
+      waiterName: o.waiter_name || undefined,
+      customerName: o.customer_name || undefined,
+      customerPhone: o.customer_phone || undefined,
+      customerAddress: o.customer_address || undefined,
+      deliveryDriverId: o.delivery_driver_id || undefined,
+      deliveryStatus: o.delivery_status || undefined,
+      orderType: o.order_type || undefined,
+      orderNote: o.order_note || undefined,
+      subtotal: Number(o.subtotal),
+      discount: Number(o.discount),
+      tips: Number(o.tips),
+      total: Number(o.total),
+      paid: o.paid,
+      paymentMethod: o.payment_method || undefined,
+      createdAt: o.created_at,
+      items: (o.order_items || []).map((oi: any) => ({
+        id: oi.id,
+        price: Number(oi.unit_price),
+        quantity: oi.quantity,
+        notes: oi.notes || undefined,
+        product: {
+          id: oi.product_id || '',
+          name: oi.product_name,
+          costPrice: 0,
+          salePrice: Number(oi.unit_price),
+          taxRate: 21,
+          imageUrl: '',
+          description: '',
+          type: 'producto' as const,
+          active: true,
+          stockMin: 0,
+          stockCritical: 0,
+          currentStock: 999,
+          categoryId: '',
+          categoryName: '',
+          code: '',
+          sku: ''
+        }
+      }))
+    }));
+    setRealtimeOrders(mapped);
+
+    // Remove any previous channel
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current);
+    }
+
+    const channelName = `delivery-app-${user.id}-${Date.now()}`;
+    realtimeChannelRef.current = supabase
+      .channel(channelName)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders',
+        ...(branchId ? { filter: `branch_id=eq.${branchId}` } : {})
+      }, async () => {
+        const updated = await ordersService.getAll(branchId);
+        const remapped = updated.map((o: any) => ({
+          id: o.id,
+          orderNumber: o.order_number,
+          source: o.source,
+          status: o.status,
+          tableName: o.table_name || undefined,
+          waiterName: o.waiter_name || undefined,
+          customerName: o.customer_name || undefined,
+          customerPhone: o.customer_phone || undefined,
+          customerAddress: o.customer_address || undefined,
+          deliveryDriverId: o.delivery_driver_id || undefined,
+          deliveryStatus: o.delivery_status || undefined,
+          orderType: o.order_type || undefined,
+          orderNote: o.order_note || undefined,
+          subtotal: Number(o.subtotal),
+          discount: Number(o.discount),
+          tips: Number(o.tips),
+          total: Number(o.total),
+          paid: o.paid,
+          paymentMethod: o.payment_method || undefined,
+          createdAt: o.created_at,
+          items: (o.order_items || []).map((oi: any) => ({
+            id: oi.id,
+            price: Number(oi.unit_price),
+            quantity: oi.quantity,
+            notes: oi.notes || undefined,
+            product: {
+              id: oi.product_id || '',
+              name: oi.product_name,
+              costPrice: 0,
+              salePrice: Number(oi.unit_price),
+              taxRate: 21,
+              imageUrl: '',
+              description: '',
+              type: 'producto' as const,
+              active: true,
+              stockMin: 0,
+              stockCritical: 0,
+              currentStock: 999,
+              categoryId: '',
+              categoryName: '',
+              code: '',
+              sku: ''
+            }
+          }))
+        }));
+        setRealtimeOrders(remapped);
+      })
+      .subscribe();
+  }, [user]);
+
+  // Initialize stores and own realtime subscription on mount
+  useEffect(() => {
     initSettings();
     initInventory();
+    // Don't call initOrders() — we manage our own realtime subscription below
+    subscribeToDeliveryOrders();
+
+    return () => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
+    };
   }, []);
 
-  // Delivery orders
-  const deliveryOrders = orders.filter((o) => o.orderType === 'delivery' || o.source === 'delivery');
+  // ── Periodic employee access validation (every 2 minutes) ──────────────────
+  // If the employee is removed from Settings or their role is changed, the panel
+  // will automatically log them out within 2 minutes.
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured()) return;
+
+    const validateAccess = async () => {
+      try {
+        const { data, error: empError } = await supabase
+          .from('employees')
+          .select('id, role')
+          .eq('id', user.id)
+          .single();
+
+        if (empError || !data || data.role !== 'delivery') {
+          // Employee no longer exists or role changed — revoke access
+          setAccessRevoked(true);
+          sessionStorage.removeItem('simulated_delivery');
+          if (accessCheckRef.current) clearInterval(accessCheckRef.current);
+        }
+      } catch {
+        // Network error — do not revoke, try again next interval
+      }
+    };
+
+    // First check after 30 seconds, then every 2 minutes
+    const initialTimer = setTimeout(() => {
+      validateAccess();
+      accessCheckRef.current = setInterval(validateAccess, 2 * 60 * 1000);
+    }, 30_000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      if (accessCheckRef.current) clearInterval(accessCheckRef.current);
+    };
+  }, [user]);
+
+  // ── Derive delivery order lists from own realtime state ────────────────────
+  const deliveryOrders = realtimeOrders.filter((o) => o.orderType === 'delivery' || o.source === 'delivery');
   const pendingOrders = deliveryOrders.filter(
     (o) => !o.deliveryDriverId && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'
   );
@@ -374,17 +555,21 @@ export default function DeliveryApp() {
     ? businessName
     : (user?.tenantName || businessName || 'Restaurante');
 
-  // Notification: sound + visual alert when a NEW pending delivery order arrives
+  // ── Notification: sound + vibration + visual alert when new pending order arrives
   useEffect(() => {
     if (pendingOrders.length > prevPendingCount.current) {
       const newest = pendingOrders[0]; // most recent unassigned
       // Play sound
       new Audio('/notification.mp3').play().catch(() => {});
+      // Vibrate: pattern [200ms on, 100ms off, 200ms on, 100ms off, 400ms on]
+      if ('vibrate' in navigator) {
+        navigator.vibrate([200, 100, 200, 100, 400]);
+      }
       // Show visual alert banner
       setNewOrderAlert(newest ?? null);
-      // Auto-dismiss after 8 seconds
+      // Auto-dismiss after 12 seconds
       if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
-      alertTimerRef.current = setTimeout(() => setNewOrderAlert(null), 8000);
+      alertTimerRef.current = setTimeout(() => setNewOrderAlert(null), 12000);
     }
     prevPendingCount.current = pendingOrders.length;
   }, [pendingOrders.length]);
@@ -476,6 +661,11 @@ export default function DeliveryApp() {
 
   const handleLogout = async () => {
     sessionStorage.removeItem('simulated_delivery');
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
+    if (accessCheckRef.current) clearInterval(accessCheckRef.current);
     await logout();
     navigate('/');
   };
@@ -496,6 +686,29 @@ export default function DeliveryApp() {
     { id: 'menu', icon: UtensilsCrossed, label: 'Menú' },
     { id: 'perfil', icon: User, label: 'Perfil' },
   ];
+
+  // ── Access Revoked Screen ──────────────────────────────────────────────────
+  if (accessRevoked) {
+    return (
+      <div className="dark min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-5">
+        <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
+          <LogOut className="w-10 h-10 text-red-500" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-extrabold text-foreground">Acceso Revocado</h2>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            Tu acceso como repartidor fue removido del sistema. Contactá al administrador si creés que es un error.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/')}
+          className="px-6 py-3 bg-primary text-white font-bold rounded-xl text-sm"
+        >
+          Volver al Inicio
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="dark min-h-screen bg-background flex flex-col select-none">

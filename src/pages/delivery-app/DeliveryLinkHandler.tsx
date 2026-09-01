@@ -32,6 +32,12 @@ export default function DeliveryLinkHandler() {
             return;
           }
 
+          // Validar que el empleado tiene rol 'delivery' activo
+          if (employee.role !== 'delivery') {
+            setError("Este enlace ya no es válido. El empleado no tiene acceso de repartidor.");
+            return;
+          }
+
           // Busca los datos del tenant
           const { data: tenant } = await supabase
             .from('tenants')
@@ -60,6 +66,11 @@ export default function DeliveryLinkHandler() {
           const { employees, businessName } = useSettingsStore.getState();
           const localEmp = employees.find(e => e.id === employeeId);
           if (localEmp) {
+            // Validate role in local mode too
+            if (localEmp.role !== 'delivery') {
+              setError("Este enlace ya no es válido. El empleado no tiene acceso de repartidor.");
+              return;
+            }
             const simulatedProfile: UserProfile = {
               id: localEmp.id,
               name: `${localEmp.firstName} ${localEmp.lastName}`,
@@ -90,10 +101,13 @@ export default function DeliveryLinkHandler() {
   if (error) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-4">
-        <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500 font-bold text-2xl">
-          !
+        <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto border border-red-500/20">
+          <span className="text-red-500 font-black text-2xl">✕</span>
         </div>
-        <p className="font-bold text-lg text-foreground">{error}</p>
+        <div className="space-y-2">
+          <p className="font-bold text-lg text-foreground">Acceso Denegado</p>
+          <p className="text-sm text-muted-foreground max-w-xs">{error}</p>
+        </div>
         <button 
           onClick={() => navigate('/')}
           className="mt-4 px-6 py-2 bg-primary text-white rounded-xl font-bold"
