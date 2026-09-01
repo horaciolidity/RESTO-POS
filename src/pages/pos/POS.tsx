@@ -158,7 +158,7 @@ export default function POS() {
     // ── "Pagar al finalizar" flow: open tab, send to kitchen, no charge yet ──
     if (paymentTiming === 'later') {
       const openTabData = {
-        source: 'mesas' as const,
+        source: (orderType === 'delivery' ? 'delivery' : 'mesas') as any,
         status: 'preparando' as const,
         items: items.map(item => ({
           id: `oi-${Date.now()}-${item.product.id}`,
@@ -207,8 +207,8 @@ export default function POS() {
 
     // ── "Pagar ahora" flow: charge immediately ──
     const orderData = {
-      source: 'pos' as const,
-      status: 'preparando' as const,
+      source: (orderType === 'delivery' ? 'delivery' : 'pos') as any,
+      status: (orderType === 'delivery' ? 'listo' : 'preparando') as const,
       items: items.map(item => ({
         id: `oi-${Date.now()}-${item.product.id}`,
         product: item.product,
