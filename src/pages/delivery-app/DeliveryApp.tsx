@@ -344,9 +344,11 @@ export default function DeliveryApp() {
   const [realtimeOrders, setRealtimeOrders] = useState<Order[]>(orders);
   const [accessRevoked, setAccessRevoked] = useState(false);
   const prevPendingCount = useRef(0);
+  const prevReadyOrderIds = useRef<Set<string>>(new Set());
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeChannelRef = useRef<any>(null);
   const accessCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [newOrderAlertType, setNewOrderAlertType] = useState<'nuevo' | 'listo'>('nuevo');
 
   // Keep realtimeOrders in sync when global store updates (e.g., optimistic local updates)
   useEffect(() => {
@@ -555,24 +557,37 @@ export default function DeliveryApp() {
     ? businessName
     : (user?.tenantName || businessName || 'Restaurante');
 
-  // ── Notification: sound + vibration + visual alert when new pending order arrives
+  // ── Alert: nuevo pedido delivery sin asignar (cualquier status pendiente)
   useEffect(() => {
     if (pendingOrders.length > prevPendingCount.current) {
-      const newest = pendingOrders[0]; // most recent unassigned
-      // Play sound
+      const newest = pendingOrders[0];
       new Audio('/notification.mp3').play().catch(() => {});
-      // Vibrate: pattern [200ms on, 100ms off, 200ms on, 100ms off, 400ms on]
-      if ('vibrate' in navigator) {
-        navigator.vibrate([200, 100, 200, 100, 400]);
-      }
-      // Show visual alert banner
+      if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 400]);
+      setNewOrderAlertType('nuevo');
       setNewOrderAlert(newest ?? null);
-      // Auto-dismiss after 12 seconds
       if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
       alertTimerRef.current = setTimeout(() => setNewOrderAlert(null), 12000);
     }
     prevPendingCount.current = pendingOrders.length;
   }, [pendingOrders.length]);
+
+  // ── Alert: un pedido pasó a 'listo' (cocina lo marcó como listo para retirar)
+  const readyOrders = pendingOrders.filter((o) => o.status === 'listo');
+  useEffect(() => {
+    const currentReadyIds = new Set(readyOrders.map((o) => o.id));
+    // Find orders that are NOW listo but weren't before
+    const newlyReady = readyOrders.filter((o) => !prevReadyOrderIds.current.has(o.id));
+    if (newlyReady.length > 0) {
+      const order = newlyReady[0];
+      new Audio('/notification.mp3').play().catch(() => {});
+      if ('vibrate' in navigator) navigator.vibrate([400, 100, 400, 100, 400, 100, 600]);
+      setNewOrderAlertType('listo');
+      setNewOrderAlert(order);
+      if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
+      alertTimerRef.current = setTimeout(() => setNewOrderAlert(null), 15000);
+    }
+    prevReadyOrderIds.current = currentReadyIds;
+  }, [readyOrders.map((o) => o.id + o.status).join(',')]);
 
   // Cleanup timer on unmount
   useEffect(() => () => { if (alertTimerRef.current) clearTimeout(alertTimerRef.current); }, []);
@@ -756,32 +771,47 @@ export default function DeliveryApp() {
       {/* ─── New Order Alert Banner ─── */}
       {newOrderAlert && (
         <div className="mx-4 mt-3 animate-bounce-once">
-          <div className="relative overflow-hidden rounded-2xl border-2 border-amber-500 bg-amber-500/10 shadow-xl shadow-amber-500/20">
-            {/* Animated background pulse */}
-            <div className="absolute inset-0 bg-amber-500/5 animate-pulse" />
+          <div className={`relative overflow-hidden rounded-2xl border-2 shadow-xl ${
+            newOrderAlertType === 'listo' 
+              ? 'border-emerald-500 bg-emerald-500/10 shadow-emerald-500/20'
+              : 'border-amber-500 bg-amber-500/10 shadow-amber-500/20'
+          }`}>
+            <div className={`absolute inset-0 animate-pulse ${
+              newOrderAlertType === 'listo' ? 'bg-emerald-500/5' : 'bg-amber-500/5'
+            }`} />
             <div className="relative p-4 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/40">
-                <Bell className="w-6 h-6 text-white" />
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${
+                newOrderAlertType === 'listo' ? 'bg-emerald-500 shadow-emerald-500/40' : 'bg-amber-500 shadow-amber-500/40'
+              }`}>
+                {newOrderAlertType === 'listo' ? <CheckCircle2 className="w-6 h-6 text-white" /> : <Bell className="w-6 h-6 text-white" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-black text-amber-400 text-sm leading-tight">🛵 ¡NUEVO PEDIDO!</p>
-                <p className="text-[11px] text-amber-300/80 font-semibold truncate mt-0.5">
+                <p className={`font-black text-sm leading-tight ${newOrderAlertType === 'listo' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {newOrderAlertType === 'listo' ? '✅ ¡LISTO PARA RETIRAR!' : '🛵 ¡NUEVO PEDIDO!'}
+                </p>
+                <p className={`text-[11px] font-semibold truncate mt-0.5 ${newOrderAlertType === 'listo' ? 'text-emerald-300/80' : 'text-amber-300/80'}`}>
                   {newOrderAlert.customerName || 'Cliente'} · {newOrderAlert.customerAddress || 'Sin dirección'}
                 </p>
-                <p className="text-[10px] text-amber-400 font-black mt-0.5">
+                <p className={`text-[10px] font-black mt-0.5 ${newOrderAlertType === 'listo' ? 'text-emerald-400' : 'text-amber-400'}`}>
                   ${newOrderAlert.total.toLocaleString('es-AR')} · #{newOrderAlert.orderNumber}
                 </p>
               </div>
               <div className="flex flex-col gap-2 shrink-0">
                 <button
                   onClick={() => { setActiveTab('pendientes'); setNewOrderAlert(null); }}
-                  className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-white font-black text-[11px] rounded-xl transition-colors"
+                  className={`px-3 py-2 text-white font-black text-[11px] rounded-xl transition-colors ${
+                    newOrderAlertType === 'listo' ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-amber-500 hover:bg-amber-400'
+                  }`}
                 >
                   Ver Pedido
                 </button>
                 <button
                   onClick={() => setNewOrderAlert(null)}
-                  className="px-3 py-1 bg-transparent hover:bg-amber-500/20 text-amber-400 font-bold text-[10px] rounded-xl transition-colors border border-amber-500/30"
+                  className={`px-3 py-1 bg-transparent font-bold text-[10px] rounded-xl transition-colors border ${
+                    newOrderAlertType === 'listo' 
+                      ? 'hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                      : 'hover:bg-amber-500/20 text-amber-400 border-amber-500/30'
+                  }`}
                 >
                   Cerrar
                 </button>
