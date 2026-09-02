@@ -350,11 +350,8 @@ export default function DeliveryApp() {
   const accessCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [newOrderAlertType, setNewOrderAlertType] = useState<'nuevo' | 'listo'>('nuevo');
 
-  // Keep realtimeOrders in sync when global store updates (e.g., optimistic local updates)
-  useEffect(() => {
-    setRealtimeOrders(orders);
-  }, [orders]);
-
+  // Removed problematic useEffect syncing `orders` which resets `realtimeOrders` to [] 
+  // on initial load because the global store hasn't fetched anything.
   // ── Own Supabase Realtime subscription ─────────────────────────────────────
   // Completely independent of the global store so the delivery panel stays
   // alive and receives new orders without any page reload.
@@ -540,6 +537,9 @@ export default function DeliveryApp() {
   const myOrders = deliveryOrders.filter(
     (o) => o.deliveryDriverId === user?.id && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'
   );
+  const otherDriversOrders = deliveryOrders.filter(
+    (o) => o.deliveryDriverId && o.deliveryDriverId !== user?.id && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'
+  );
   const myDeliveredToday = deliveryOrders.filter(
     (o) =>
       o.deliveryDriverId === user?.id &&
@@ -598,8 +598,8 @@ export default function DeliveryApp() {
   const handleTakeOrder = async (order: Order) => {
     try {
       // Optimistic local update
+      setRealtimeOrders((prev) => prev.map(o => o.id === order.id ? { ...o, deliveryDriverId: user?.id, deliveryStatus: 'on_route' } : o));
       useOrdersStore.getState().updateOrderLocally({ ...order, deliveryDriverId: user?.id, deliveryStatus: 'on_route' });
-
       if (isSupabaseConfigured()) {
         const { error: err } = await supabase
           .from('orders')
@@ -631,6 +631,7 @@ export default function DeliveryApp() {
       }
 
       // Optimistic local update
+      setRealtimeOrders((prev) => prev.map(o => o.id === order.id ? { ...o, status: 'entregado', deliveryStatus: 'delivered', orderNote: updatePayload.order_note ?? o.orderNote } : o));
       useOrdersStore.getState().updateOrderLocally({ 
         ...order, 
         deliveryStatus: 'delivered', 
@@ -928,7 +929,7 @@ export default function DeliveryApp() {
                 Escanear QR
               </button>
             </div>
-            {pendingOrders.length === 0 ? (
+            {pendingOrders.length === 0 && otherDriversOrders.length === 0 ? (
               <div className="py-12 flex flex-col items-center gap-3 text-center">
                 <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center">
                   <List className="w-10 h-10 text-muted-foreground/40" />
@@ -939,10 +940,41 @@ export default function DeliveryApp() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {pendingOrders.map((order) => (
-                  <OrderCard key={order.id} order={order} mode="pending" onTake={handleTakeOrder} onOpenMap={openMap} />
-                ))}
+              <div className="space-y-6">
+                {pendingOrders.length > 0 && (
+                  <div className="space-y-4">
+                    {pendingOrders.map((order) => (
+                      <OrderCard key={order.id} order={order} mode="pending" onTake={handleTakeOrder} onOpenMap={openMap} />
+                    ))}
+                  </div>
+                )}
+                
+                {otherDriversOrders.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2 border-t border-border pt-4">
+                      <Truck className="w-3 h-3 text-blue-500" />
+                      Asignados a otros repartidores ({otherDriversOrders.length})
+                    </h3>
+                    <div className="space-y-2 opacity-60">
+                      {otherDriversOrders.map((order) => (
+                        <div key={order.id} className="flex items-center justify-between px-4 py-3 bg-card border border-border rounded-xl">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                              <Truck className="w-4 h-4 text-blue-500" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold">#{order.orderNumber} · {order.customerName || 'Cliente'}</p>
+                              <p className="text-[10px] text-muted-foreground">Ocupado por otro repartidor</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-black px-2 py-1 bg-blue-500/10 text-blue-400 rounded">
+                            EN CURSO
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
