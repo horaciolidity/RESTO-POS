@@ -342,6 +342,13 @@ export default function DeliveryApp() {
   const [showScanner, setShowScanner] = useState(false);
   // Own realtime orders list — independent of global store to avoid reload issues
   const [realtimeOrders, setRealtimeOrders] = useState<Order[]>(orders);
+  
+  // En modo demo (local), usar la tienda global
+  useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      setRealtimeOrders(orders);
+    }
+  }, [orders]);
   const [accessRevoked, setAccessRevoked] = useState(false);
   const prevPendingCount = useRef(0);
   const prevReadyOrderIds = useRef<Set<string>>(new Set());
@@ -532,7 +539,7 @@ export default function DeliveryApp() {
   // ── Derive delivery order lists from own realtime state ────────────────────
   const deliveryOrders = realtimeOrders.filter((o) => o.orderType === 'delivery' || o.source === 'delivery');
   const pendingOrders = deliveryOrders.filter(
-    (o) => !o.deliveryDriverId && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'
+    (o) => !o.deliveryDriverId && o.status === 'listo'
   );
   const myOrders = deliveryOrders.filter(
     (o) => o.deliveryDriverId === user?.id && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'

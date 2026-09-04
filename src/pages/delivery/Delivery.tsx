@@ -20,7 +20,10 @@ export default function Delivery() {
   const realDrivers = employees.filter(e => e.role === 'delivery');
   const [assignedDriverId, setAssignedDriverId] = useState(realDrivers[0]?.id || '');
 
-  const deliveryOrders = orders.filter((o: Order) => o.orderType === 'delivery' || o.source === 'delivery');
+  const deliveryOrders = orders.filter((o: Order) => 
+    (o.orderType === 'delivery' || o.source === 'delivery') &&
+    (o.status === 'listo' || o.status === 'entregado' || o.deliveryDriverId)
+  );
 
   const driversList = realDrivers.map(d => {
     const ordersForDriver = deliveryOrders.filter(o => o.deliveryDriverId === d.id);
