@@ -120,12 +120,12 @@ export default function Delivery() {
                           onClick={() => setSelectedOrderForDriver(order)}
                           className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold text-[10px] flex items-center gap-1 hover:opacity-90 shadow-md shadow-primary/10"
                         >
-                          <UserPlus className="w-3 h-3" /> Asignar Chofer
+                          <User className="w-3 h-3" /> Asignar Chofer
                         </button>
                       )}
                       {(order.status === 'listo' && (order.deliveryDriverId || order.orderType === 'llevar')) && (
                         <button
-                          onClick={() => handleMarkAsDelivered(order)}
+                          onClick={() => updateOrderStatus(order.id, 'entregado')}
                           className="px-3 py-1.5 rounded-lg bg-green-500 text-white font-bold text-[10px] flex items-center gap-1 hover:opacity-90 shadow-md"
                         >
                           <CheckCircle2 className="w-3 h-3" /> Marcar Entregado
@@ -135,7 +135,6 @@ export default function Delivery() {
                         <span className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-500 font-bold text-[10px] flex items-center gap-1 border border-blue-500/20">
                           <Navigation className="w-3 h-3" /> En Camino
                         </span>
-                      )}
                       )}
                     </div>
                   </div>
