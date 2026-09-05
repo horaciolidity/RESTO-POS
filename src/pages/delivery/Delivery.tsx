@@ -21,7 +21,7 @@ export default function Delivery() {
   const [assignedDriverId, setAssignedDriverId] = useState(realDrivers[0]?.id || '');
 
   const deliveryOrders = orders.filter((o: Order) => 
-    (o.orderType === 'delivery' || o.source === 'delivery') &&
+    (o.orderType === 'delivery' || o.source === 'delivery' || o.orderType === 'llevar') &&
     (o.status === 'listo' || o.status === 'entregado' || o.deliveryDriverId)
   );
 
@@ -113,28 +113,29 @@ export default function Delivery() {
                   <div className="pt-3 border-t border-border flex justify-between items-center text-xs">
                     <span className="font-black text-foreground">${order.total.toFixed(2)}</span>
                     
-                    <div className="flex gap-1.5">
-                      {(!order.deliveryDriverId && order.status !== 'entregado' && order.status !== 'pagado') && (
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      {(!order.deliveryDriverId && order.status !== 'entregado' && order.status !== 'pagado' && order.orderType !== 'llevar') && (
                         <button
                           onClick={() => setSelectedOrderForDriver(order)}
                           className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold text-[10px] flex items-center gap-1 hover:opacity-90 shadow-md shadow-primary/10"
                         >
-                          <User className="w-3 h-3" /> Asignar Chofer
+                          <UserPlus className="w-3 h-3" /> Asignar Chofer
                         </button>
                       )}
-                      {order.deliveryDriverId && order.status !== 'entregado' && order.status !== 'pagado' && (
-                        <span className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-500 font-bold text-[10px] flex items-center gap-1 border border-blue-500/20">
-                          <Navigation className="w-3 h-3" /> En Camino
-                        </span>
-                      )}
-
-                      {order.status === 'preparando' && (
+                      {(order.status === 'listo' && (order.deliveryDriverId || order.orderType === 'llevar')) && (
                         <button
-                          onClick={() => updateOrderStatus(order.id, 'entregado')}
+                          onClick={() => handleMarkAsDelivered(order)}
                           className="px-3 py-1.5 rounded-lg bg-green-500 text-white font-bold text-[10px] flex items-center gap-1 hover:opacity-90 shadow-md"
                         >
                           <CheckCircle2 className="w-3 h-3" /> Marcar Entregado
                         </button>
+                      )}
+                      {order.deliveryDriverId && order.status === 'preparando' && (
+                        <span className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-500 font-bold text-[10px] flex items-center gap-1 border border-blue-500/20">
+                          <Navigation className="w-3 h-3" /> En Camino
+                        </span>
+                      )}
                       )}
                     </div>
                   </div>
