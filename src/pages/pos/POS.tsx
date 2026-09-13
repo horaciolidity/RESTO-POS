@@ -102,25 +102,25 @@ export default function POS() {
   const [selectedProductForNotes, setSelectedProductForNotes] = useState<Product | null>(null);
   const [itemNote, setItemNote] = useState('');
 
-  // Box restriction check
-  if (!currentSession || currentSession.status === 'closed') {
-    return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-4">
-        <div className="p-4 rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
-          <DollarSign className="w-12 h-12" />
-        </div>
-        <div className="text-center max-w-md space-y-2">
-          <h3 className="text-xl font-bold">Turno de Caja Cerrado</h3>
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            Para realizar ventas e ingresar cobros en el sistema POS, primero debes abrir el turno de caja diario registrando el saldo inicial.
-          </p>
-        </div>
-        <a href="/cash" className="px-5 py-3 font-bold text-white gradient-bg rounded-xl shadow-lg shadow-primary/20 text-xs">
-          Ir a Apertura de Caja
-        </a>
-      </div>
-    );
-  }
+  // Cash session check temporarily disabled for testing
+  // if (!currentSession || currentSession.status === 'closed') {
+  //   return (
+  //     <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-4">
+  //       <div className="p-4 rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
+  //         <DollarSign className="w-12 h-12" />
+  //       </div>
+  //       <div className="text-center max-w-md space-y-2">
+  //         <h3 className="text-xl font-bold">Turno de Caja Cerrado</h3>
+  //         <p className="text-muted-foreground text-xs leading-relaxed">
+  //           Para realizar ventas e ingresar cobros en el sistema POS, primero debes abrir el turno de caja diario registrando el saldo inicial.
+  //         </p>
+  //       </div>
+  //       <a href="/cash" className="px-5 py-3 font-bold text-white gradient-bg rounded-xl shadow-lg shadow-primary/20 text-xs">
+  //         Ir a Apertura de Caja
+  //       </a>
+  //     </div>
+  //   );
+  // }
 
   // Filter items
   const filteredProducts = products.filter((p) => {
