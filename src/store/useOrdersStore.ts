@@ -304,19 +304,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       return { id: tempId, orderNumber: fallbackNum };
     }
 
-    // Limit check for free plan
-    if (planType === 'free') {
-      const { count, error } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact', head: true });
-
-      if (error) {
-        console.error('[useOrdersStore.addOrder] error counting orders', error);
-      } else if (count !== null && count >= 50) {
-        throw new Error('LIMIT_REACHED');
-      }
-    }
-
+    // Limit check removed for testing
     const result = await ordersService.create({
       tenant_id: tenantId,
       branch_id: branchId,
