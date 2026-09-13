@@ -517,7 +517,7 @@ export default function DeliveryApp() {
         if (empError || !data || data.role !== 'delivery') {
           // Employee no longer exists or role changed — revoke access
           setAccessRevoked(true);
-          sessionStorage.removeItem('simulated_delivery');
+          localStorage.removeItem('simulated_delivery');
           if (accessCheckRef.current) clearInterval(accessCheckRef.current);
         }
       } catch {
@@ -540,7 +540,7 @@ export default function DeliveryApp() {
   // ── Derive delivery order lists from own realtime state ────────────────────
   const deliveryOrders = realtimeOrders.filter((o) => o.orderType === 'delivery' || o.source === 'delivery');
   const pendingOrders = deliveryOrders.filter(
-    (o) => !o.deliveryDriverId && o.status === 'listo'
+    (o) => !o.deliveryDriverId && (o.status === 'listo' || o.status === 'preparando' || o.status === 'pendiente')
   );
   const myOrders = deliveryOrders.filter(
     (o) => o.deliveryDriverId === user?.id && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'
@@ -718,7 +718,7 @@ export default function DeliveryApp() {
   };
 
   const handleLogout = async () => {
-    sessionStorage.removeItem('simulated_delivery');
+    localStorage.removeItem('simulated_delivery');
     if (realtimeChannelRef.current) {
       supabase.removeChannel(realtimeChannelRef.current);
       realtimeChannelRef.current = null;

@@ -57,7 +57,7 @@ export default function DeliveryLinkHandler() {
             planType: 'pro', // Simulated
           };
 
-          sessionStorage.setItem('simulated_delivery', JSON.stringify(simulatedProfile));
+          localStorage.setItem('simulated_delivery', JSON.stringify(simulatedProfile));
           await initialize(); // Reloads auth state to pick up the simulated profile
           navigate('/repartidor', { replace: true });
 
@@ -82,7 +82,7 @@ export default function DeliveryLinkHandler() {
               tenantName: businessName,
               planType: 'pro',
             };
-            sessionStorage.setItem('simulated_delivery', JSON.stringify(simulatedProfile));
+            localStorage.setItem('simulated_delivery', JSON.stringify(simulatedProfile));
             await initialize();
             navigate('/repartidor', { replace: true });
           } else {
