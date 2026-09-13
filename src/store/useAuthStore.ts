@@ -52,8 +52,8 @@ export const useAuthStore = create<AuthState>((set: any, get: any) => ({
     } catch (err) {
       console.error('[useAuthStore.logout]', err);
     }
-    localStorage.removeItem('simulated_mozo');
-    localStorage.removeItem('simulated_delivery');
+    sessionStorage.removeItem('simulated_mozo');
+    sessionStorage.removeItem('simulated_delivery');
     set({ user: null, loading: false });
   },
 
@@ -68,8 +68,8 @@ export const useAuthStore = create<AuthState>((set: any, get: any) => ({
     set({ loading: true });
     try {
       // Prioritize simulated from link so active admin sessions on the same browser don't override it
-      const simulatedMozo = localStorage.getItem('simulated_mozo');
-      const simulatedDelivery = localStorage.getItem('simulated_delivery');
+      const simulatedMozo = sessionStorage.getItem('simulated_mozo');
+      const simulatedDelivery = sessionStorage.getItem('simulated_delivery');
       
       if (simulatedMozo) {
         set({ user: JSON.parse(simulatedMozo), loading: false });
@@ -81,8 +81,8 @@ export const useAuthStore = create<AuthState>((set: any, get: any) => ({
       }
 
       authService.onAuthStateChange((profile) => {
-        const simMozo = localStorage.getItem('simulated_mozo');
-        const simDelivery = localStorage.getItem('simulated_delivery');
+        const simMozo = sessionStorage.getItem('simulated_mozo');
+        const simDelivery = sessionStorage.getItem('simulated_delivery');
         if (simMozo) {
           set({ user: JSON.parse(simMozo) });
         } else if (simDelivery) {

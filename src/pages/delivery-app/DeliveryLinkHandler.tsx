@@ -54,11 +54,14 @@ export default function DeliveryLinkHandler() {
             branchName: 'Sucursal',
             tenantId: employee.tenant_id,
             tenantName: tenant?.name || 'Restaurante',
-            planType: 'pro', // Simulated
+            planType: 'pro',
           };
 
-          localStorage.setItem('simulated_delivery', JSON.stringify(simulatedProfile));
-          await initialize(); // Reloads auth state to pick up the simulated profile
+          // Persist employeeId in localStorage so reloads can rebuild the session
+          localStorage.setItem('delivery_employee_id', employeeId);
+          // Use sessionStorage for the actual simulated profile (tab-scoped, won't bleed into admin tabs)
+          sessionStorage.setItem('simulated_delivery', JSON.stringify(simulatedProfile));
+          await initialize();
           navigate('/repartidor', { replace: true });
 
         } else {
@@ -66,7 +69,6 @@ export default function DeliveryLinkHandler() {
           const { employees, businessName } = useSettingsStore.getState();
           const localEmp = employees.find(e => e.id === employeeId);
           if (localEmp) {
-            // Validate role in local mode too
             if (localEmp.role !== 'delivery') {
               setError("Este enlace ya no es válido. El empleado no tiene acceso de repartidor.");
               return;
@@ -82,7 +84,8 @@ export default function DeliveryLinkHandler() {
               tenantName: businessName,
               planType: 'pro',
             };
-            localStorage.setItem('simulated_delivery', JSON.stringify(simulatedProfile));
+            localStorage.setItem('delivery_employee_id', employeeId);
+            sessionStorage.setItem('simulated_delivery', JSON.stringify(simulatedProfile));
             await initialize();
             navigate('/repartidor', { replace: true });
           } else {

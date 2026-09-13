@@ -485,6 +485,17 @@ export default function DeliveryApp() {
       .subscribe();
   }, [user]);
 
+  // ── Reload recovery ────────────────────────────────────────────────────────
+  // sessionStorage is cleared on reload. If no simulated_delivery session but we
+  // have a stored employeeId in localStorage, redirect to the link handler to rebuild the session.
+  useEffect(() => {
+    const hasSession = sessionStorage.getItem('simulated_delivery');
+    const storedEmpId = localStorage.getItem('delivery_employee_id');
+    if (!hasSession && storedEmpId && (!user || user.role !== 'delivery')) {
+      navigate(`/d/${storedEmpId}`, { replace: true });
+    }
+  }, []);
+
   // Initialize stores and own realtime subscription on mount
   useEffect(() => {
     initSettings();
@@ -517,7 +528,7 @@ export default function DeliveryApp() {
         if (empError || !data || data.role !== 'delivery') {
           // Employee no longer exists or role changed — revoke access
           setAccessRevoked(true);
-          localStorage.removeItem('simulated_delivery');
+          sessionStorage.removeItem('simulated_delivery');
           if (accessCheckRef.current) clearInterval(accessCheckRef.current);
         }
       } catch {
@@ -718,7 +729,7 @@ export default function DeliveryApp() {
   };
 
   const handleLogout = async () => {
-    localStorage.removeItem('simulated_delivery');
+    sessionStorage.removeItem('simulated_delivery');
     if (realtimeChannelRef.current) {
       supabase.removeChannel(realtimeChannelRef.current);
       realtimeChannelRef.current = null;
