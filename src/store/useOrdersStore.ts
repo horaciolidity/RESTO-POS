@@ -238,7 +238,6 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
     const user = useAuthStore.getState().user;
     const branchId = user?.branchId || 'b1000000-0000-0000-0000-000000000001';
     const tenantId = user?.tenantId || 'a1000000-0000-0000-0000-000000000001';
-    const planType = user?.planType || 'free';
 
     if (existingOrderId) {
       // 1. Delete old order items
