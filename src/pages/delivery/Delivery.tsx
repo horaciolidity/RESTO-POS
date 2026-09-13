@@ -22,7 +22,7 @@ export default function Delivery() {
 
   const deliveryOrders = orders.filter((o: Order) => 
     (o.orderType === 'delivery' || o.source === 'delivery' || o.orderType === 'llevar') &&
-    (o.status === 'listo' || o.status === 'entregado' || o.deliveryDriverId)
+    o.status !== 'cancelado'
   );
 
   const driversList = realDrivers.map(d => {
@@ -42,14 +42,13 @@ export default function Delivery() {
       useOrdersStore.getState().updateOrderLocally({
         ...selectedOrderForDriver,
         deliveryDriverId: assignedDriverId,
-        deliveryStatus: 'on_route',
-        status: 'preparando'
+        deliveryStatus: 'on_route'
       });
 
       if (isSupabaseConfigured()) {
         await supabase
           .from('orders')
-          .update({ delivery_driver_id: assignedDriverId, delivery_status: 'on_route', status: 'preparando' })
+          .update({ delivery_driver_id: assignedDriverId, delivery_status: 'on_route' })
           .eq('id', selectedOrderForDriver.id);
       }
       alert(`Repartidor asignado con éxito a Pedido #${selectedOrderForDriver.orderNumber}.`);

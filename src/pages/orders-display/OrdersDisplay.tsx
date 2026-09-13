@@ -8,16 +8,16 @@ export default function OrdersDisplay() {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [heroImage, setHeroImage] = useState('/mesahub_hero.png');
+  const [heroImage, setHeroImage] = useState('/roti-pos_hero.png');
 
   useEffect(() => {
-    const saved = localStorage.getItem('mesahub_hero_custom');
+    const saved = localStorage.getItem('roti-pos_hero_custom');
     if (saved) {
       setHeroImage(saved);
     }
     const handleStorageChange = () => {
-      const updated = localStorage.getItem('mesahub_hero_custom');
-      setHeroImage(updated || '/mesahub_hero.png');
+      const updated = localStorage.getItem('roti-pos_hero_custom');
+      setHeroImage(updated || '/roti-pos_hero.png');
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
@@ -156,7 +156,7 @@ export default function OrdersDisplay() {
           </div>
 
           <div className="pt-4 border-t border-white/10 text-white/30 text-[10px] text-center font-bold tracking-wide uppercase drop-shadow">
-            MesaHub Realtime Queue Display
+            ROTI POS Realtime Queue Display
           </div>
         </div>
 
@@ -203,7 +203,7 @@ export default function OrdersDisplay() {
 
       {/* Footer credits info */}
       <div className="text-center text-xs text-slate-600 font-semibold tracking-wider uppercase">
-        MesaHub Gastronomic Display System • Multichannel Sync Active
+        ROTI POS Gastronomic Display System • Multichannel Sync Active
       </div>
 
       {/* Manual Ready Action Modal */}

@@ -12,16 +12,16 @@ export default function CustomerBillingDisplay() {
   const paymentMethod = useCartStore((s) => s.paymentMethod);
   const { orders, initializeStore } = useOrdersStore();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [heroImage, setHeroImage] = useState('/mesahub_hero.png');
+  const [heroImage, setHeroImage] = useState('/roti-pos_hero.png');
 
   useEffect(() => {
-    const saved = localStorage.getItem('mesahub_hero_custom');
+    const saved = localStorage.getItem('roti-pos_hero_custom');
     if (saved) {
       setHeroImage(saved);
     }
     const handleStorageChange = () => {
-      const updated = localStorage.getItem('mesahub_hero_custom');
-      setHeroImage(updated || '/mesahub_hero.png');
+      const updated = localStorage.getItem('roti-pos_hero_custom');
+      setHeroImage(updated || '/roti-pos_hero.png');
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
@@ -92,7 +92,7 @@ export default function CustomerBillingDisplay() {
               <Tv className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tighter gradient-text drop-shadow-lg">MesaHub</h1>
+              <h1 className="text-3xl font-black tracking-tighter gradient-text drop-shadow-lg">ROTI POS</h1>
               <p className="text-xs text-white/70 uppercase font-bold tracking-widest drop-shadow">Pantalla de Cliente</p>
             </div>
           </div>

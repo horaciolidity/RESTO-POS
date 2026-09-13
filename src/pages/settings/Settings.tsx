@@ -78,10 +78,10 @@ export default function Settings() {
   const [qrSaved, setQrSaved] = useState(false);
 
   // Hero Display Image State (Saved in LocalStorage only)
-  const [heroImage, setHeroImage] = useState('/mesahub_hero.png');
+  const [heroImage, setHeroImage] = useState('/roti-pos_hero.png');
 
   useEffect(() => {
-    const saved = localStorage.getItem('mesahub_hero_custom');
+    const saved = localStorage.getItem('roti-pos_hero_custom');
     if (saved) setHeroImage(saved);
   }, []);
 
@@ -92,7 +92,7 @@ export default function Settings() {
     reader.onload = (event) => {
       const base64 = event.target?.result as string;
       if (base64) {
-        localStorage.setItem('mesahub_hero_custom', base64);
+        localStorage.setItem('roti-pos_hero_custom', base64);
         setHeroImage(base64);
       }
     };
@@ -100,8 +100,8 @@ export default function Settings() {
   };
 
   const handleResetHero = () => {
-    localStorage.removeItem('mesahub_hero_custom');
-    setHeroImage('/mesahub_hero.png');
+    localStorage.removeItem('roti-pos_hero_custom');
+    setHeroImage('/roti-pos_hero.png');
   };
 
   useEffect(() => {
@@ -443,7 +443,7 @@ export default function Settings() {
                 <Sparkles className="w-5 h-5 text-primary" /> Imagen de Fondo (Pantalla de Cliente y Turnos)
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Sube una imagen o ilustración urbana divertida para MesaHub que se mostrará como fondo en las pantallas públicas de clientes y turnos.
+                Sube una imagen o ilustración urbana divertida para ROTI POS que se mostrará como fondo en las pantallas públicas de clientes y turnos.
               </p>
             </div>
 
@@ -473,7 +473,7 @@ export default function Settings() {
                     className="absolute inset-0 bg-cover bg-center transition-all duration-300"
                     style={{ backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.75)), url(${heroImage})` }}
                   />
-                  <span className="relative z-10 text-xs font-black tracking-widest text-primary uppercase drop-shadow">MesaHub Screen Preview</span>
+                  <span className="relative z-10 text-xs font-black tracking-widest text-primary uppercase drop-shadow">ROTI POS Screen Preview</span>
                 </div>
               </div>
             </div>
@@ -537,7 +537,7 @@ export default function Settings() {
                     </style>
                     </head><body>
                     <div class="card">
-                      <div class="logo">🍽️ MesaHub</div>
+                      <div class="logo">🍽️ ROTI POS</div>
                       <div class="mesa">Mesa ${t.number}</div>
                       <div class="zone">${t.zone} · ${t.capacity} personas</div>
                       <img class="qr-img" src="${qrImgUrl}" alt="QR Mesa ${t.number}" />

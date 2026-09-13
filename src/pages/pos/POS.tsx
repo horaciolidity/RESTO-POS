@@ -939,7 +939,7 @@ export default function POS() {
             {ticketType === 'fiscal' ? (
               <div className="p-4 bg-white text-slate-900 border border-slate-300 shadow-sm rounded-lg font-mono text-[10px] leading-relaxed uppercase overflow-y-auto max-h-[55vh] scrollbar-thin">
                 <div className="text-center space-y-1 mb-3">
-                  <h4 className="font-black text-xs">MesaHub S.A.</h4>
+                  <h4 className="font-black text-xs">ROTI POS S.A.</h4>
                   <p>Sucursal Central CABA</p>
                   <p>C.U.I.T: 30-71458924-9</p>
                   <p>IVA RESPONSABLE INSCRIPTO</p>

@@ -12,8 +12,10 @@
 
 import { supabase, isSupabaseConfigured, SupabaseOrder, SupabaseOrderItem } from './supabase';
 
-// ── Real-time subscription handle ────────────────────────────────
-let ordersSubscription: any = null;
+// ── Real-time subscription handles (one per caller) ──────────────
+// Using a Map so multiple panels (KDS, Delivery dispatcher, Delivery app)
+// can each have their own independent channel without cancelling each other.
+const ordersSubscriptions = new Map<string, any>();
 
 export const ordersService = {
   /**
@@ -103,15 +105,30 @@ export const ordersService = {
 
   /**
    * Subscribe to real-time order changes.
-   * Fires onUpdate(orders[]) whenever an order or its items change.
+   * Each call creates its OWN independent channel so multiple panels
+   * (KDS, Delivery, etc.) can listen simultaneously without interfering.
+   *
+   * @param onUpdate      Callback fired with the full refreshed order list
+   * @param branchId      Optional branch filter
+   * @param subscriberId  Unique string for this subscriber (default: 'global')
    */
-  subscribeToOrders(onUpdate: (orders: SupabaseOrder[]) => void, branchId?: string) {
+  subscribeToOrders(
+    onUpdate: (orders: SupabaseOrder[]) => void,
+    branchId?: string,
+    subscriberId: string = 'global'
+  ) {
     if (!isSupabaseConfigured()) return;
 
-    // Use a unique channel name so multiple tabs/components don't conflict
-    const channelName = `orders-realtime-${branchId || 'all'}-${Date.now()}`;
+    // Remove previous channel for THIS subscriber only — don't touch others
+    const existing = ordersSubscriptions.get(subscriberId);
+    if (existing) {
+      supabase.removeChannel(existing);
+      ordersSubscriptions.delete(subscriberId);
+    }
 
-    ordersSubscription = supabase
+    const channelName = `orders-${subscriberId}-${branchId || 'all'}-${Date.now()}`;
+
+    const channel = supabase
       .channel(channelName)
       .on('postgres_changes', {
         event: '*',
@@ -119,7 +136,6 @@ export const ordersService = {
         table: 'orders',
         ...(branchId ? { filter: `branch_id=eq.${branchId}` } : {})
       }, async () => {
-        // Re-fetch all orders on any change so UI stays in sync
         const updated = await ordersService.getAll(branchId);
         onUpdate(updated);
       })
@@ -128,17 +144,28 @@ export const ordersService = {
         schema: 'public',
         table: 'order_items'
       }, async () => {
-        // Also re-fetch when order items change (e.g. waiter adds items)
         const updated = await ordersService.getAll(branchId);
         onUpdate(updated);
       })
       .subscribe();
+
+    ordersSubscriptions.set(subscriberId, channel);
   },
 
-  unsubscribeFromOrders() {
-    if (ordersSubscription) {
-      supabase.removeChannel(ordersSubscription);
-      ordersSubscription = null;
+  /**
+   * Unsubscribe a specific subscriber (or all if no ID given).
+   */
+  unsubscribeFromOrders(subscriberId?: string) {
+    if (subscriberId) {
+      const ch = ordersSubscriptions.get(subscriberId);
+      if (ch) {
+        supabase.removeChannel(ch);
+        ordersSubscriptions.delete(subscriberId);
+      }
+    } else {
+      // Remove all subscriptions (legacy fallback)
+      ordersSubscriptions.forEach((ch) => supabase.removeChannel(ch));
+      ordersSubscriptions.clear();
     }
   }
 };

@@ -153,7 +153,7 @@ export default function TableCall() {
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center mx-auto shadow-2xl shadow-violet-500/30">
             <ChefHat className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight">MesaHub</h1>
+          <h1 className="text-2xl font-black tracking-tight">ROTI POS</h1>
           {tableInfo && (
             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full">
               <span className="text-slate-400 text-sm font-semibold">

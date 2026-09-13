@@ -131,7 +131,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Panel Administrativo</h2>
-          <p className="text-muted-foreground text-xs">Métricas en tiempo real, alertas de stock e informes de rendimiento de MesaHub.</p>
+          <p className="text-muted-foreground text-xs">Métricas en tiempo real, alertas de stock e informes de rendimiento de ROTI POS.</p>
 
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -430,7 +430,7 @@ export default function Dashboard() {
       {/* SaaS Pricing Plans Details Widgets */}
       <div className="p-6 rounded-2xl bg-card border border-border space-y-4">
         <div>
-          <h3 className="font-extrabold text-lg">Información de Suscripción MesaHub</h3>
+          <h3 className="font-extrabold text-lg">Información de Suscripción ROTI POS</h3>
           <p className="text-xs text-muted-foreground">Revisa los detalles de tu plan y las condiciones de la plataforma SaaS</p>
         </div>
 

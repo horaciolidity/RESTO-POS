@@ -394,7 +394,7 @@ export default function CustomerOrder() {
           <div>
             <div className="flex items-center gap-2">
               <ChefHat className="w-5 h-5 text-primary" />
-              <span className="font-black text-base">MesaHub</span>
+              <span className="font-black text-base">ROTI POS</span>
             </div>
             {tableInfo && (
               <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">Mesa {tableInfo.number} · {tableInfo.zone}</p>
@@ -499,7 +499,7 @@ export default function CustomerOrder() {
         <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border px-4 py-4">
           <div className="flex items-center gap-2">
             <ChefHat className="w-5 h-5 text-primary" />
-            <span className="font-black text-base">MesaHub</span>
+            <span className="font-black text-base">ROTI POS</span>
           </div>
           {tableInfo && (
             <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">Mesa {tableInfo.number} · {tableInfo.zone}</p>
@@ -627,7 +627,7 @@ export default function CustomerOrder() {
           <div>
             <div className="flex items-center gap-2">
               <ChefHat className="w-5 h-5 text-primary" />
-              <span className="font-black text-base">MesaHub</span>
+              <span className="font-black text-base">ROTI POS</span>
             </div>
             {tableInfo && (
               <p className="text-[11px] text-muted-foreground font-semibold">Mesa {tableInfo.number} · {tableInfo.zone}</p>

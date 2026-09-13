@@ -180,8 +180,9 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
     }));
     set({ orders: mappedOrders });
 
-    // Subscribe to Orders Realtime changes
-    ordersService.unsubscribeFromOrders();
+    // Subscribe to Orders Realtime changes — use unique subscriberId so other
+    // panels (KDS, Delivery) keep their own independent channels alive.
+    ordersService.unsubscribeFromOrders('store');
     ordersService.subscribeToOrders((supabaseOrders) => {
       const mappedRealtime = supabaseOrders.map(o => ({
         id: o.id,
@@ -230,7 +231,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
         }))
       }));
       set({ orders: mappedRealtime });
-    }, branchId);
+    }, branchId, 'store');
   },
 
   addOrder: async (order, existingOrderId) => {
