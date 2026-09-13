@@ -49,7 +49,7 @@ export default function POS() {
     setCashAmountPaid
   } = useCartStore();
   const { addOrder, tables, updateTableStatus, orders, closeOrder, initializeStore } = useOrdersStore();
-  const { currentSession, addMovement } = useCashStore();
+  const { addMovement } = useCashStore();
 
   const [isRefreshingOrders, setIsRefreshingOrders] = useState(false);
   const handleRefreshOrders = useCallback(async () => {
