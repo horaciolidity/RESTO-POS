@@ -352,10 +352,11 @@ export default function DeliveryApp() {
   const [accessRevoked, setAccessRevoked] = useState(false);
   const prevPendingCount = useRef(0);
   const prevReadyOrderIds = useRef<Set<string>>(new Set());
+  const prevMyOrderIds = useRef<Set<string>>(new Set());
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeChannelRef = useRef<any>(null);
   const accessCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [newOrderAlertType, setNewOrderAlertType] = useState<'nuevo' | 'listo'>('nuevo');
+  const [newOrderAlertType, setNewOrderAlertType] = useState<'nuevo' | 'listo' | 'asignado'>('nuevo');
 
   // Removed problematic useEffect syncing `orders` which resets `realtimeOrders` to [] 
   // on initial load because the global store hasn't fetched anything.
@@ -596,6 +597,23 @@ export default function DeliveryApp() {
     prevReadyOrderIds.current = currentReadyIds;
   }, [readyOrders.map((o) => o.id + o.status).join(',')]);
 
+  // ── Alert: pedido asignado directamente a este chofer
+  useEffect(() => {
+    const currentMyIds = new Set(myOrders.map(o => o.id));
+    const newlyAssigned = myOrders.filter(o => !prevMyOrderIds.current.has(o.id));
+    
+    if (newlyAssigned.length > 0 && prevMyOrderIds.current.size > 0) {
+      const order = newlyAssigned[0];
+      new Audio('/notification.mp3').play().catch(() => {});
+      if ('vibrate' in navigator) navigator.vibrate([300, 100, 300, 100, 300]);
+      setNewOrderAlertType('asignado');
+      setNewOrderAlert(order);
+      if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
+      alertTimerRef.current = setTimeout(() => setNewOrderAlert(null), 15000);
+    }
+    prevMyOrderIds.current = currentMyIds;
+  }, [myOrders.map((o) => o.id).join(',')]);
+
   // Cleanup timer on unmount
   useEffect(() => () => { if (alertTimerRef.current) clearTimeout(alertTimerRef.current); }, []);
 
@@ -651,6 +669,23 @@ export default function DeliveryApp() {
         if (err) throw err;
       }
       showSuccess(note ? '¡Entrega registrada con novedad! 🎉' : '¡Entrega registrada! Buen trabajo 🎉');
+
+      // Auto-assign next pending order if available
+      const nextPending = pendingOrders.find(o => o.status === 'listo' && !o.deliveryDriverId);
+      if (nextPending) {
+        setTimeout(async () => {
+          try {
+            setRealtimeOrders((prev) => prev.map(o => o.id === nextPending.id ? { ...o, deliveryDriverId: user?.id, deliveryStatus: 'on_route' } : o));
+            useOrdersStore.getState().updateOrderLocally({ ...nextPending, deliveryDriverId: user?.id, deliveryStatus: 'on_route' });
+            if (isSupabaseConfigured()) {
+              await supabase.from('orders').update({ delivery_driver_id: user?.id, delivery_status: 'on_route' }).eq('id', nextPending.id);
+            }
+            showSuccess('¡Nuevo pedido auto-asignado! 🚀');
+          } catch (err) {
+            console.error('Error auto-assigning next pending order:', err);
+          }
+        }, 1000);
+      }
     } catch (err) {
       console.error("Error marking delivered:", err);
       showError('Error al registrar la entrega.');
