@@ -161,6 +161,39 @@ function DeliveredModal({
   );
 }
 
+// ─── Elapsed Timer ────────────────────────────────────────────────────────────
+function ElapsedTimer({ assignedAt }: { assignedAt: string }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const start = new Date(assignedAt).getTime();
+    const update = () => setElapsed(Math.floor((Date.now() - start) / 1000));
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [assignedAt]);
+
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  const isUrgent = mins >= 30;
+  const isWarning = mins >= 15;
+
+  return (
+    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold ${
+      isUrgent
+        ? 'bg-red-500/10 border-red-500/30 text-red-400'
+        : isWarning
+        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+    }`}>
+      <Clock className="w-3.5 h-3.5 shrink-0" />
+      <span>Tiempo en ruta: <span className="font-black tabular-nums">{String(mins).padStart(2,'0')}:{String(secs).padStart(2,'0')}</span></span>
+      {isUrgent && <span className="ml-auto text-[10px] font-black text-red-400 animate-pulse">⚠️ DEMORADO</span>}
+      {isWarning && !isUrgent && <span className="ml-auto text-[10px] font-black text-amber-400">⏰ 15+ min</span>}
+    </div>
+  );
+}
+
 // ─── Order Card ────────────────────────────────────────────────────────────────
 function OrderCard({
   order,
@@ -181,11 +214,13 @@ function OrderCard({
     pendiente: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
     preparando: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
     listo: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    entregado: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
   };
   const statusLabel: Record<string, string> = {
     pendiente: '⏳ Pendiente',
-    preparando: '🍳 Preparando',
+    preparando: '🍳 En Cocina',
     listo: '✅ Listo para llevar',
+    entregado: '📦 Entregado (cocina)',
   };
 
   const totalItems = order.items.reduce((sum, i) => sum + i.quantity, 0);
@@ -238,6 +273,9 @@ function OrderCard({
             </div>
           )}
         </div>
+
+        {/* Elapsed Timer — only for active (my) orders, shown once assigned */}
+        {mode === 'active' && <ElapsedTimer assignedAt={order.createdAt} />}
 
         {/* Item toggle */}
         <button
@@ -486,14 +524,16 @@ export default function DeliveryApp() {
   }, [user]);
 
   // ── Reload recovery ────────────────────────────────────────────────────────
-  // sessionStorage is cleared on reload. If no simulated_delivery session but we
-  // have a stored employeeId in localStorage, redirect to the link handler to rebuild the session.
+  // sessionStorage is cleared on page reload. If there's no active delivery session
+  // but we have a persisted employeeId, silently redirect to the link handler
+  // which will rebuild the sessionStorage profile and come back here.
   useEffect(() => {
     const hasSession = sessionStorage.getItem('simulated_delivery');
     const storedEmpId = localStorage.getItem('delivery_employee_id');
-    if (!hasSession && storedEmpId && (!user || user.role !== 'delivery')) {
+    if (!hasSession && storedEmpId) {
       navigate(`/d/${storedEmpId}`, { replace: true });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Initialize stores and own realtime subscription on mount
@@ -553,8 +593,10 @@ export default function DeliveryApp() {
   const pendingOrders = deliveryOrders.filter(
     (o) => !o.deliveryDriverId && (o.status === 'listo' || o.status === 'preparando' || o.status === 'pendiente')
   );
+  // myOrders: pedidos asignados al repartidor que aún NO fueron marcados por él como entregados.
+  // Usamos deliveryStatus para no depender de lo que marque la cocina en 'status'.
   const myOrders = deliveryOrders.filter(
-    (o) => o.deliveryDriverId === user?.id && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'
+    (o) => o.deliveryDriverId === user?.id && o.deliveryStatus !== 'delivered' && o.status !== 'cancelado'
   );
   const otherDriversOrders = deliveryOrders.filter(
     (o) => o.deliveryDriverId && o.deliveryDriverId !== user?.id && o.status !== 'entregado' && o.status !== 'pagado' && o.status !== 'cancelado'
