@@ -201,12 +201,14 @@ function OrderCard({
   onTake,
   onDeliveredRequest,
   onOpenMap,
+  onMarkOnRoute,
 }: {
   order: Order;
   mode: 'pending' | 'active';
   onTake?: (o: Order) => void;
   onDeliveredRequest?: (o: Order) => void;
   onOpenMap: (address?: string) => void;
+  onMarkOnRoute?: (o: Order) => void;
 }) {
   const [expanded, setExpanded] = useState(mode === 'active');
 
@@ -326,15 +328,25 @@ function OrderCard({
               className="py-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed border border-blue-500/20"
             >
               <Navigation className="w-4 h-4" />
-              Ver Ruta GPS
+              Ruta GPS
             </button>
-            <button
-              onClick={() => onDeliveredRequest?.(order)}
-              className="py-3 bg-gradient-to-r from-primary to-violet-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-lg shadow-primary/20"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              Entregado ✓
-            </button>
+            {order.deliveryStatus === 'on_route' ? (
+              <button
+                onClick={() => onDeliveredRequest?.(order)}
+                className="py-3 bg-gradient-to-r from-primary to-violet-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-lg shadow-primary/20"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Entregado ✓
+              </button>
+            ) : (
+              <button
+                onClick={() => onMarkOnRoute?.(order)}
+                className="py-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors border border-amber-500/20"
+              >
+                <Package className="w-4 h-4" />
+                Iniciar Viaje 🛵
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2 pt-1">
@@ -401,61 +413,67 @@ export default function DeliveryApp() {
   // ── Own Supabase Realtime subscription ─────────────────────────────────────
   // Completely independent of the global store so the delivery panel stays
   // alive and receives new orders without any page reload.
+  const fetchDeliveryOrders = useCallback(async () => {
+    if (!isSupabaseConfigured() || !user) return;
+    try {
+      const branchId = user.branchId === 'local-branch' || user.branchId === 'default' ? undefined : user.branchId;
+      const fetched = await ordersService.getAll(branchId);
+      const mapped = fetched.map((o: any) => ({
+        id: o.id,
+        orderNumber: o.order_number,
+        source: o.source,
+        status: o.status,
+        tableName: o.table_name || undefined,
+        waiterName: o.waiter_name || undefined,
+        customerName: o.customer_name || undefined,
+        customerPhone: o.customer_phone || undefined,
+        customerAddress: o.customer_address || undefined,
+        deliveryDriverId: o.delivery_driver_id || undefined,
+        deliveryStatus: o.delivery_status || undefined,
+        orderType: o.order_type || undefined,
+        orderNote: o.order_note || undefined,
+        subtotal: Number(o.subtotal),
+        discount: Number(o.discount),
+        tips: Number(o.tips),
+        total: Number(o.total),
+        paid: o.paid,
+        paymentMethod: o.payment_method || undefined,
+        createdAt: o.created_at,
+        items: (o.order_items || []).map((oi: any) => ({
+          id: oi.id,
+          price: Number(oi.unit_price),
+          quantity: oi.quantity,
+          notes: oi.notes || undefined,
+          product: {
+            id: oi.product_id || '',
+            name: oi.product_name,
+            costPrice: 0,
+            salePrice: Number(oi.unit_price),
+            taxRate: 21,
+            imageUrl: '',
+            description: '',
+            type: 'producto' as const,
+            active: true,
+            stockMin: 0,
+            stockCritical: 0,
+            currentStock: 999,
+            categoryId: '',
+            categoryName: '',
+            code: '',
+            sku: ''
+          }
+        }))
+      }));
+      setRealtimeOrders(mapped);
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+    }
+  }, [user]);
+
   const subscribeToDeliveryOrders = useCallback(async () => {
     if (!isSupabaseConfigured() || !user) return;
 
-    // Fetch initial data
-    const branchId = user.branchId === 'local-branch' || user.branchId === 'default'
-      ? undefined
-      : user.branchId;
-    const fetched = await ordersService.getAll(branchId);
-    const mapped = fetched.map((o: any) => ({
-      id: o.id,
-      orderNumber: o.order_number,
-      source: o.source,
-      status: o.status,
-      tableName: o.table_name || undefined,
-      waiterName: o.waiter_name || undefined,
-      customerName: o.customer_name || undefined,
-      customerPhone: o.customer_phone || undefined,
-      customerAddress: o.customer_address || undefined,
-      deliveryDriverId: o.delivery_driver_id || undefined,
-      deliveryStatus: o.delivery_status || undefined,
-      orderType: o.order_type || undefined,
-      orderNote: o.order_note || undefined,
-      subtotal: Number(o.subtotal),
-      discount: Number(o.discount),
-      tips: Number(o.tips),
-      total: Number(o.total),
-      paid: o.paid,
-      paymentMethod: o.payment_method || undefined,
-      createdAt: o.created_at,
-      items: (o.order_items || []).map((oi: any) => ({
-        id: oi.id,
-        price: Number(oi.unit_price),
-        quantity: oi.quantity,
-        notes: oi.notes || undefined,
-        product: {
-          id: oi.product_id || '',
-          name: oi.product_name,
-          costPrice: 0,
-          salePrice: Number(oi.unit_price),
-          taxRate: 21,
-          imageUrl: '',
-          description: '',
-          type: 'producto' as const,
-          active: true,
-          stockMin: 0,
-          stockCritical: 0,
-          currentStock: 999,
-          categoryId: '',
-          categoryName: '',
-          code: '',
-          sku: ''
-        }
-      }))
-    }));
-    setRealtimeOrders(mapped);
+    await fetchDeliveryOrders();
 
     // Remove any previous channel
     if (realtimeChannelRef.current) {
@@ -521,7 +539,7 @@ export default function DeliveryApp() {
         setRealtimeOrders(remapped);
       })
       .subscribe();
-  }, [user]);
+  }, [user, fetchDeliveryOrders]);
 
   // ── Reload recovery ────────────────────────────────────────────────────────
   // sessionStorage is cleared on page reload. If there's no active delivery session
@@ -540,6 +558,9 @@ export default function DeliveryApp() {
   useEffect(() => {
     initSettings();
     initInventory();
+  }, []);
+
+  useEffect(() => {
     // Don't call initOrders() — we manage our own realtime subscription below
     subscribeToDeliveryOrders();
 
@@ -549,7 +570,7 @@ export default function DeliveryApp() {
         realtimeChannelRef.current = null;
       }
     };
-  }, []);
+  }, [subscribeToDeliveryOrders]);
 
   // ── Periodic employee access validation (every 2 minutes) ──────────────────
   // If the employee is removed from Settings or their role is changed, the panel
@@ -676,12 +697,12 @@ export default function DeliveryApp() {
   const handleTakeOrder = async (order: Order) => {
     try {
       // Optimistic local update
-      setRealtimeOrders((prev) => prev.map(o => o.id === order.id ? { ...o, deliveryDriverId: user?.id, deliveryStatus: 'on_route' } : o));
-      useOrdersStore.getState().updateOrderLocally({ ...order, deliveryDriverId: user?.id, deliveryStatus: 'on_route' });
+      setRealtimeOrders((prev) => prev.map(o => o.id === order.id ? { ...o, deliveryDriverId: user?.id, deliveryStatus: 'assigned' } : o));
+      useOrdersStore.getState().updateOrderLocally({ ...order, deliveryDriverId: user?.id, deliveryStatus: 'assigned' });
       if (isSupabaseConfigured()) {
         const { error: err } = await supabase
           .from('orders')
-          .update({ delivery_driver_id: user?.id, delivery_status: 'on_route' })
+          .update({ delivery_driver_id: user?.id, delivery_status: 'assigned' })
           .eq('id', order.id);
         if (err) throw err;
       }
@@ -690,6 +711,25 @@ export default function DeliveryApp() {
     } catch (err) {
       console.error("Error taking order:", err);
       showError('Error al tomar el pedido. Intentá de nuevo.');
+    }
+  };
+
+  const handleMarkOnRoute = async (order: Order) => {
+    try {
+      // Optimistic local update
+      setRealtimeOrders((prev) => prev.map(o => o.id === order.id ? { ...o, deliveryStatus: 'on_route' } : o));
+      useOrdersStore.getState().updateOrderLocally({ ...order, deliveryStatus: 'on_route' });
+      if (isSupabaseConfigured()) {
+        const { error: err } = await supabase
+          .from('orders')
+          .update({ delivery_status: 'on_route' })
+          .eq('id', order.id);
+        if (err) throw err;
+      }
+      showSuccess('¡Viaje iniciado! 🛵');
+    } catch (err) {
+      console.error("Error marking on route:", err);
+      showError('Error al iniciar viaje. Intentá de nuevo.');
     }
   };
 
@@ -723,21 +763,24 @@ export default function DeliveryApp() {
       }
       showSuccess(note ? '¡Entrega registrada con novedad! 🎉' : '¡Entrega registrada! Buen trabajo 🎉');
 
-      // Auto-assign next pending order if available
-      const nextPending = pendingOrders.find(o => o.status === 'listo' && !o.deliveryDriverId);
-      if (nextPending) {
-        setTimeout(async () => {
-          try {
-            setRealtimeOrders((prev) => prev.map(o => o.id === nextPending.id ? { ...o, deliveryDriverId: user?.id, deliveryStatus: 'on_route' } : o));
-            useOrdersStore.getState().updateOrderLocally({ ...nextPending, deliveryDriverId: user?.id, deliveryStatus: 'on_route' });
-            if (isSupabaseConfigured()) {
-              await supabase.from('orders').update({ delivery_driver_id: user?.id, delivery_status: 'on_route' }).eq('id', nextPending.id);
+      // Auto-assign next pending order if available, ONLY if driver doesn't have orders already on route
+      const isCurrentlyOnRoute = realtimeOrders.some(o => o.deliveryDriverId === user?.id && o.deliveryStatus === 'on_route');
+      if (!isCurrentlyOnRoute) {
+        const nextPending = pendingOrders.find(o => o.status === 'listo' && !o.deliveryDriverId);
+        if (nextPending) {
+          setTimeout(async () => {
+            try {
+              setRealtimeOrders((prev) => prev.map(o => o.id === nextPending.id ? { ...o, deliveryDriverId: user?.id, deliveryStatus: 'assigned' } : o));
+              useOrdersStore.getState().updateOrderLocally({ ...nextPending, deliveryDriverId: user?.id, deliveryStatus: 'assigned' });
+              if (isSupabaseConfigured()) {
+                await supabase.from('orders').update({ delivery_driver_id: user?.id, delivery_status: 'assigned' }).eq('id', nextPending.id);
+              }
+              showSuccess('¡Nuevo pedido auto-asignado! 🚀');
+            } catch (err) {
+              console.error('Error auto-assigning next pending order:', err);
             }
-            showSuccess('¡Nuevo pedido auto-asignado! 🚀');
-          } catch (err) {
-            console.error('Error auto-assigning next pending order:', err);
-          }
-        }, 1000);
+          }, 1000);
+        }
       }
     } catch (err) {
       console.error("Error marking delivered:", err);
@@ -860,6 +903,13 @@ export default function DeliveryApp() {
               {pendingOrders.length}
             </span>
           )}
+          <button
+            onClick={fetchDeliveryOrders}
+            className="w-8 h-8 rounded-full bg-muted/40 hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors"
+            title="Actualizar datos"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Conectado" />
         </div>
       </header>
@@ -975,6 +1025,7 @@ export default function DeliveryApp() {
                     mode="active"
                     onDeliveredRequest={setDeliveredOrder}
                     onOpenMap={openMap}
+                    onMarkOnRoute={handleMarkOnRoute}
                   />
                 ))}
               </div>
