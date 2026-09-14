@@ -29,6 +29,7 @@ import {
   Search,
   QrCode,
   History,
+  RefreshCw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -474,6 +475,7 @@ export default function DeliveryApp() {
     if (!isSupabaseConfigured() || !user) return;
 
     await fetchDeliveryOrders();
+    const branchId = user.branchId === 'local-branch' || user.branchId === 'default' ? undefined : user.branchId;
 
     // Remove any previous channel
     if (realtimeChannelRef.current) {

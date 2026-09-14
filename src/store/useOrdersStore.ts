@@ -24,7 +24,7 @@ export interface Order {
   customerPhone?: string;
   customerAddress?: string;
   deliveryDriverId?: string;
-  deliveryStatus?: 'pending' | 'on_route' | 'delivered';
+  deliveryStatus?: 'pending' | 'assigned' | 'on_route' | 'delivered';
   orderType?: 'salon' | 'llevar' | 'delivery';
   orderNote?: string;
   items: OrderItem[];
