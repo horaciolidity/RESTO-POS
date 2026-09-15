@@ -699,12 +699,12 @@ export default function DeliveryApp() {
   const handleTakeOrder = async (order: Order) => {
     try {
       // Optimistic local update
-      setRealtimeOrders((prev) => prev.map(o => o.id === order.id ? { ...o, deliveryDriverId: user?.id, deliveryStatus: 'assigned' } : o));
-      useOrdersStore.getState().updateOrderLocally({ ...order, deliveryDriverId: user?.id, deliveryStatus: 'assigned' });
+      setRealtimeOrders((prev) => prev.map(o => o.id === order.id ? { ...o, deliveryDriverId: user?.id, deliveryStatus: 'pending' } : o));
+      useOrdersStore.getState().updateOrderLocally({ ...order, deliveryDriverId: user?.id, deliveryStatus: 'pending' });
       if (isSupabaseConfigured()) {
         const { error: err } = await supabase
           .from('orders')
-          .update({ delivery_driver_id: user?.id, delivery_status: 'assigned' })
+          .update({ delivery_driver_id: user?.id, delivery_status: 'pending' })
           .eq('id', order.id);
         if (err) throw err;
       }
@@ -772,10 +772,10 @@ export default function DeliveryApp() {
         if (nextPending) {
           setTimeout(async () => {
             try {
-              setRealtimeOrders((prev) => prev.map(o => o.id === nextPending.id ? { ...o, deliveryDriverId: user?.id, deliveryStatus: 'assigned' } : o));
-              useOrdersStore.getState().updateOrderLocally({ ...nextPending, deliveryDriverId: user?.id, deliveryStatus: 'assigned' });
+              setRealtimeOrders((prev) => prev.map(o => o.id === nextPending.id ? { ...o, deliveryDriverId: user?.id, deliveryStatus: 'pending' } : o));
+              useOrdersStore.getState().updateOrderLocally({ ...nextPending, deliveryDriverId: user?.id, deliveryStatus: 'pending' });
               if (isSupabaseConfigured()) {
-                await supabase.from('orders').update({ delivery_driver_id: user?.id, delivery_status: 'assigned' }).eq('id', nextPending.id);
+                await supabase.from('orders').update({ delivery_driver_id: user?.id, delivery_status: 'pending' }).eq('id', nextPending.id);
               }
               showSuccess('¡Nuevo pedido auto-asignado! 🚀');
             } catch (err) {

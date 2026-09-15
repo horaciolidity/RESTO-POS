@@ -42,13 +42,13 @@ export default function Delivery() {
       useOrdersStore.getState().updateOrderLocally({
         ...selectedOrderForDriver,
         deliveryDriverId: assignedDriverId,
-        deliveryStatus: 'assigned'
+        deliveryStatus: 'pending'
       });
 
       if (isSupabaseConfigured()) {
         await supabase
           .from('orders')
-          .update({ delivery_driver_id: assignedDriverId, delivery_status: 'assigned' })
+          .update({ delivery_driver_id: assignedDriverId, delivery_status: 'pending' })
           .eq('id', selectedOrderForDriver.id);
       }
       alert(`Repartidor asignado con éxito a Pedido #${selectedOrderForDriver.orderNumber}.`);
