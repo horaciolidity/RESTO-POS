@@ -354,20 +354,22 @@ function OrderCard({
             <button
               onClick={() => onOpenMap(order.customerAddress)}
               disabled={!order.customerAddress}
-              className="py-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40 border border-blue-500/20"
+              className={`py-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40 border border-blue-500/20 ${!onTake ? 'col-span-2' : ''}`}
             >
               <MapPin className="w-3.5 h-3.5" />
               Ver Dirección
             </button>
-            <button
-              onClick={() => onTake?.(order)}
-              disabled={order.status !== 'listo'}
-              className="py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
-              title={order.status !== 'listo' ? 'Esperando que cocina lo marque como Listo' : 'Tomar pedido para entregar'}
-            >
-              <Truck className="w-3.5 h-3.5" />
-              {order.status !== 'listo' ? 'En Cocina...' : 'Tomar Pedido'}
-            </button>
+            {onTake && (
+              <button
+                onClick={() => onTake(order)}
+                disabled={order.status !== 'listo'}
+                className="py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                title={order.status !== 'listo' ? 'Esperando que cocina lo marque como Listo' : 'Tomar pedido para entregar'}
+              >
+                <Truck className="w-3.5 h-3.5" />
+                {order.status !== 'listo' ? 'En Cocina...' : 'Tomar Pedido'}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -866,6 +868,28 @@ export default function DeliveryApp() {
     );
   }
 
+  // ── Historial agrupado por día (más reciente primero) ────────────────────
+  const historialSorted = [...myDeliveredAll].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  const historialGrouped: Record<string, typeof myDeliveredAll> = {};
+  historialSorted.forEach((order) => {
+    const dateKey = order.createdAt.slice(0, 10);
+    if (!historialGrouped[dateKey]) historialGrouped[dateKey] = [];
+    historialGrouped[dateKey].push(order);
+  });
+  const historialDays = Object.keys(historialGrouped).sort((a, b) => b.localeCompare(a));
+
+  const formatHistorialDay = (dateStr: string) => {
+    const d = new Date(dateStr + 'T12:00:00');
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return 'Hoy';
+    if (d.toDateString() === yesterday.toDateString()) return 'Ayer';
+    return d.toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long' });
+  };
+
   return (
     <div className="dark min-h-screen bg-background flex flex-col select-none">
       {/* Delivered Modal */}
@@ -1063,39 +1087,85 @@ export default function DeliveryApp() {
 
         {/* Tab: Pendientes */}
         {activeTab === 'pendientes' && (
-          <div className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-amber-500" />
-                Pedidos Disponibles ({pendingOrders.length})
-              </h2>
-              <button
-                onClick={() => setShowScanner(true)}
-                className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-[11px] font-bold rounded-full flex items-center gap-1.5 shadow-md shadow-primary/20 transition-all"
-              >
-                <QrCode className="w-3.5 h-3.5" />
-                Escanear QR
-              </button>
-            </div>
-            {pendingOrders.length === 0 && otherDriversOrders.length === 0 ? (
-              <div className="py-12 flex flex-col items-center gap-3 text-center">
-                <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center">
-                  <List className="w-10 h-10 text-muted-foreground/40" />
+          <div className="p-4 space-y-6">
+            
+            {/* ASIGNACIÓN DE PEDIDOS (QR / MANUAL) */}
+            <div className="bg-card border-2 border-primary/30 rounded-2xl p-5 shadow-lg shadow-primary/5 text-center space-y-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+              
+              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
+                <QrCode className="w-7 h-7 text-primary" />
+              </div>
+              <div className="relative z-10">
+                <h3 className="font-extrabold text-lg text-foreground">Asignar Pedido</h3>
+                <p className="text-xs text-muted-foreground mt-1 max-w-[250px] mx-auto">
+                  Escanea el QR del ticket para asignarte la comanda o ingresa el código.
+                </p>
+              </div>
+              
+              <div className="relative z-10 space-y-3">
+                <button
+                  onClick={() => setShowScanner(true)}
+                  className="w-full py-3.5 bg-primary hover:bg-primary/90 text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-xl shadow-primary/20 transition-all hover:-translate-y-0.5"
+                >
+                  <QrCode className="w-5 h-5" />
+                  ABRIR ESCÁNER QR
+                </button>
+
+                <div className="relative pt-2 pb-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border"></div>
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-card px-2 text-[10px] uppercase tracking-widest text-muted-foreground font-bold">O ingresar código</span>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-foreground">No hay pedidos pendientes</p>
-                  <p className="text-xs text-muted-foreground mt-1">Cuando lleguen nuevos pedidos aparecerán aquí.</p>
+
+                <div className="flex gap-2 relative">
+                  <Hash className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Número de orden (Ej: 1024)"
+                    className="flex-1 bg-muted border border-border rounded-xl pl-9 pr-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = e.currentTarget.value.trim();
+                        if (val) {
+                          handleScanOrder(val);
+                          e.currentTarget.value = '';
+                        }
+                      }
+                    }}
+                  />
                 </div>
               </div>
-            ) : (
-              <div className="space-y-6">
-                {pendingOrders.length > 0 && (
-                  <div className="space-y-4">
-                    {pendingOrders.map((order) => (
-                      <OrderCard key={order.id} order={order} mode="pending" onTake={handleTakeOrder} onOpenMap={openMap} />
-                    ))}
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-amber-500" />
+                Cola de Pedidos Disponibles ({pendingOrders.length})
+              </h2>
+
+              {pendingOrders.length === 0 && otherDriversOrders.length === 0 ? (
+                <div className="py-12 flex flex-col items-center gap-3 text-center">
+                  <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                    <List className="w-8 h-8 text-muted-foreground/40" />
                   </div>
-                )}
+                  <div>
+                    <p className="font-bold text-foreground">No hay pedidos pendientes</p>
+                    <p className="text-xs text-muted-foreground mt-1">Cuando lleguen nuevos pedidos de cocina aparecerán aquí.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {pendingOrders.length > 0 && (
+                    <div className="space-y-4">
+                      {pendingOrders.map((order) => (
+                        <OrderCard key={order.id} order={order} mode="pending" onOpenMap={openMap} />
+                      ))}
+                    </div>
+                  )}
                 
                 {otherDriversOrders.length > 0 && (
                   <div className="space-y-3">
@@ -1125,6 +1195,7 @@ export default function DeliveryApp() {
                 )}
               </div>
             )}
+            </div>
           </div>
         )}
 
@@ -1255,31 +1326,49 @@ export default function DeliveryApp() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                {myDeliveredAll.map((order) => (
-                  <div key={order.id} className="p-3 bg-card border border-border rounded-xl space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                        <div>
-                          <p className="font-bold text-sm">#{order.orderNumber} · {order.customerName}</p>
-                          <p className="text-[10px] text-muted-foreground">{new Date(order.createdAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+              <div className="space-y-6">
+                {historialDays.map((day) => (
+                  <div key={day} className="space-y-2">
+                    {/* Day header */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        {formatHistorialDay(day)}
+                      </span>
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                        {historialGrouped[day].length}
+                      </span>
+                    </div>
+
+                    {/* Orders for this day */}
+                    {historialGrouped[day].map((order) => (
+                      <div key={order.id} className="p-3 bg-card border border-border rounded-xl space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            <div>
+                              <p className="font-bold text-sm">#{order.orderNumber} · {order.customerName}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {new Date(order.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="font-black text-emerald-500 text-sm">${order.total.toLocaleString('es-AR')}</span>
                         </div>
+                        <div className="flex items-start gap-2 text-xs text-muted-foreground pl-6">
+                          <MapPin className="w-3.5 h-3.5 mt-0.5 text-primary/70 shrink-0" />
+                          <span>{order.customerAddress || 'Sin dirección'}</span>
+                        </div>
+                        {order.orderNote && order.orderNote.includes('Repartidor:') && (
+                          <div className="pl-6 mt-1">
+                            <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-0.5">Novedad Registrada</p>
+                            <p className="text-xs text-amber-600 font-medium bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                              {order.orderNote.split('Repartidor:')[1]?.trim()}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      <span className="font-black text-emerald-500 text-sm">${order.total.toLocaleString('es-AR')}</span>
-                    </div>
-                    <div className="flex items-start gap-2 text-xs text-muted-foreground pl-6">
-                      <MapPin className="w-3.5 h-3.5 mt-0.5 text-primary/70 shrink-0" />
-                      <span>{order.customerAddress || 'Sin dirección'}</span>
-                    </div>
-                    {order.orderNote && order.orderNote.includes('Repartidor:') && (
-                      <div className="pl-6 mt-1">
-                        <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-0.5">Novedad Registrada</p>
-                        <p className="text-xs text-amber-600 font-medium bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
-                          {order.orderNote.split('Repartidor:')[1]?.trim()}
-                        </p>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 ))}
               </div>
