@@ -18,6 +18,7 @@ export interface ShiftSettings {
 
 interface SettingsState {
   businessName: string;
+  headerBanner: string;
   employees: Employee[];
   shift: ShiftSettings;
   loading: boolean;
@@ -27,6 +28,7 @@ interface SettingsState {
 
   // Business config
   setBusinessName: (name: string) => void;
+  setHeaderBanner: (url: string) => void;
 
   // Employee Management
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
@@ -43,6 +45,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   businessName: 'Mi Restaurante',
+  headerBanner: (() => { try { return localStorage.getItem('pos_header_banner') || ''; } catch { return ''; } })(),
   employees: [],
   loading: false,
   shift: {
@@ -69,6 +72,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   setBusinessName: (name) => set(() => ({ businessName: name })),
+  setHeaderBanner: (url) => {
+    set(() => ({ headerBanner: url }));
+    try { localStorage.setItem('pos_header_banner', url); } catch {}
+  },
 
   addEmployee: async (emp) => {
     const user = useAuthStore.getState().user;

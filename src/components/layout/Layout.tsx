@@ -40,7 +40,7 @@ interface OrderAlert {
 export default function Layout() {
   const { user, logout } = useAuthStore();
   const { currentSession, initializeCash } = useCashStore();
-  const { businessName, setBusinessName } = useSettingsStore();
+  const { businessName, setBusinessName, headerBanner } = useSettingsStore();
   const { initializeStore, orders } = useOrdersStore();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -174,16 +174,6 @@ export default function Layout() {
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-72 bg-card border-r border-border p-5 shrink-0 justify-between h-full overflow-y-auto">
         <div>
-          {/* Logo */}
-          <div className="flex items-center gap-3 px-2 py-4 mb-4">
-            <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center shadow-lg shadow-primary/30">
-              <Coffee className="w-5 h-5 text-white animate-pulse" />
-            </div>
-            <div className="overflow-hidden">
-              <h1 className="font-extrabold text-base tracking-tight gradient-text truncate max-w-[160px]">{businessName}</h1>
-              <span className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">POS · Multi-Sucursal</span>
-            </div>
-          </div>
 
           {/* User Info + Controls (top) */}
           <div className="flex items-center justify-between mb-3 px-1 py-2 rounded-xl bg-muted/30">
@@ -295,27 +285,43 @@ export default function Layout() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden pb-16 lg:pb-0">
-        {/* Mobile Header */}
-        <header className="lg:hidden flex items-center justify-between p-4 bg-card border-b border-border sticky top-0 z-30">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center">
-              <Coffee className="w-4 h-4 text-white" />
+
+        {/* Top Banner (desktop + mobile) */}
+        <header className="flex items-center justify-between bg-card border-b border-border sticky top-0 z-30 px-4 lg:px-6 py-2 shrink-0">
+          {/* Left: Logo + Business Name */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl gradient-bg flex items-center justify-center shadow-md shadow-primary/30 shrink-0">
+              <Coffee className="w-4 h-4 text-white animate-pulse" />
             </div>
-            <span className="font-bold tracking-tight text-lg">ROTI POS</span>
+            <div className="overflow-hidden">
+              <h1 className="font-extrabold text-sm tracking-tight gradient-text truncate max-w-[160px] leading-tight">{businessName}</h1>
+              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">POS · Multi-Sucursal</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Notifications button */}
+          {/* Center: Configurable Banner slot */}
+          <div className="flex-1 mx-4 h-10 overflow-hidden hidden lg:flex items-center justify-center">
+            {headerBanner ? (
+              <img src={headerBanner} alt="Banner" className="h-full max-h-10 object-contain rounded-lg" />
+            ) : (
+              <div className="text-[10px] text-muted-foreground/40 font-bold uppercase tracking-widest border border-dashed border-border/40 rounded-lg px-4 py-1">
+                Banner publicitario configurable desde Ajustes
+              </div>
+            )}
+          </div>
+
+          {/* Right: quick actions (mobile + desktop) */}
+          <div className="flex items-center gap-1">
+            {/* Notifications button (mobile only — desktop has it in sidebar) */}
             <button
               onClick={() => setNotificationsOpen(true)}
-              className="relative p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
+              className="relative p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors lg:hidden"
             >
               <Bell className={`w-4 h-4 ${orderAlerts.length > 0 ? 'text-amber-500 animate-wiggle' : ''}`} />
               {orderAlerts.length > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-card animate-pulse"></span>
               )}
             </button>
-            {/* Refresh button */}
             <button
               onClick={handleRefresh}
               title="Actualizar datos de la app"

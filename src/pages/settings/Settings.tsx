@@ -11,7 +11,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<'general' | 'mesas' | 'personal' | 'turno' | 'qr' | 'miplan' | 'hardware'>('general');
   
   const { tables, addTable, removeTable } = useOrdersStore();
-  const { employees, addEmployee, removeEmployee, assignTableToWaiter, unassignTableFromWaiter, shift, openShift, closeShift, businessName, setBusinessName } = useSettingsStore();
+  const { employees, addEmployee, removeEmployee, assignTableToWaiter, unassignTableFromWaiter, shift, openShift, closeShift, businessName, setBusinessName, headerBanner, setHeaderBanner } = useSettingsStore();
   const { currentSession } = useCashStore();
   const { user } = useAuthStore();
 
@@ -432,6 +432,48 @@ export default function Settings() {
             ) : (
               <div className="p-4 border border-dashed border-border rounded-xl text-center text-xs text-muted-foreground">
                 No has configurado una imagen de QR de Cobro todavía. Se mostrará un QR genérico al cobrar.
+              </div>
+            )}
+          </div>
+
+          {/* Banner Superior del Panel */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div>
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" /> Banner Superior del Panel
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Pegá la URL de una imagen (logo, promo, publicidad) para mostrarla en la barra superior del sistema, visible para todo el personal.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">URL de la Imagen del Banner</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={headerBanner}
+                  onChange={e => setHeaderBanner(e.target.value)}
+                  className="flex-1 p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-mono"
+                  placeholder="https://ejemplo.com/mi-banner.png"
+                />
+                <button
+                  onClick={() => setHeaderBanner('')}
+                  className="px-4 py-2 rounded-xl font-bold text-sm bg-muted text-muted-foreground hover:bg-muted/70 transition-all"
+                >
+                  Limpiar
+                </button>
+              </div>
+            </div>
+            {headerBanner ? (
+              <div className="p-3 bg-muted/40 border border-border rounded-xl flex flex-col items-center gap-2">
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Vista Previa del Banner</p>
+                <div className="w-full h-12 rounded-lg border border-border flex items-center justify-center bg-card overflow-hidden">
+                  <img src={headerBanner} alt="Banner preview" className="h-full max-h-10 object-contain rounded" />
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 border border-dashed border-border rounded-xl text-center text-xs text-muted-foreground">
+                Sin banner configurado — el espacio central de la barra superior aparecerá vacío.
               </div>
             )}
           </div>
