@@ -11,7 +11,6 @@ import {
   Shield,
   AlertTriangle,
   LogOut,
-  User,
   Menu,
   X,
   Sun,
@@ -89,7 +88,6 @@ export default function Layout() {
     { path: '/history', label: 'Historial General', icon: History, roles: ['super_admin', 'admin', 'supervisor'] },
     // — Middle section —
     { path: '/tables', label: 'Salón & Mesas', icon: Layers, roles: ['super_admin', 'admin', 'mozo', 'supervisor'] },
-    { path: '/waiter', label: 'Toma Pedido (Mozo)', icon: User, roles: ['super_admin', 'admin', 'mozo', 'supervisor'] },
     { path: '/delivery', label: 'Delivery & Repartos', icon: Truck, roles: ['super_admin', 'admin', 'cajero', 'delivery', 'supervisor'] },
     { path: '/inventory', label: 'Inventario & Stock', icon: Package, roles: ['super_admin', 'admin', 'supervisor'] },
     { path: '/audit', label: 'Centro Conciliación', icon: ShieldCheck, roles: ['super_admin', 'admin', 'supervisor'] },
