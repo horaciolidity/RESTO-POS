@@ -175,7 +175,7 @@ export default function Layout() {
       <aside className="hidden lg:flex flex-col w-72 bg-card border-r border-border p-5 shrink-0 justify-between h-full overflow-y-auto">
         <div>
           {/* Logo */}
-          <div className="flex items-center gap-3 px-2 py-4 mb-6">
+          <div className="flex items-center gap-3 px-2 py-4 mb-4">
             <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center shadow-lg shadow-primary/30">
               <Coffee className="w-5 h-5 text-white animate-pulse" />
             </div>
@@ -183,6 +183,52 @@ export default function Layout() {
               <h1 className="font-extrabold text-base tracking-tight gradient-text truncate max-w-[160px]">{businessName}</h1>
               <span className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">POS · Multi-Sucursal</span>
             </div>
+          </div>
+
+          {/* User Info + Controls (top) */}
+          <div className="flex items-center justify-between mb-3 px-1 py-2 rounded-xl bg-muted/30">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                {user.name.slice(0, 2)}
+              </div>
+              <div>
+                <h4 className="font-semibold text-xs leading-none">{user.name}</h4>
+                <span className="text-[10px] text-muted-foreground">{user.branchName}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setNotificationsOpen(true)}
+                className="relative p-1.5 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
+                title="Notificaciones"
+              >
+                <Bell className={`w-4 h-4 ${orderAlerts.length > 0 ? 'text-amber-500 animate-wiggle' : ''}`} />
+                {orderAlerts.length > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-card animate-pulse"></span>
+                )}
+              </button>
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
+                title="Cambiar tema"
+              >
+                {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Cash session status indicator */}
+          <div className="mb-4 flex items-center justify-between p-2 rounded-lg bg-muted/40 text-xs">
+            <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
+              <Wallet className="w-3.5 h-3.5" /> Caja
+            </span>
+            <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] uppercase ${
+              currentSession?.status === 'open'
+                ? 'bg-green-500/10 text-green-500 border border-green-500/20'
+                : 'bg-red-500/10 text-red-500 border border-red-500/20'
+            }`}>
+              {currentSession?.status === 'open' ? 'Abierta' : 'Cerrada'}
+            </span>
           </div>
 
           {/* Navigation Links */}
@@ -223,57 +269,12 @@ export default function Layout() {
           </nav>
         </div>
 
-        {/* User Footer Account details */}
-        <div className="border-t border-border pt-4 mt-6">
-          {/* Cash session status indicator */}
-          <div className="mb-4 flex items-center justify-between p-2 rounded-lg bg-muted/40 text-xs">
-            <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
-              <Wallet className="w-3.5 h-3.5" /> Caja
-            </span>
-            <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] uppercase ${
-              currentSession?.status === 'open' 
-                ? 'bg-green-500/10 text-green-500 border border-green-500/20'
-                : 'bg-red-500/10 text-red-500 border border-red-500/20'
-            }`}>
-              {currentSession?.status === 'open' ? 'Abierta' : 'Cerrada'}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-bold text-xs uppercase">
-                {user.name.slice(0, 2)}
-              </div>
-              <div>
-                <h4 className="font-semibold text-xs leading-none">{user.name}</h4>
-                <span className="text-[10px] text-muted-foreground">{user.branchName}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setNotificationsOpen(true)}
-                className="relative p-1.5 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
-                title="Notificaciones"
-              >
-                <Bell className={`w-4 h-4 ${orderAlerts.length > 0 ? 'text-amber-500 animate-wiggle' : ''}`} />
-                {orderAlerts.length > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-card animate-pulse"></span>
-                )}
-              </button>
-              <button 
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
-              >
-                {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Refresh + Logout */}
+        {/* Footer — Refresh + Logout */}
+        <div className="border-t border-border pt-4 mt-6 space-y-2">
           <button
             onClick={handleRefresh}
             title="Actualizar datos"
-            className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold transition-all border mb-2 ${
+            className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold transition-all border ${
               isRefreshing
                 ? 'bg-primary/10 border-primary/30 text-primary'
                 : 'hover:bg-muted border-transparent text-muted-foreground hover:border-border'
