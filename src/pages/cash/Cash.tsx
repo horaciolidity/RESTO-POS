@@ -4,7 +4,6 @@ import {
   History,
   Lock,
   Unlock,
-  RefreshCw,
   TrendingUp,
   TrendingDown,
   AlertCircle,
@@ -26,7 +25,7 @@ interface Toast {
 
 export default function Cash() {
   const { currentSession, movements, openRegister, closeRegister, addMovement, loading, initializeCash } = useCashStore();
-  const { orders, initializeStore: initializeOrders } = useOrdersStore();
+  const { orders } = useOrdersStore();
   const { user } = useAuthStore();
 
   const [openingBalance, setOpeningBalance] = useState<number>(0);
@@ -36,7 +35,6 @@ export default function Cash() {
   const [closingActualAmount, setClosingActualAmount] = useState<number>(0);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     const id = `t-${Date.now()}`;
@@ -142,12 +140,7 @@ export default function Cash() {
     setMoveDescription('');
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await initializeCash(user?.branchId || 'default');
-    await initializeOrders();
-    setTimeout(() => setRefreshing(false), 600);
-  };
+
 
   const sessionElapsed = currentSession?.openedAt
     ? Math.floor((Date.now() - new Date(currentSession.openedAt).getTime()) / 60000)
@@ -246,13 +239,6 @@ export default function Cash() {
           <h2 className="text-2xl font-bold tracking-tight">Control de Caja & Turno</h2>
           <p className="text-muted-foreground text-xs">Administración del flujo de efectivo, registros diarios y arqueos de cierre.</p>
         </div>
-        <button
-          onClick={handleRefresh}
-          className={`flex items-center gap-1.5 px-3 py-2 bg-muted border border-border rounded-xl text-xs font-bold hover:bg-card transition-all ${refreshing ? 'text-primary' : 'text-muted-foreground'}`}
-        >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-primary' : ''}`} />
-          Actualizar
-        </button>
       </div>
 
       {/* Loading state */}
