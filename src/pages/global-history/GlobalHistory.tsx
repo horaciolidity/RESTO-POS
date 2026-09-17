@@ -74,7 +74,12 @@ export default function GlobalHistory() {
 
   // 2. Cash movements (Only those that aren't the opening balance to avoid duplication)
   movements.forEach(m => {
-    if (m.description === 'Fondo de apertura inicial') return; // Skip initial balance move to avoid duplication with opening session
+    if (
+      m.description === 'Fondo de apertura inicial' || 
+      m.description.startsWith('Cobro Comanda') || 
+      m.description.startsWith('Venta Directa POS')
+    ) return; // Skip initial balance move and auto-generated sale movements to avoid duplication
+
     items.push({
       id: m.id,
       type: m.type as any, // ingreso, egreso, retiro
