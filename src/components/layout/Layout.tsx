@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -19,23 +19,90 @@ import {
   Wallet,
   Settings2,
   History,
-  RefreshCw
+  RefreshCw,
+  Bell,
+  BellRing
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCashStore } from '../../store/useCashStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import { useOrdersStore } from '../../store/useOrdersStore';
+import { useOrdersStore, Order } from '../../store/useOrdersStore';
 import { useGlobalQRScanner } from '../../hooks/useGlobalQRScanner';
+
+interface OrderAlert {
+  id: string;
+  orderId: string;
+  type: 'kitchen_ready' | 'delivery_taken' | 'delivery_delivered';
+  message: string;
+  timestamp: number;
+}
 
 export default function Layout() {
   const { user, logout } = useAuthStore();
   const { currentSession, initializeCash } = useCashStore();
   const { businessName, setBusinessName } = useSettingsStore();
-  const { initializeStore } = useOrdersStore();
+  const { initializeStore, orders } = useOrdersStore();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Notifications State
+  const [orderAlerts, setOrderAlerts] = useState<OrderAlert[]>([]);
+  const prevOrdersRef = useRef<Order[]>(orders);
+
+  // Track order state changes to push notifications globally
+  useEffect(() => {
+    if (orders.length === 0 && prevOrdersRef.current.length === 0) return;
+    
+    const prevOrders = prevOrdersRef.current;
+    const newAlerts: OrderAlert[] = [];
+
+    orders.forEach(currentOrder => {
+      const prevOrder = prevOrders.find(o => o.id === currentOrder.id);
+      if (!prevOrder) return; // ignore initial loads or brand new orders
+
+      // Kitchen: order becomes 'listo'
+      if (prevOrder.status !== 'listo' && currentOrder.status === 'listo') {
+        newAlerts.push({
+          id: `listo-${currentOrder.id}-${Date.now()}`,
+          orderId: currentOrder.id,
+          type: 'kitchen_ready',
+          message: `Pedido #${currentOrder.orderNumber} (Mesa ${currentOrder.tableName || 'S/M'}) está listo para retirar en cocina.`,
+          timestamp: Date.now()
+        });
+      }
+
+      // Delivery: driver assigned / taken
+      if (!prevOrder.deliveryDriverId && currentOrder.deliveryDriverId) {
+        newAlerts.push({
+          id: `taken-${currentOrder.id}-${Date.now()}`,
+          orderId: currentOrder.id,
+          type: 'delivery_taken',
+          message: `Repartidor tomó el pedido #${currentOrder.orderNumber}.`,
+          timestamp: Date.now()
+        });
+      }
+
+      // Delivery: delivered
+      if (prevOrder.deliveryStatus !== 'delivered' && currentOrder.deliveryStatus === 'delivered') {
+        newAlerts.push({
+          id: `delivered-${currentOrder.id}-${Date.now()}`,
+          orderId: currentOrder.id,
+          type: 'delivery_delivered',
+          message: `Repartidor entregó exitosamente el pedido #${currentOrder.orderNumber}.`,
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    if (newAlerts.length > 0) {
+      setOrderAlerts(prev => [...newAlerts, ...prev]);
+    }
+
+    prevOrdersRef.current = orders;
+  }, [orders]);
 
   // Mount global QR scanner (captures USB HID / keyboard-wedge scanners from any screen)
   useGlobalQRScanner();
@@ -182,12 +249,24 @@ export default function Layout() {
                 <span className="text-[10px] text-muted-foreground">{user.branchName}</span>
               </div>
             </div>
-            <button 
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
-            >
-              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setNotificationsOpen(true)}
+                className="relative p-1.5 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
+                title="Notificaciones"
+              >
+                <Bell className={`w-4 h-4 ${orderAlerts.length > 0 ? 'text-amber-500 animate-wiggle' : ''}`} />
+                {orderAlerts.length > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-card animate-pulse"></span>
+                )}
+              </button>
+              <button 
+                onClick={() => setDarkMode(!darkMode)}
+                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
+              >
+                {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {/* Refresh + Logout */}
@@ -225,6 +304,16 @@ export default function Layout() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Notifications button */}
+            <button
+              onClick={() => setNotificationsOpen(true)}
+              className="relative p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
+            >
+              <Bell className={`w-4 h-4 ${orderAlerts.length > 0 ? 'text-amber-500 animate-wiggle' : ''}`} />
+              {orderAlerts.length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-card animate-pulse"></span>
+              )}
+            </button>
             {/* Refresh button */}
             <button
               onClick={handleRefresh}
@@ -345,6 +434,56 @@ export default function Layout() {
                 <LogOut className="w-3.5 h-3.5" />
                 Cerrar Sesión
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Notifications Drawer */}
+      {notificationsOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-end">
+          <div className="w-80 bg-card h-full p-5 flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="font-bold text-lg flex items-center gap-2">
+                <BellRing className="w-5 h-5 text-amber-500" />
+                Notificaciones
+              </h2>
+              <button 
+                onClick={() => setNotificationsOpen(false)}
+                className="p-1 hover:bg-muted rounded-lg text-muted-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3">
+              {orderAlerts.length === 0 ? (
+                <div className="text-center text-muted-foreground p-6 flex flex-col items-center">
+                  <Bell className="w-10 h-10 opacity-20 mb-2" />
+                  <p className="text-xs">No hay notificaciones nuevas</p>
+                </div>
+              ) : (
+                orderAlerts.map(alert => (
+                  <div key={alert.id} className="flex flex-col p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl gap-2 relative">
+                    <div className="flex items-start gap-2">
+                      <BellRing className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-black text-blue-400 leading-tight">
+                          {alert.type === 'kitchen_ready' && '👨‍🍳 Cocina'}
+                          {alert.type === 'delivery_taken' && '🛵 Delivery en Camino'}
+                          {alert.type === 'delivery_delivered' && '✅ Delivery Entregado'}
+                        </p>
+                        <p className="text-[10px] text-blue-400/80 mt-0.5">{alert.message}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setOrderAlerts(prev => prev.filter(a => a.id !== alert.id))}
+                      className="self-end text-[10px] font-black text-blue-500 bg-blue-500/20 px-2.5 py-1 rounded-lg hover:bg-blue-500/30 transition-colors"
+                    >
+                      ✓ Entendido
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
