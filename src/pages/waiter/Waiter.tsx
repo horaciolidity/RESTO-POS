@@ -126,6 +126,14 @@ export default function Waiter() {
   const { currentSession, initializeCash, loading: cashLoading } = useCashStore();
   const navigate = useNavigate();
 
+interface OrderAlert {
+  id: string;
+  orderId: string;
+  type: 'kitchen_ready' | 'delivery_taken' | 'delivery_delivered';
+  message: string;
+  timestamp: number;
+}
+
   // Re-fetch cash only if branchId changes OR if store hasn't loaded yet
   useEffect(() => {
     document.documentElement.classList.add('dark');
@@ -138,6 +146,62 @@ export default function Waiter() {
       return () => clearTimeout(timer);
     }
   }, [user?.branchId]);
+
+  const [orderAlerts, setOrderAlerts] = useState<OrderAlert[]>([]);
+  const prevOrdersRef = useRef<Order[]>(orders);
+
+  // Track order state changes to push notifications
+  useEffect(() => {
+    if (orders.length === 0 && prevOrdersRef.current.length === 0) return;
+    
+    const prevOrders = prevOrdersRef.current;
+    const newAlerts: OrderAlert[] = [];
+
+    orders.forEach(currentOrder => {
+      const prevOrder = prevOrders.find(o => o.id === currentOrder.id);
+      if (!prevOrder) return; // ignore initial loads or brand new orders
+
+      // Kitchen: order becomes 'listo'
+      if (prevOrder.status !== 'listo' && currentOrder.status === 'listo') {
+        newAlerts.push({
+          id: `listo-${currentOrder.id}-${Date.now()}`,
+          orderId: currentOrder.id,
+          type: 'kitchen_ready',
+          message: `Pedido #${currentOrder.orderNumber} (Mesa ${currentOrder.tableName || 'S/M'}) está listo para retirar en cocina.`,
+          timestamp: Date.now()
+        });
+      }
+
+      // Delivery: driver assigned / taken
+      if (!prevOrder.deliveryDriverId && currentOrder.deliveryDriverId) {
+        newAlerts.push({
+          id: `taken-${currentOrder.id}-${Date.now()}`,
+          orderId: currentOrder.id,
+          type: 'delivery_taken',
+          message: `Repartidor tomó el pedido #${currentOrder.orderNumber}.`,
+          timestamp: Date.now()
+        });
+      }
+
+      // Delivery: delivered
+      if (prevOrder.deliveryStatus !== 'delivered' && currentOrder.deliveryStatus === 'delivered') {
+        newAlerts.push({
+          id: `delivered-${currentOrder.id}-${Date.now()}`,
+          orderId: currentOrder.id,
+          type: 'delivery_delivered',
+          message: `Repartidor entregó exitosamente el pedido #${currentOrder.orderNumber}.`,
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    if (newAlerts.length > 0) {
+      setOrderAlerts(prev => [...newAlerts, ...prev]);
+      try { tableCallService.playAlarm(); } catch (e) {} // Play bell sound
+    }
+
+    prevOrdersRef.current = orders;
+  }, [orders]);
 
   // Subscribe to table call events (customers calling the waiter)
   useEffect(() => {
@@ -946,12 +1010,37 @@ export default function Waiter() {
             <div className="space-y-4">
 
               {/* ── Queue Alerts Panel ── */}
-              {(callingTableTokens.size > 0 || pendingCustomerOrders.size > 0) && (
+              {(callingTableTokens.size > 0 || pendingCustomerOrders.size > 0 || orderAlerts.length > 0) && (
                 <div className="space-y-2">
                   <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
                     <BellRing className="w-3.5 h-3.5" />
-                    Alertas en Cola ({callingTableTokens.size + pendingCustomerOrders.size})
+                    Alertas en Cola ({callingTableTokens.size + pendingCustomerOrders.size + orderAlerts.length})
                   </h3>
+
+                  {/* Order state alerts (kitchen / delivery) */}
+                  {orderAlerts.map(alert => (
+                    <div key={alert.id} className="flex items-center justify-between p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <BellRing className="w-4 h-4 text-blue-400 animate-bounce shrink-0" />
+                        <div>
+                          <p className="text-xs font-black text-blue-400">
+                            {alert.type === 'kitchen_ready' && '👨‍🍳 Cocina'}
+                            {alert.type === 'delivery_taken' && '🛵 Delivery en Camino'}
+                            {alert.type === 'delivery_delivered' && '✅ Delivery Entregado'}
+                          </p>
+                          <p className="text-[9px] text-blue-400/70">{alert.message}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setOrderAlerts(prev => prev.filter(a => a.id !== alert.id));
+                        }}
+                        className="text-[9px] font-black text-blue-500 bg-blue-500/20 px-2 py-1 rounded-lg hover:bg-blue-500/30 transition-colors"
+                      >
+                        ✓ Entendido
+                      </button>
+                    </div>
+                  ))}
 
                   {/* Waiter calls */}
                   {callingTableTokens.size > 0 && Array.from(callingTableTokens).map(token => {

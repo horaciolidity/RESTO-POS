@@ -325,7 +325,7 @@ export default function GlobalHistory() {
                     </div>
                     <p className="text-muted-foreground text-[11px]">{item.detail}</p>
                     <div className="flex items-center gap-3 text-[10px] text-muted-foreground/70 font-semibold pt-0.5">
-                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {item.time}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {item.date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {item.time}</span>
                       <span>·</span>
                       <span className="flex items-center gap-1"><User className="w-3 h-3" /> {item.user}</span>
                     </div>
