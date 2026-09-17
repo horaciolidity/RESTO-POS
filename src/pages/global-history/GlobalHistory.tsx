@@ -59,14 +59,15 @@ export default function GlobalHistory() {
 
   // 1. Sales (Orders)
   orders.forEach(o => {
+    const timestamp = o.updatedAt || o.createdAt;
     items.push({
       id: o.id,
       type: 'venta',
       title: `Venta #${o.orderNumber}`,
       detail: `${o.tableName || 'Mostrador'} · ${o.items.length} ítems · ${o.paymentMethod || 'Efectivo'}`,
       amount: o.total,
-      time: new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      date: new Date(o.createdAt),
+      time: new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: new Date(timestamp),
       user: o.waiterName || 'Sistema'
     });
   });
@@ -81,7 +82,7 @@ export default function GlobalHistory() {
       detail: m.description,
       amount: m.amount,
       time: m.time,
-      date: new Date(), // fallback to today
+      date: new Date(m.createdAt || new Date()), 
       user: 'Caja'
     });
   });
@@ -125,7 +126,7 @@ export default function GlobalHistory() {
       title: `Incidente: ${i.type.toUpperCase()}`,
       detail: i.description,
       time: i.time,
-      date: new Date(), // fallback to today
+      date: new Date(i.createdAt || new Date()),
       user: i.user
     });
   });

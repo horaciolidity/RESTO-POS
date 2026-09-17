@@ -54,6 +54,7 @@ export interface Incident {
   user: string;
   type: 'incidente' | 'reclamo' | 'faltante' | 'rotura' | 'error_caja' | 'error_cocina' | 'error_sistema';
   description: string;
+  createdAt: string;
 }
 
 export interface AuditAlert {
@@ -79,7 +80,7 @@ interface OrdersState {
   updateTable: (id: string, updates: Partial<RestaurantTable>) => Promise<void>;
   removeTable: (id: string) => Promise<void>;
   updateTableStatus: (id: string, status: RestaurantTable['status'], currentOrderId?: string) => Promise<void>;
-  addIncident: (incident: Omit<Incident, 'id' | 'time'>) => Promise<void>;
+  addIncident: (incident: Omit<Incident, 'id' | 'time' | 'createdAt'>) => Promise<void>;
   addAuditAlert: (alert: Omit<AuditAlert, 'id' | 'time'>) => void;
   resolveAuditAlert: (id: string) => void;
   updateOrderLocally: (order: Order) => void;
@@ -472,7 +473,8 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
         {
           ...inc,
           id: `i-${Date.now()}`,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          createdAt: new Date().toISOString()
         },
         ...state.incidents
       ]

@@ -22,6 +22,7 @@ export interface CashMovement {
   amount: number;
   description: string;
   time: string;
+  createdAt: string;
 }
 
 // ── localStorage helpers (fallback when Supabase not configured) ──
@@ -78,7 +79,8 @@ function mapMovements(raw: import('../services/cashService').SupabaseCashMovemen
     type: m.type,
     amount: Number(m.amount),
     description: m.description,
-    time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    createdAt: m.created_at
   }));
 }
 
@@ -219,7 +221,8 @@ export const useCashStore = create<CashState>((set, get) => ({
       type: 'ingreso',
       amount: initialBalance,
       description: 'Fondo de apertura inicial',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: now
     };
     const moves = initialBalance > 0 ? [initMove] : [];
 
@@ -302,7 +305,8 @@ export const useCashStore = create<CashState>((set, get) => ({
         type,
         amount,
         description,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdAt: new Date().toISOString()
       };
       const updatedMoves = [...movements, newMove];
       const updatedSession: CashSession = {
