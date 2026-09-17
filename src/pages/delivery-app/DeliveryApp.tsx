@@ -869,12 +869,16 @@ export default function DeliveryApp() {
   }
 
   // ── Historial agrupado por día (más reciente primero) ────────────────────
-  const historialSorted = [...myDeliveredAll].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const historialSorted = [...myDeliveredAll].sort((a, b) => {
+    const timeA = new Date(a.updatedAt || a.createdAt).getTime();
+    const timeB = new Date(b.updatedAt || b.createdAt).getTime();
+    return timeB - timeA;
+  });
+  
   const historialGrouped: Record<string, typeof myDeliveredAll> = {};
   historialSorted.forEach((order) => {
-    const dateKey = order.createdAt.slice(0, 10);
+    const timestamp = order.updatedAt || order.createdAt;
+    const dateKey = timestamp.slice(0, 10);
     if (!historialGrouped[dateKey]) historialGrouped[dateKey] = [];
     historialGrouped[dateKey].push(order);
   });
@@ -1349,7 +1353,7 @@ export default function DeliveryApp() {
                             <div>
                               <p className="font-bold text-sm">#{order.orderNumber} · {order.customerName}</p>
                               <p className="text-[10px] text-muted-foreground">
-                                {new Date(order.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(order.updatedAt || order.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                               </p>
                             </div>
                           </div>

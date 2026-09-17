@@ -33,6 +33,7 @@ export interface Order {
   tips: number;
   total: number;
   createdAt: string;
+  updatedAt?: string;
   paymentMethod?: string;
   paid: boolean;
 }
@@ -205,6 +206,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
         paid: o.paid,
         paymentMethod: o.payment_method || undefined,
         createdAt: o.created_at,
+        updatedAt: o.updated_at,
         items: (o.order_items || []).map(oi => ({
           id: oi.id,
           price: Number(oi.unit_price),
