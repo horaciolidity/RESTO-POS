@@ -4,6 +4,7 @@ import {
   MapPin,
   Phone,
   User,
+  Navigation,
   CheckCircle2,
 } from 'lucide-react';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
