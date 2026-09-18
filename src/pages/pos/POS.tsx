@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search,
   ShoppingCart,
@@ -14,8 +14,7 @@ import {
   QrCode,
   Sparkles,
   Layers,
-  Clock,
-  RefreshCw
+  Clock
 } from 'lucide-react';
 import { useInventoryStore, Product } from '../../store/useInventoryStore';
 import { useCartStore } from '../../store/useCartStore';
@@ -48,16 +47,79 @@ export default function POS() {
     cashAmountPaid,
     setCashAmountPaid
   } = useCartStore();
-  const { addOrder, tables, updateTableStatus, orders, closeOrder, initializeStore } = useOrdersStore();
+  const { addOrder, tables, updateTableStatus, orders, closeOrder } = useOrdersStore();
   const { addMovement } = useCashStore();
 
-  const [isRefreshingOrders, setIsRefreshingOrders] = useState(false);
-  const handleRefreshOrders = useCallback(async () => {
-    if (isRefreshingOrders) return;
-    setIsRefreshingOrders(true);
-    await initializeStore();
-    setTimeout(() => setIsRefreshingOrders(false), 600);
-  }, [isRefreshingOrders, initializeStore]);
+  // Escáner local (para agregar productos directamente a la pre-venta)
+  const [isMultiProductMode, setIsMultiProductMode] = useState(false);
+  const scannerBufferRef = useRef('');
+  const scannerKeyTimeRef = useRef(0);
+  const scannerProcessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const processScanCode = useCallback((code: string) => {
+    // Buscar el producto por código de barra, SKU o ID
+    const product = products.find(p => 
+      p.code.toLowerCase() === code.toLowerCase() || 
+      p.sku.toLowerCase() === code.toLowerCase() || 
+      p.id === code
+    );
+    
+    if (product) {
+      if (product.currentStock <= product.stockCritical) {
+        // Opcional: manejar out of stock
+        return;
+      }
+      addItem(product);
+      if (isMultiProductMode) {
+        setSearchQuery(''); // Clear the search bar if they scanned inside it
+      }
+    }
+  }, [products, addItem, isMultiProductMode]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      // If typing in an input (like search bar), we let the search bar handle its own 'Enter'
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      const now = Date.now();
+      const timeSinceLastKey = now - scannerKeyTimeRef.current;
+      scannerKeyTimeRef.current = now;
+
+      if (timeSinceLastKey > 100 && scannerBufferRef.current.length > 0) {
+        scannerBufferRef.current = '';
+      }
+
+      if (e.key === 'Enter') {
+        if (scannerProcessTimerRef.current) clearTimeout(scannerProcessTimerRef.current);
+        const code = scannerBufferRef.current.trim();
+        if (code.length > 0) {
+          processScanCode(code);
+        }
+        scannerBufferRef.current = '';
+        return;
+      }
+
+      if (e.key.length === 1 && timeSinceLastKey < 80) {
+        scannerBufferRef.current += e.key;
+        if (scannerProcessTimerRef.current) clearTimeout(scannerProcessTimerRef.current);
+        scannerProcessTimerRef.current = setTimeout(() => {
+          const code = scannerBufferRef.current.trim();
+          if (code.length > 0) {
+            processScanCode(code);
+          }
+          scannerBufferRef.current = '';
+        }, 150);
+      } else if (e.key.length === 1) {
+        scannerBufferRef.current = e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [processScanCode]);
+
+
 
   const [isUnpaidOrdersOpen, setIsUnpaidOrdersOpen] = useState(false);
   const [activeOrderIdBeingPaid, setActiveOrderIdBeingPaid] = useState<string | null>(null);
@@ -306,15 +368,36 @@ export default function POS() {
         <div className="lg:col-span-8 flex flex-col space-y-4 h-full min-h-0">
           {/* Search bar & Category filters */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Buscar producto por nombre o código de barra..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-card border border-border focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-11 pr-4 text-sm focus:outline-none placeholder:text-muted-foreground/60 transition-all"
-            />
+          <div className="relative flex-1 flex flex-col gap-2">
+            <div className="relative w-full">
+              <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar producto por nombre o escanear código..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const code = searchQuery.trim();
+                    if (code) {
+                      processScanCode(code);
+                    }
+                  }
+                }}
+                className="w-full bg-card border border-border focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-11 pr-4 text-sm focus:outline-none placeholder:text-muted-foreground/60 transition-all"
+              />
+            </div>
+            <label className="flex items-center gap-2 px-1 cursor-pointer w-max">
+              <input 
+                type="checkbox" 
+                checked={isMultiProductMode} 
+                onChange={(e) => setIsMultiProductMode(e.target.checked)}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary/40 bg-card cursor-pointer"
+              />
+              <span className="text-xs font-bold text-muted-foreground select-none">
+                Escáner Multi-producto (limpiar búsqueda automático al escanear)
+              </span>
+            </label>
           </div>
           <button
             onClick={() => setIsUnpaidOrdersOpen(true)}
@@ -323,21 +406,6 @@ export default function POS() {
             <Layers className="w-4 h-4" />
             Comandas por Cobrar ({orders.filter(o => o.source === 'mesas' && !o.paid).length})
           </button>
-          {/* Refresh orders button — right next to Comandas */}
-          <button
-            onClick={handleRefreshOrders}
-            disabled={isRefreshingOrders}
-            title="Actualizar comandas y pedidos"
-            className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all shrink-0 ${
-              isRefreshingOrders
-                ? 'bg-primary/10 border-primary/30 text-primary'
-                : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
-            }`}
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingOrders ? 'animate-spin' : ''}`} />
-            {isRefreshingOrders ? 'Actualizando...' : 'Actualizar'}
-          </button>
-          
           <div className="flex gap-2 overflow-x-auto pb-1.5 shrink-0 scrollbar-thin">
             <button
               onClick={() => setSelectedCategory(null)}
@@ -1077,20 +1145,6 @@ export default function POS() {
                   </h3>
                   <p className="text-[11px] text-muted-foreground">Listado de comandas de salón que aún no han sido cobradas.</p>
                 </div>
-                {/* Refresh button inside modal */}
-                <button
-                  onClick={handleRefreshOrders}
-                  disabled={isRefreshingOrders}
-                  title="Actualizar lista de comandas"
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                    isRefreshingOrders
-                      ? 'bg-primary/10 border-primary/30 text-primary'
-                      : 'bg-muted border-border text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingOrders ? 'animate-spin' : ''}`} />
-                  {isRefreshingOrders ? 'Actualizando...' : 'Actualizar'}
-                </button>
               </div>
               <button 
                 onClick={() => setIsUnpaidOrdersOpen(false)}
