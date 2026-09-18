@@ -21,7 +21,9 @@ import {
   History,
   RefreshCw,
   Bell,
-  BellRing
+  BellRing,
+  MessageCircle,
+  Crown
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCashStore } from '../../store/useCashStore';
@@ -273,6 +275,17 @@ export default function Layout() {
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             {isRefreshing ? 'Actualizando...' : 'Actualizar Datos'}
           </button>
+          
+          <a
+            href="https://wa.me/542617048835"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-green-500/10 hover:bg-green-500/20 text-green-600 rounded-xl text-xs font-semibold transition-all border border-green-500/20"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Soporte WhatsApp
+          </a>
+
           <button
             onClick={logout}
             className="w-full flex items-center justify-center gap-2 py-2 px-3 hover:bg-red-500/10 text-red-500 rounded-xl text-xs font-semibold transition-all border border-transparent hover:border-red-500/20"
@@ -297,6 +310,30 @@ export default function Layout() {
               <h1 className="font-extrabold text-sm tracking-tight gradient-text truncate max-w-[160px] leading-tight">{businessName}</h1>
               <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">POS · Multi-Sucursal</span>
             </div>
+          </div>
+
+          {/* Subscription / Sales Info */}
+          <div className="hidden lg:flex items-center gap-3 ml-6 p-1.5 bg-muted/40 rounded-xl border border-border/50 text-xs shadow-sm">
+            <div className="flex flex-col items-end px-2">
+              <span className="font-bold text-muted-foreground flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                Plan Gratis (Prueba)
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                {50 - orders.length > 0 ? (
+                  <>Te quedan <b>{50 - orders.length}</b> ventas gratis</>
+                ) : (
+                  <span className="text-red-500 font-bold">Límite de prueba agotado</span>
+                )}
+              </span>
+            </div>
+            <Link 
+              to="/settings" 
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white rounded-lg font-bold shadow-md shadow-orange-500/20 transition-all"
+            >
+              <Crown className="w-3.5 h-3.5" />
+              Mejorar a PRO
+            </Link>
           </div>
 
           {/* Center: Configurable Banner slot */}
