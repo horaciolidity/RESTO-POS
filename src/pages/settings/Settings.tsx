@@ -11,7 +11,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<'general' | 'mesas' | 'personal' | 'turno' | 'qr' | 'miplan' | 'hardware'>('general');
   
   const { tables, addTable, removeTable } = useOrdersStore();
-  const { employees, addEmployee, removeEmployee, assignTableToWaiter, unassignTableFromWaiter, shift, openShift, closeShift, businessName, setBusinessName, headerBanner, setHeaderBanner } = useSettingsStore();
+  const { employees, addEmployee, removeEmployee, assignTableToWaiter, unassignTableFromWaiter, shift, openShift, closeShift, businessName, setBusinessName, headerBanner, setHeaderBanner, tableZones, addTableZone, removeTableZone } = useSettingsStore();
   const { currentSession } = useCashStore();
   const { user } = useAuthStore();
 
@@ -195,8 +195,11 @@ export default function Settings() {
 
   // State for new Table
   const [newTableNum, setNewTableNum] = useState('');
-  const [newTableZone, setNewTableZone] = useState<'Salón Principal' | 'Terraza' | 'Planta Alta'>('Salón Principal');
+  const [newTableZone, setNewTableZone] = useState<string>(tableZones[0] || '');
   const [newTableCap, setNewTableCap] = useState('');
+
+  // State for new Table Zone
+  const [newZoneName, setNewZoneName] = useState('');
 
   // State for new Employee
   const [newEmpFirst, setNewEmpFirst] = useState('');
@@ -526,10 +529,13 @@ export default function Settings() {
       {/* Tab Content: Mesas */}
       {activeTab === 'mesas' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Add Table Form */}
-          <div className="col-span-1 bg-card border border-border rounded-2xl p-5 space-y-4 h-fit">
-            <h3 className="font-bold text-lg">Nueva Mesa</h3>
-            <form onSubmit={handleAddTable} className="space-y-3">
+          {/* Settings Left Column */}
+          <div className="col-span-1 space-y-6">
+            
+            {/* Add Table Form */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+              <h3 className="font-bold text-lg">Nueva Mesa</h3>
+              <form onSubmit={handleAddTable} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-muted-foreground">Número de Mesa</label>
                 <input required type="number" value={newTableNum} onChange={e => setNewTableNum(e.target.value)} className="w-full mt-1 p-2 bg-muted border border-border rounded-xl text-sm" placeholder="Ej: 15" />
@@ -540,10 +546,11 @@ export default function Settings() {
               </div>
               <div>
                 <label className="text-xs font-bold text-muted-foreground">Zona</label>
-                <select value={newTableZone} onChange={e => setNewTableZone(e.target.value as any)} className="w-full mt-1 p-2 bg-muted border border-border rounded-xl text-sm">
-                  <option value="Salón Principal">Salón Principal</option>
-                  <option value="Terraza">Terraza</option>
-                  <option value="Planta Alta">Planta Alta</option>
+                <select value={newTableZone} onChange={e => setNewTableZone(e.target.value)} className="w-full mt-1 p-2 bg-muted border border-border rounded-xl text-sm">
+                  {tableZones.map(zone => (
+                    <option key={zone} value={zone}>{zone}</option>
+                  ))}
+                  {tableZones.length === 0 && <option value="" disabled>Sin zonas</option>}
                 </select>
               </div>
               <button type="submit" className="w-full py-2 bg-primary text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2">
@@ -551,6 +558,56 @@ export default function Settings() {
               </button>
             </form>
           </div>
+
+          {/* Zones Management */}
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+            <h3 className="font-bold text-lg">Espacios / Zonas</h3>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newZoneName}
+                onChange={e => setNewZoneName(e.target.value)}
+                placeholder="Ej: Patio Trasero"
+                className="flex-1 p-2 bg-muted border border-border rounded-xl text-sm"
+              />
+              <button
+                onClick={() => {
+                  if (newZoneName) {
+                    addTableZone(newZoneName);
+                    setNewZoneName('');
+                    if (!newTableZone) setNewTableZone(newZoneName); // auto-select first one if it was empty
+                  }
+                }}
+                className="px-3 py-2 bg-primary text-white rounded-xl font-bold text-sm"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="space-y-2 mt-3">
+              {tableZones.map(zone => (
+                <div key={zone} className="flex justify-between items-center bg-muted p-2 rounded-lg border border-border">
+                  <span className="text-sm font-bold">{zone}</span>
+                  <button
+                    onClick={() => {
+                      if (confirm(`¿Eliminar la zona "${zone}"?`)) {
+                        removeTableZone(zone);
+                      }
+                    }}
+                    className="p-1 text-red-500 hover:bg-red-500/10 rounded"
+                    title="Eliminar Zona"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {tableZones.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center">No hay zonas configuradas.</p>
+              )}
+            </div>
+          </div>
+
+        </div>
 
           {/* Tables List */}
           <div className="col-span-1 md:col-span-2 bg-card border border-border rounded-2xl p-5">

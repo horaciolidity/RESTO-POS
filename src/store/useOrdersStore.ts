@@ -41,7 +41,7 @@ export interface Order {
 export interface RestaurantTable {
   id: string;
   number: number;
-  zone: 'Salón Principal' | 'Terraza' | 'Planta Alta';
+  zone: string;
   capacity: number;
   status: 'libre' | 'ocupada' | 'esperando_comida' | 'comiendo' | 'solicita_cuenta';
   currentOrderId?: string;

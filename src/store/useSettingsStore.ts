@@ -21,6 +21,7 @@ interface SettingsState {
   headerBanner: string;
   employees: Employee[];
   shift: ShiftSettings;
+  tableZones: string[];
   loading: boolean;
 
   // Initializer
@@ -29,6 +30,8 @@ interface SettingsState {
   // Business config
   setBusinessName: (name: string) => void;
   setHeaderBanner: (url: string) => void;
+  addTableZone: (zone: string) => void;
+  removeTableZone: (zone: string) => void;
 
   // Employee Management
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
@@ -46,6 +49,14 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   businessName: 'Mi Restaurante',
   headerBanner: (() => { try { return localStorage.getItem('pos_header_banner') || ''; } catch { return ''; } })(),
+  tableZones: (() => { 
+    try { 
+      const stored = localStorage.getItem('pos_table_zones');
+      return stored ? JSON.parse(stored) : ['Salón Principal', 'Terraza', 'Planta Alta'];
+    } catch { 
+      return ['Salón Principal', 'Terraza', 'Planta Alta']; 
+    } 
+  })(),
   employees: [],
   loading: false,
   shift: {
@@ -75,6 +86,24 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setHeaderBanner: (url) => {
     set(() => ({ headerBanner: url }));
     try { localStorage.setItem('pos_header_banner', url); } catch {}
+  },
+
+  addTableZone: (zone) => {
+    set((state) => {
+      const trimmed = zone.trim();
+      if (!trimmed || state.tableZones.includes(trimmed)) return state;
+      const newZones = [...state.tableZones, trimmed];
+      try { localStorage.setItem('pos_table_zones', JSON.stringify(newZones)); } catch {}
+      return { tableZones: newZones };
+    });
+  },
+
+  removeTableZone: (zone) => {
+    set((state) => {
+      const newZones = state.tableZones.filter(z => z !== zone);
+      try { localStorage.setItem('pos_table_zones', JSON.stringify(newZones)); } catch {}
+      return { tableZones: newZones };
+    });
   },
 
   addEmployee: async (emp) => {

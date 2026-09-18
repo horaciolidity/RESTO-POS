@@ -4,7 +4,6 @@ import {
   MapPin,
   Phone,
   User,
-  Navigation,
   CheckCircle2,
 } from 'lucide-react';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
@@ -171,33 +170,7 @@ export default function Delivery() {
             </div>
           </div>
 
-          {/* Map Simulation Container */}
-          <div className="p-5 bg-card border border-border rounded-2xl space-y-4">
-            <h3 className="font-extrabold text-sm flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-primary" /> Ubicación GPS en Vivo
-            </h3>
-            
-            {/* Visual simulation of routes */}
-            <div className="w-full h-48 bg-gradient-to-tr from-slate-900 via-slate-950 to-indigo-950 rounded-xl relative border border-border overflow-hidden flex items-center justify-center">
-              <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-40" />
-              
-              {/* Map simulated routes drawing */}
-              <div className="w-32 h-1 bg-primary/20 absolute rotate-12" />
-              <div className="w-44 h-1 bg-primary/20 absolute -rotate-45" />
 
-              {/* Ping markers */}
-              <div className="w-6 h-6 rounded-full bg-primary/20 border border-primary flex items-center justify-center absolute top-12 left-16 animate-pulse">
-                <MapPin className="w-3.5 h-3.5 text-primary" />
-              </div>
-              <div className="w-6 h-6 rounded-full bg-green-500/20 border border-green-500 flex items-center justify-center absolute bottom-12 right-20 animate-pulse">
-                <Truck className="w-3 h-3 text-green-500" />
-              </div>
-
-              <span className="text-[10px] text-slate-400 font-mono absolute bottom-3 left-3 bg-black/60 px-2 py-0.5 rounded border border-white/5">
-                GPS: 34.6037° S, 58.3816° W
-              </span>
-            </div>
-          </div>
 
         </div>
 
