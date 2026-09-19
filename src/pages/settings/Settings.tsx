@@ -6,6 +6,7 @@ import { useCashStore } from '../../store/useCashStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { supabase } from '../../services/supabase';
 import { Link } from 'react-router-dom';
+import { MPPaymentBrick } from '../../components/payment/MPPaymentBrick';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<'general' | 'mesas' | 'personal' | 'turno' | 'qr' | 'miplan' | 'hardware'>('general');
@@ -23,6 +24,37 @@ export default function Settings() {
   const [submittingAlert, setSubmittingAlert] = useState(false);
   const [alertSent, setAlertSent] = useState(false);
   const [myAlerts, setMyAlerts] = useState<any[]>([]);
+
+  // MP Bricks State
+  const [mpPreferenceId, setMpPreferenceId] = useState<string | null>(null);
+  const [creatingPreference, setCreatingPreference] = useState(false);
+
+  const startMPPayment = async () => {
+    if (!user) return;
+    setCreatingPreference(true);
+    try {
+      const amount = paymentPlan === 'standard' ? (platformConfig.price_standard_monthly || 28100) : (platformConfig.price_pro_monthly || 44900);
+      
+      const { data, error } = await supabase.functions.invoke('create-mp-preference', {
+        body: {
+          plan_type: paymentPlan,
+          tenant_id: user.id,
+          tenant_name: businessName || user.email,
+          amount: amount
+        }
+      });
+      
+      if (error) throw error;
+      if (data?.preference_id) {
+        setMpPreferenceId(data.preference_id);
+      }
+    } catch (err) {
+      console.error('Error creating MP preference:', err);
+      alert('Hubo un error al iniciar el pago con MercadoPago. Por favor intentá nuevamente.');
+    } finally {
+      setCreatingPreference(false);
+    }
+  };
 
   // Hardware config state
   const [hwConfig, setHwConfig] = useState(() => {
@@ -1044,10 +1076,60 @@ export default function Settings() {
 
           {/* Payment info + notification form */}
           <div className="space-y-4">
+            {/* MercadoPago Direct Integration */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-blue-500" /> Pagar Plan con MercadoPago
+              </h3>
+              
+              {!mpPreferenceId ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Plan que querés contratar</label>
+                    <select value={paymentPlan} onChange={e => setPaymentPlan(e.target.value as any)}
+                      className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                      <option value="standard">Estándar — ${Number(platformConfig.price_standard_monthly || 28100).toLocaleString('es-AR')}/mes</option>
+                      <option value="pro">Pro — ${Number(platformConfig.price_pro_monthly || 44900).toLocaleString('es-AR')}/mes</option>
+                    </select>
+                  </div>
+                  
+                  <button 
+                    onClick={startMPPayment} 
+                    disabled={creatingPreference}
+                    className="w-full py-3 bg-[#009EE3] hover:bg-[#008CCh] text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    {creatingPreference ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    {creatingPreference ? 'Iniciando MercadoPago...' : 'Pagar de forma segura'}
+                  </button>
+                </div>
+              ) : (
+                <div className="border border-blue-500/20 bg-blue-500/5 rounded-xl p-4 mt-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-bold text-sm text-blue-400">Completá tu pago seguro</h4>
+                    <button 
+                      onClick={() => setMpPreferenceId(null)}
+                      className="text-xs text-muted-foreground hover:text-white"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                  <MPPaymentBrick 
+                    preferenceId={mpPreferenceId} 
+                    amount={paymentPlan === 'standard' ? Number(platformConfig.price_standard_monthly || 28100) : Number(platformConfig.price_pro_monthly || 44900)} 
+                    onSuccess={() => {
+                      alert('¡Pago completado! Su plan se activará en breve.');
+                      setMpPreferenceId(null);
+                    }}
+                    onError={() => alert('Hubo un error con MercadoPago')}
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Bank data to transfer to */}
             {(platformConfig.payment_cbu || platformConfig.payment_alias || platformConfig.payment_mp_link) && (
               <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                <h3 className="font-bold text-sm flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-primary" /> Datos para transferir</h3>
+                <h3 className="font-bold text-sm flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-primary" /> Datos para transferir manualmente</h3>
                 {platformConfig.payment_holder_name && (
                   <p className="text-sm"><span className="text-muted-foreground">Titular:</span> <strong>{platformConfig.payment_holder_name}</strong></p>
                 )}
@@ -1075,90 +1157,66 @@ export default function Settings() {
                     </button>
                   </div>
                 )}
-                {platformConfig.payment_mp_link && (
-                  <div className="space-y-2">
-                    <div className="flex justify-center">
-                      <div className="p-2 bg-white rounded-xl shadow">
-                        <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(platformConfig.payment_mp_link)}`}
-                          alt="QR MercadoPago" className="w-[140px] h-[140px]"
-                        />
-                      </div>
-                    </div>
-                    <a href={platformConfig.payment_mp_link} target="_blank" rel="noopener noreferrer"
-                      className="w-full py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors">
-                      <ExternalLink className="w-3.5 h-3.5" /> Pagar con MercadoPago
-                    </a>
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Notify payment form */}
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-              <div>
-                <h3 className="font-bold text-base flex items-center gap-2"><Bell className="w-5 h-5 text-amber-400" /> Avisá que pagaste</h3>
-                <p className="text-xs text-muted-foreground mt-1">Completá este formulario después de transferir. El administrador recibirá el aviso y activará tu plan.</p>
-              </div>
-
-              {alertSent ? (
-                <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center space-y-2">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
-                  <p className="font-bold text-emerald-400">¡Aviso enviado!</p>
-                  <p className="text-xs text-muted-foreground">El administrador revisará tu transferencia y activará el plan en breve.</p>
+              {/* Notify payment form */}
+              <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                <div>
+                  <h3 className="font-bold text-base flex items-center gap-2"><Bell className="w-5 h-5 text-amber-400" /> Aviso manual de transferencia</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Si transferiste manualmente, completá este formulario. El administrador revisará el pago.</p>
                 </div>
-              ) : (
-                <form onSubmit={submitPaymentAlert} className="space-y-3">
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Plan que querés contratar</label>
-                    <select value={paymentPlan} onChange={e => setPaymentPlan(e.target.value as any)}
-                      className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-                      <option value="standard">Estándar — ${Number(platformConfig.price_standard_monthly || 28100).toLocaleString('es-AR')}/mes</option>
-                      <option value="pro">Pro — ${Number(platformConfig.price_pro_monthly || 44900).toLocaleString('es-AR')}/mes</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Nombre del que transfirió *</label>
-                    <input required type="text" value={paymentSenderName} onChange={e => setPaymentSenderName(e.target.value)}
-                      className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                      placeholder="Ej: Juan Pérez" />
-                    <p className="text-[11px] text-muted-foreground mt-1">Tal como aparece en el comprobante de transferencia</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Notas adicionales (opcional)</label>
-                    <textarea value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)}
-                      className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-                      rows={2} placeholder="Ej: Transferí el 11/06 a las 14:30 hs desde cuenta Galicia..." />
-                  </div>
-                  <button type="submit" disabled={submittingAlert}
-                    className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2">
-                    {submittingAlert ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
-                    {submittingAlert ? 'Enviando...' : 'Enviar aviso de pago'}
-                  </button>
-                </form>
-              )}
 
-              {/* My recent alerts */}
-              {myAlerts.length > 0 && (
-                <div className="border-t border-border pt-4 space-y-2">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Mis avisos enviados</p>
-                  {myAlerts.map(a => (
-                    <div key={a.id} className="flex items-center justify-between text-xs p-2.5 bg-muted/40 rounded-lg">
-                      <span className="font-medium">{a.sender_name} · Plan {a.plan_type}</span>
-                      <span className={`font-bold px-2 py-0.5 rounded-full ${
-                        a.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400' :
-                        a.status === 'rejected' ? 'bg-red-500/10 text-red-400' :
-                        'bg-amber-500/10 text-amber-400'
-                      }`}>
-                        {a.status === 'confirmed' ? '✓ Activado' : a.status === 'rejected' ? '✗ Rechazado' : '⏳ Pendiente'}
-                      </span>
+                {alertSent ? (
+                  <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center space-y-2">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
+                    <p className="font-bold text-emerald-400">¡Aviso enviado!</p>
+                    <p className="text-xs text-muted-foreground">El administrador revisará tu transferencia y activará el plan en breve.</p>
+                  </div>
+                ) : (
+                  <form onSubmit={submitPaymentAlert} className="space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Nombre del que transfirió *</label>
+                      <input required type="text" value={paymentSenderName} onChange={e => setPaymentSenderName(e.target.value)}
+                        className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        placeholder="Ej: Juan Pérez" />
+                      <p className="text-[11px] text-muted-foreground mt-1">Tal como aparece en el comprobante de transferencia</p>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Notas adicionales (opcional)</label>
+                      <textarea value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)}
+                        className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                        rows={2} placeholder="Ej: Transferí el 11/06 a las 14:30 hs desde cuenta Galicia..." />
+                    </div>
+                    <button type="submit" disabled={submittingAlert}
+                      className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2">
+                      {submittingAlert ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                      {submittingAlert ? 'Enviando...' : 'Enviar aviso manual'}
+                    </button>
+                  </form>
+                )}
+
+                {/* My recent alerts */}
+                {myAlerts.length > 0 && (
+                  <div className="border-t border-border pt-4 space-y-2">
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Mis avisos enviados</p>
+                    {myAlerts.map(a => (
+                      <div key={a.id} className="flex items-center justify-between text-xs p-2.5 bg-muted/40 rounded-lg">
+                        <span className="font-medium">{a.sender_name} · Plan {a.plan_type}</span>
+                        <span className={`font-bold px-2 py-0.5 rounded-full ${
+                          a.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400' :
+                          a.status === 'rejected' ? 'bg-red-500/10 text-red-400' :
+                          'bg-amber-500/10 text-amber-400'
+                        }`}>
+                          {a.status === 'confirmed' ? '✓ Activado' : a.status === 'rejected' ? '✗ Rechazado' : '⏳ Pendiente'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
       )}
       {/* Tab Content: Periféricos */}
       {activeTab === 'hardware' && (
