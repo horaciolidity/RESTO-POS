@@ -30,6 +30,7 @@ import { useCashStore } from '../../store/useCashStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 import { useGlobalQRScanner } from '../../hooks/useGlobalQRScanner';
+import { supabase } from '../../services/supabase';
 
 interface OrderAlert {
   id: string;
@@ -42,19 +43,31 @@ interface OrderAlert {
 export default function Layout() {
   const { user, logout } = useAuthStore();
   const { currentSession, initializeCash } = useCashStore();
-  const { businessName, setBusinessName, headerBanner } = useSettingsStore();
+  const { businessName, setBusinessName } = useSettingsStore();
   const { initializeStore, orders } = useOrdersStore();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [globalBanner, setGlobalBanner] = useState('');
 
   // Notifications State
   const [orderAlerts, setOrderAlerts] = useState<OrderAlert[]>([]);
   const prevOrdersRef = useRef<Order[]>(orders);
 
   // Track order state changes to push notifications globally
+  useEffect(() => {
+    // Fetch global banner once on load
+    const loadGlobalBanner = async () => {
+      const { data } = await supabase.from('platform_config').select('value').eq('key', 'global_header_banner').single();
+      if (data) {
+        setGlobalBanner(data.value);
+      }
+    };
+    loadGlobalBanner();
+  }, []);
+
   useEffect(() => {
     if (orders.length === 0 && prevOrdersRef.current.length === 0) return;
     
@@ -338,13 +351,9 @@ export default function Layout() {
 
           {/* Center: Configurable Banner slot */}
           <div className="flex-1 mx-4 h-10 overflow-hidden hidden lg:flex items-center justify-center">
-            {headerBanner ? (
-              <img src={headerBanner} alt="Banner" className="h-full max-h-10 object-contain rounded-lg" />
-            ) : (
-              <div className="text-[10px] text-muted-foreground/40 font-bold uppercase tracking-widest border border-dashed border-border/40 rounded-lg px-4 py-1">
-                Banner publicitario configurable desde Ajustes
-              </div>
-            )}
+            {globalBanner ? (
+              <img src={globalBanner} alt="Banner" className="h-full max-h-10 object-contain rounded-lg" />
+            ) : null}
           </div>
 
           {/* Right: quick actions (mobile + desktop) */}

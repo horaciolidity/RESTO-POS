@@ -4,7 +4,7 @@ import {
   Building2, Shield, CheckCircle, XCircle, Crown, Zap, Star,
   RefreshCw, ToggleLeft, ToggleRight, BarChart3, Globe, CreditCard, AlertCircle,
   Search, Calendar, Bell, QrCode, DollarSign, Copy, Check,
-  ExternalLink, Save, Banknote, Wallet
+  ExternalLink, Save, Banknote, Wallet, Sparkles
 } from 'lucide-react';
 
 /* ─────────────────────── Types ─────────────────────── */
@@ -38,6 +38,7 @@ interface PlatformConfig {
   payment_alias: string;
   payment_mp_link: string;
   payment_holder_name: string;
+  global_header_banner?: string;
 }
 
 /* ─────────────────────── Constants ─────────────────────── */
@@ -50,6 +51,7 @@ const DEFAULT_CONFIG: PlatformConfig = {
   payment_alias: '',
   payment_mp_link: '',
   payment_holder_name: '',
+  global_header_banner: '',
 };
 
 const PLAN_LABELS: Record<string, { label: string; color: string; icon: any }> = {
@@ -60,7 +62,7 @@ const PLAN_LABELS: Record<string, { label: string; color: string; icon: any }> =
   enterprise:{ label: 'Enterprise',   color: 'text-rose-400 bg-rose-500/10 border-rose-500/20',    icon: Shield },
 };
 
-type TabId = 'empresas' | 'alertas' | 'pagos' | 'precios';
+type TabId = 'empresas' | 'alertas' | 'pagos' | 'precios' | 'ajustes';
 
 /* ─────────────────────── Component ─────────────────────── */
 export default function SuperAdmin() {
@@ -214,6 +216,7 @@ export default function SuperAdmin() {
     { id: 'alertas',  label: 'Alertas de Pago', icon: Bell, badge: pendingAlerts },
     { id: 'pagos',    label: 'Métodos de Pago', icon: Wallet },
     { id: 'precios',  label: 'Precios de Planes', icon: DollarSign },
+    { id: 'ajustes',  label: 'Ajustes Globales', icon: Sparkles },
   ];
 
   return (
@@ -753,6 +756,65 @@ export default function SuperAdmin() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: AJUSTES GLOBALES ── */}
+      {activeTab === 'ajustes' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div>
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" /> Banner Global de Plataforma
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Este banner se mostrará en la barra superior de <b>todas las empresas</b> del sistema. Usalo para promociones, avisos o marca blanca.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">URL de la Imagen del Banner</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={editConfig.global_header_banner || ''}
+                  onChange={e => setEditConfig(p => ({ ...p, global_header_banner: e.target.value }))}
+                  className="flex-1 p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-mono"
+                  placeholder="https://ejemplo.com/banner-global.png"
+                />
+                <button
+                  onClick={() => setEditConfig(p => ({ ...p, global_header_banner: '' }))}
+                  className="px-4 py-2 rounded-xl font-bold text-sm bg-muted text-muted-foreground hover:bg-muted/70 transition-all"
+                >
+                  Limpiar
+                </button>
+              </div>
+            </div>
+
+            <button onClick={saveConfig} disabled={savingConfig}
+              className={`w-full py-3 mt-2 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                configSaved ? 'bg-green-500 text-white' : 'bg-primary text-white hover:opacity-90'
+              }`}>
+              {savingConfig ? <RefreshCw className="w-4 h-4 animate-spin" /> : configSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {configSaved ? '✓ Configuración guardada' : 'Guardar Ajustes'}
+            </button>
+          </div>
+
+          {/* Vista previa */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-widest">Vista previa del banner global</h3>
+            {editConfig.global_header_banner ? (
+              <div className="p-3 bg-muted/40 border border-border rounded-xl flex flex-col items-center gap-2">
+                <div className="w-full h-12 rounded-lg border border-border flex items-center justify-center bg-card overflow-hidden">
+                  <img src={editConfig.global_header_banner} alt="Banner global preview" className="h-full max-h-10 object-contain rounded" />
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 border border-dashed border-border rounded-xl text-center text-xs text-muted-foreground">
+                <Sparkles className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                Sin banner global configurado.
+              </div>
+            )}
           </div>
         </div>
       )}

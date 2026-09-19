@@ -18,7 +18,6 @@ export interface ShiftSettings {
 
 interface SettingsState {
   businessName: string;
-  headerBanner: string;
   employees: Employee[];
   shift: ShiftSettings;
   tableZones: string[];
@@ -29,7 +28,6 @@ interface SettingsState {
 
   // Business config
   setBusinessName: (name: string) => void;
-  setHeaderBanner: (url: string) => void;
   addTableZone: (zone: string) => void;
   removeTableZone: (zone: string) => void;
 
@@ -48,7 +46,6 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   businessName: 'Mi Restaurante',
-  headerBanner: (() => { try { return localStorage.getItem('pos_header_banner') || ''; } catch { return ''; } })(),
   tableZones: (() => { 
     try { 
       const stored = localStorage.getItem('pos_table_zones');
@@ -83,10 +80,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   setBusinessName: (name) => set(() => ({ businessName: name })),
-  setHeaderBanner: (url) => {
-    set(() => ({ headerBanner: url }));
-    try { localStorage.setItem('pos_header_banner', url); } catch {}
-  },
 
   addTableZone: (zone) => {
     set((state) => {
