@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { supabase } from '../../services/supabase';
 import {
   TrendingUp,
   ShoppingBag,
@@ -51,6 +53,20 @@ export default function Dashboard() {
   const { user } = useAuthStore();
   const { orders } = useOrdersStore();
   const { products } = useInventoryStore();
+
+  const [platformConfig, setPlatformConfig] = useState<any>({});
+
+  useEffect(() => {
+    async function loadPlatformConfig() {
+      const { data } = await supabase.from('platform_config').select('key, value');
+      if (data) {
+        const map: any = {};
+        data.forEach((r: any) => { map[r.key] = r.value; });
+        setPlatformConfig(map);
+      }
+    }
+    loadPlatformConfig();
+  }, []);
 
   if (user?.role === 'mozo') {
     return <Navigate to="/waiter" replace />;
@@ -443,8 +459,8 @@ export default function Dashboard() {
               <p className="text-xs text-slate-400">Perfecto para negocios gastronómicos en crecimiento.</p>
               
               <div className="pt-2 space-y-1">
-                <p className="text-2xl font-black text-primary">$28.100 <span className="text-xs text-muted-foreground">/ mes</span></p>
-                <p className="text-[11px] text-green-500 font-semibold">Anual: $281.000 / año (¡Ahorra 2 meses de suscripción!)</p>
+                <p className="text-2xl font-black text-primary">${Number(platformConfig.price_standard_monthly || 28100).toLocaleString('es-AR')} <span className="text-xs text-muted-foreground">/ mes</span></p>
+                <p className="text-[11px] text-green-500 font-semibold">Anual: ${Number(platformConfig.price_standard_annual || 281000).toLocaleString('es-AR')} / año (¡Ahorra 2 meses de suscripción!)</p>
               </div>
 
               <ul className="text-xs space-y-2 pt-2 text-slate-300">
@@ -470,8 +486,8 @@ export default function Dashboard() {
               <p className="text-xs text-slate-400">La suite completa e integrada en tiempo real para tu personal y tus clientes.</p>
 
               <div className="pt-2 space-y-1">
-                <p className="text-2xl font-black text-purple-400">$44.900 <span className="text-xs text-muted-foreground">/ mes</span></p>
-                <p className="text-[11px] text-green-400 font-semibold">Anual: $449.000 / año (¡Ahorra 2 meses de suscripción!)</p>
+                <p className="text-2xl font-black text-purple-400">${Number(platformConfig.price_pro_monthly || 44900).toLocaleString('es-AR')} <span className="text-xs text-muted-foreground">/ mes</span></p>
+                <p className="text-[11px] text-green-400 font-semibold">Anual: ${Number(platformConfig.price_pro_annual || 449000).toLocaleString('es-AR')} / año (¡Ahorra 2 meses de suscripción!)</p>
               </div>
 
               <ul className="text-xs space-y-2 pt-2 text-slate-300">
