@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Coffee, User, Lock, Mail, Building, Check, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { authService } from '../../services/authService';
+import { supabase } from '../../services/supabase';
 
 export default function Login() {
   const { login, loading: authStoreLoading } = useAuthStore();
@@ -16,6 +17,20 @@ export default function Login() {
   // Register fields
   const [companyName, setCompanyName] = useState('');
   const [adminName, setAdminName] = useState('');
+
+  const [platformConfig, setPlatformConfig] = useState<any>({});
+
+  useEffect(() => {
+    async function loadPlatformConfig() {
+      const { data } = await supabase.from('platform_config').select('key, value');
+      if (data) {
+        const map: any = {};
+        data.forEach((r: any) => { map[r.key] = r.value; });
+        setPlatformConfig(map);
+      }
+    }
+    loadPlatformConfig();
+  }, []);
 
   const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +135,7 @@ export default function Login() {
               <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 space-y-2">
                 <div className="flex justify-between items-start">
                   <span className="text-sm font-bold text-white">Plan Estándar</span>
-                  <span className="text-xs font-semibold text-primary">$28.100 <span className="text-[10px] text-slate-400 font-normal">/mes</span></span>
+                  <span className="text-xs font-semibold text-primary">${Number(platformConfig.price_standard_monthly || 28100).toLocaleString('es-AR')} <span className="text-[10px] text-slate-400 font-normal">/mes</span></span>
                 </div>
                 <p className="text-[11px] text-slate-400 leading-tight">
                   Ideal para locales que buscan ordenar el POS, caja e inventario.
@@ -148,7 +163,7 @@ export default function Login() {
                 </div>
                 <div className="flex justify-between items-start">
                   <span className="text-sm font-bold text-white">Plan Pro</span>
-                  <span className="text-xs font-semibold text-purple-400">$44.900 <span className="text-[10px] text-slate-400 font-normal">/mes</span></span>
+                  <span className="text-xs font-semibold text-purple-400">${Number(platformConfig.price_pro_monthly || 44900).toLocaleString('es-AR')} <span className="text-[10px] text-slate-400 font-normal">/mes</span></span>
                 </div>
                 <p className="text-[11px] text-slate-400 leading-tight">
                   Para restaurantes con mozos, cocina y autogestión de clientes.

@@ -28,26 +28,31 @@ export default function Settings() {
 
   // MP Bricks State
   const [mpPreferenceId, setMpPreferenceId] = useState<string | null>(null);
+  const [mpInitPoint, setMpInitPoint] = useState<string | null>(null);
   const [creatingPreference, setCreatingPreference] = useState(false);
+  const [paymentMonths, setPaymentMonths] = useState<number>(1);
 
   const startMPPayment = async () => {
     if (!user) return;
     setCreatingPreference(true);
     try {
-      const amount = paymentPlan === 'standard' ? (platformConfig.price_standard_monthly || 28100) : (platformConfig.price_pro_monthly || 44900);
+      const baseAmount = paymentPlan === 'standard' ? (platformConfig.price_standard_monthly || 28100) : (platformConfig.price_pro_monthly || 44900);
+      const totalAmount = Number(baseAmount) * paymentMonths;
       
       const { data, error } = await supabase.functions.invoke('create-mp-preference', {
         body: {
           plan_type: paymentPlan,
           tenant_id: user.id,
           tenant_name: businessName || user.email,
-          amount: amount
+          amount: totalAmount,
+          months: paymentMonths
         }
       });
       
       if (error) throw error;
       if (data?.preference_id) {
         setMpPreferenceId(data.preference_id);
+        setMpInitPoint(data.init_point || null);
       }
     } catch (err) {
       console.error('Error creating MP preference:', err);
@@ -1091,13 +1096,32 @@ export default function Settings() {
               
               {!mpPreferenceId ? (
                 <div className="space-y-4">
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Plan que querés contratar</label>
-                    <select value={paymentPlan} onChange={e => setPaymentPlan(e.target.value as any)}
-                      className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-                      <option value="standard">Estándar — ${Number(platformConfig.price_standard_monthly || 28100).toLocaleString('es-AR')}/mes</option>
-                      <option value="pro">Pro — ${Number(platformConfig.price_pro_monthly || 44900).toLocaleString('es-AR')}/mes</option>
-                    </select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Plan que querés contratar</label>
+                      <select value={paymentPlan} onChange={e => setPaymentPlan(e.target.value as any)}
+                        className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                        <option value="standard">Estándar — ${Number(platformConfig.price_standard_monthly || 28100).toLocaleString('es-AR')}/mes</option>
+                        <option value="pro">Pro — ${Number(platformConfig.price_pro_monthly || 44900).toLocaleString('es-AR')}/mes</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Duración (Meses)</label>
+                      <select value={paymentMonths} onChange={e => setPaymentMonths(Number(e.target.value))}
+                        className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                        <option value={1}>1 Mes</option>
+                        <option value={6}>6 Meses</option>
+                        <option value={10}>10 Meses (+2 Gratis)</option>
+                        <option value={20}>20 Meses (+4 Gratis)</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex justify-between items-center">
+                    <span className="text-sm font-bold text-primary">Total a Pagar:</span>
+                    <span className="text-lg font-black text-primary">
+                      ${((paymentPlan === 'standard' ? Number(platformConfig.price_standard_monthly || 28100) : Number(platformConfig.price_pro_monthly || 44900)) * paymentMonths).toLocaleString('es-AR')}
+                    </span>
                   </div>
                   
                   <button 
@@ -1110,22 +1134,38 @@ export default function Settings() {
                   </button>
                 </div>
               ) : (
-                <div className="border border-blue-500/20 bg-blue-500/5 rounded-xl p-4 mt-4">
-                  <div className="flex justify-between items-center mb-4">
+                <div className="border border-blue-500/20 bg-blue-500/5 rounded-xl p-4 mt-4 space-y-4">
+                  <div className="flex justify-between items-center mb-2">
                     <h4 className="font-bold text-sm text-blue-400">Completá tu pago seguro</h4>
                     <button 
-                      onClick={() => setMpPreferenceId(null)}
+                      onClick={() => { setMpPreferenceId(null); setMpInitPoint(null); }}
                       className="text-xs text-muted-foreground hover:text-white"
                     >
                       Cancelar
                     </button>
                   </div>
+                  
+                  {mpInitPoint && (
+                    <div className="flex flex-col items-center justify-center bg-white rounded-xl p-4 w-fit mx-auto shadow-sm">
+                      <p className="text-xs font-bold text-slate-800 mb-2 uppercase tracking-wide">Escaneá para Pagar</p>
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(mpInitPoint)}`} 
+                        alt="QR Pago MercadoPago"
+                        className="w-40 h-40 object-contain"
+                      />
+                      <a href={mpInitPoint} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-blue-500 hover:underline mt-2">
+                        O click aquí para ir a MercadoPago
+                      </a>
+                    </div>
+                  )}
+
                   <MPPaymentBrick 
                     preferenceId={mpPreferenceId} 
-                    amount={paymentPlan === 'standard' ? Number(platformConfig.price_standard_monthly || 28100) : Number(platformConfig.price_pro_monthly || 44900)} 
+                    amount={(paymentPlan === 'standard' ? Number(platformConfig.price_standard_monthly || 28100) : Number(platformConfig.price_pro_monthly || 44900)) * paymentMonths} 
                     onSuccess={() => {
                       alert('¡Pago completado! Su plan se activará en breve.');
                       setMpPreferenceId(null);
+                      setMpInitPoint(null);
                     }}
                     onError={() => alert('Hubo un error con MercadoPago')}
                   />

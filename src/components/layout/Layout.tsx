@@ -60,7 +60,7 @@ export default function Layout() {
   useEffect(() => {
     // Fetch global banner once on load
     const loadGlobalBanner = async () => {
-      const { data } = await supabase.from('platform_config').select('value').eq('key', 'global_header_banner').single();
+      const { data } = await supabase.from('platform_config').select('value').eq('key', 'global_header_banner').maybeSingle();
       if (data) {
         setGlobalBanner(data.value);
       }

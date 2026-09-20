@@ -35,6 +35,7 @@ serve(async (req) => {
       if (paymentData.status === 'approved') {
         const tenant_id = paymentData.metadata?.tenant_id
         const plan_type = paymentData.metadata?.plan_type
+        const paid_months = Number(paymentData.metadata?.months) || 1
 
         if (tenant_id && plan_type) {
           // Initialize Supabase client to update the tenant
@@ -47,12 +48,36 @@ serve(async (req) => {
 
           const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-          // Update the tenant's plan in Supabase
+          // 1. Get current tenant data to calculate new date
+          const { data: tenant } = await supabase.from('tenants').select('subscription_end').eq('id', tenant_id).single()
+          
+          let startDate = new Date()
+          if (tenant?.subscription_end) {
+            const currentEnd = new Date(tenant.subscription_end)
+            if (currentEnd > startDate) {
+              startDate = currentEnd
+            }
+          }
+
+          // 2. Calculate added months (promotions)
+          let monthsToAdd = paid_months
+          if (paid_months >= 20) {
+            monthsToAdd = 24
+          } else if (paid_months >= 10) {
+            monthsToAdd = 12
+          }
+
+          startDate.setMonth(startDate.getMonth() + monthsToAdd)
+          const newEndDate = startDate.toISOString().split('T')[0] // YYYY-MM-DD
+
+          // 3. Update the tenant's plan in Supabase
           const { error } = await supabase
             .from('tenants')
             .update({ 
               plan_type: plan_type,
-              active: true
+              active: true,
+              subscription_end: newEndDate,
+              months_paid: paid_months
             })
             .eq('id', tenant_id)
 
@@ -61,7 +86,7 @@ serve(async (req) => {
             throw error
           }
 
-          console.log(`Successfully updated tenant ${tenant_id} to plan ${plan_type}`)
+          console.log(`Successfully updated tenant ${tenant_id} to plan ${plan_type} until ${newEndDate}`)
         }
       }
     }

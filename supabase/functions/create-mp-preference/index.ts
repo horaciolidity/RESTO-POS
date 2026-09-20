@@ -1,6 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
-import { MercadoPagoConfig, Preference } from "https://esm.sh/mercadopago@2.0.10"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { plan_type, tenant_id, tenant_name, amount } = await req.json()
+    const { plan_type, tenant_id, tenant_name, amount, months } = await req.json()
 
     if (!plan_type || !tenant_id || !amount) {
       return new Response(
@@ -29,18 +27,18 @@ serve(async (req) => {
       throw new Error('MP_ACCESS_TOKEN is not configured')
     }
 
-    // Initialize MercadoPago
-    const client = new MercadoPagoConfig({ accessToken })
-
-    // Create the preference
-    const preference = new Preference(client)
-
-    const response = await preference.create({
-      body: {
+    // Create the preference using native fetch
+    const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         items: [
           {
             id: `plan_${plan_type}`,
-            title: `Plan ${plan_type} - ${tenant_name || tenant_id}`,
+            title: `Plan ${plan_type} - ${tenant_name || tenant_id} (${months || 1} Mes/es)`,
             quantity: 1,
             unit_price: Number(amount),
             currency_id: 'ARS',
@@ -48,21 +46,30 @@ serve(async (req) => {
         ],
         metadata: {
           tenant_id,
-          plan_type
+          plan_type,
+          months: months || 1
         },
         back_urls: {
-          success: 'https://tu-dominio.com/settings?tab=mi-plan&status=success', // TODO: Update with real domain if redirecting
+          success: 'https://tu-dominio.com/settings?tab=mi-plan&status=success',
           failure: 'https://tu-dominio.com/settings?tab=mi-plan&status=failure',
           pending: 'https://tu-dominio.com/settings?tab=mi-plan&status=pending',
         },
         auto_return: 'approved',
-      }
+      })
     })
+
+    if (!response.ok) {
+      const err = await response.json()
+      console.error('MP API Error:', err)
+      throw new Error(err.message || 'Error from MercadoPago API')
+    }
+
+    const data = await response.json()
 
     return new Response(
       JSON.stringify({ 
-        preference_id: response.id,
-        init_point: response.init_point
+        preference_id: data.id,
+        init_point: data.init_point
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
