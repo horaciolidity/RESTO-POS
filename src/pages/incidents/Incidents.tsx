@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuthStore } from '../../store/useAuthStore';
 import {
   AlertTriangle,
   History,
@@ -11,8 +12,9 @@ import { useOrdersStore, Incident } from '../../store/useOrdersStore';
 
 export default function Incidents() {
   const { incidents, addIncident } = useOrdersStore();
-  const [incidentTitle, setIncidentTitle] = useState('Rotura de vaso de vidrio');
-  const [incidentDesc, setIncidentDesc] = useState('Se cayó de la bandeja del mozo en el salón terraza.');
+  const { user } = useAuthStore();
+  const [incidentTitle, setIncidentTitle] = useState('');
+  const [incidentDesc, setIncidentDesc] = useState('');
   const [incidentType, setIncidentType] = useState<'incidente' | 'reclamo' | 'faltante' | 'rotura' | 'error_caja' | 'error_cocina' | 'error_sistema'>('rotura');
 
   const handleRegisterIncident = (e: React.FormEvent) => {
@@ -20,7 +22,7 @@ export default function Incidents() {
     if (!incidentTitle || !incidentDesc) return;
     
     addIncident({
-      user: 'Carlos Mozo',
+      user: user?.name || user?.email || 'Usuario',
       type: incidentType,
       description: `${incidentTitle}: ${incidentDesc}`
     });
