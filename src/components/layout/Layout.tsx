@@ -352,7 +352,7 @@ export default function Layout() {
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden pb-16 lg:pb-0">
 
         {/* Top Banner (desktop + mobile) */}
-        <header className="flex items-center justify-between bg-card border-b border-border sticky top-0 z-30 px-4 lg:px-6 py-2 shrink-0">
+        <header className="flex items-center justify-between bg-card border-b border-border sticky top-0 z-30 px-4 lg:px-6 py-3 shrink-0">
           {/* Left: Logo + Business Name */}
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl gradient-bg flex items-center justify-center shadow-md shadow-primary/30 shrink-0">
@@ -389,9 +389,9 @@ export default function Layout() {
           </div>
 
           {/* Center: Configurable Banner slot */}
-          <div className="flex-1 mx-4 h-10 overflow-hidden hidden lg:flex items-center justify-center">
+          <div className="flex-1 mx-4 h-14 overflow-hidden hidden lg:flex items-center justify-center">
             {globalBanner ? (
-              <img src={globalBanner} alt="Banner" className="h-full max-h-10 object-contain rounded-lg" />
+              <img src={globalBanner} alt="Banner" className="h-full w-full max-w-2xl object-contain rounded-lg drop-shadow-sm" />
             ) : null}
           </div>
 
