@@ -54,6 +54,8 @@ export const useAuthStore = create<AuthState>((set: any, get: any) => ({
     }
     sessionStorage.removeItem('simulated_mozo');
     sessionStorage.removeItem('simulated_delivery');
+    sessionStorage.removeItem('simulated_cajero');
+    sessionStorage.removeItem('cajero_pin');
     set({ user: null, loading: false });
   },
 
@@ -70,11 +72,14 @@ export const useAuthStore = create<AuthState>((set: any, get: any) => ({
       // Prioritize simulated from link so active admin sessions on the same browser don't override it
       const simulatedMozo = sessionStorage.getItem('simulated_mozo');
       const simulatedDelivery = sessionStorage.getItem('simulated_delivery');
+      const simulatedCajero = sessionStorage.getItem('simulated_cajero');
       
       if (simulatedMozo) {
         set({ user: JSON.parse(simulatedMozo), loading: false });
       } else if (simulatedDelivery) {
         set({ user: JSON.parse(simulatedDelivery), loading: false });
+      } else if (simulatedCajero) {
+        set({ user: JSON.parse(simulatedCajero), loading: false });
       } else {
         const activeUser = await authService.restoreSession();
         set({ user: activeUser, loading: false });
@@ -83,10 +88,13 @@ export const useAuthStore = create<AuthState>((set: any, get: any) => ({
       authService.onAuthStateChange((profile) => {
         const simMozo = sessionStorage.getItem('simulated_mozo');
         const simDelivery = sessionStorage.getItem('simulated_delivery');
+        const simCajero = sessionStorage.getItem('simulated_cajero');
         if (simMozo) {
           set({ user: JSON.parse(simMozo) });
         } else if (simDelivery) {
           set({ user: JSON.parse(simDelivery) });
+        } else if (simCajero) {
+          set({ user: JSON.parse(simCajero) });
         } else {
           set({ user: profile });
         }

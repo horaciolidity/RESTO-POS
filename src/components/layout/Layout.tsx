@@ -136,6 +136,31 @@ export default function Layout() {
     }
   }, [isRefreshing, initializeStore, initializeCash, user?.branchId]);
 
+  const handleToggleCajeroMode = () => {
+    const isCajeroMode = sessionStorage.getItem('simulated_cajero');
+    
+    if (isCajeroMode) {
+      const savedPin = sessionStorage.getItem('cajero_pin');
+      const inputPin = window.prompt('Ingrese su clave / PIN para volver al modo Administrador:');
+      if (inputPin !== null) {
+        if (inputPin === savedPin) {
+          sessionStorage.removeItem('simulated_cajero');
+          sessionStorage.removeItem('cajero_pin');
+          useAuthStore.getState().initialize();
+        } else {
+          alert('Clave incorrecta.');
+        }
+      }
+    } else {
+      const newPin = window.prompt('Establezca una clave o PIN temporal para bloquear la pantalla en Modo Cajero:');
+      if (newPin) {
+        sessionStorage.setItem('cajero_pin', newPin);
+        sessionStorage.setItem('simulated_cajero', JSON.stringify({ ...user, role: 'cajero' }));
+        useAuthStore.getState().initialize();
+      }
+    }
+  };
+
   // Initialize cash register for the branch
   useEffect(() => {
     if (user?.branchId) {
@@ -298,6 +323,20 @@ export default function Layout() {
             <MessageCircle className="w-4 h-4" />
             Soporte WhatsApp
           </a>
+
+          {(user.role === 'admin' || user.role === 'super_admin' || sessionStorage.getItem('simulated_cajero')) && (
+            <button
+              onClick={handleToggleCajeroMode}
+              className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold transition-all border ${
+                sessionStorage.getItem('simulated_cajero')
+                  ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/20'
+                  : 'bg-primary/10 hover:bg-primary/20 text-primary border-primary/20'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              {sessionStorage.getItem('simulated_cajero') ? 'Salir Modo Cajero' : 'Bloquear en Cajero'}
+            </button>
+          )}
 
           <button
             onClick={logout}
@@ -479,6 +518,23 @@ export default function Layout() {
                   {darkMode ? <Sun className="w-4.5 h-4.5 text-amber-400" /> : <Moon className="w-4.5 h-4.5" />}
                 </button>
               </div>
+
+              {(user.role === 'admin' || user.role === 'super_admin' || sessionStorage.getItem('simulated_cajero')) && (
+                <button
+                  onClick={() => {
+                    handleToggleCajeroMode();
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold mb-2 transition-all border ${
+                    sessionStorage.getItem('simulated_cajero')
+                      ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/20'
+                      : 'bg-primary/10 hover:bg-primary/20 text-primary border-primary/20'
+                  }`}
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  {sessionStorage.getItem('simulated_cajero') ? 'Salir Modo Cajero' : 'Bloquear en Cajero'}
+                </button>
+              )}
 
               <button
                 onClick={logout}
