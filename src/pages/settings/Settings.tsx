@@ -74,7 +74,7 @@ export default function Settings() {
           table: 'tenants',
           filter: `id=eq.${user.tenantId}`
         },
-        (payload) => {
+        ((_payload) => {
           // If the payment was processed by the webhook, the tenant was updated
           alert('¡Pago acreditado con éxito! Tu plan ha sido renovado automáticamente.');
           setMpPreferenceId(null);
