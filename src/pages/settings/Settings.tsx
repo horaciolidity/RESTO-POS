@@ -81,7 +81,7 @@ export default function Settings() {
           setMpInitPoint(null);
           // Reload to refresh the auth token/subscription state globally
           window.location.reload();
-        }
+        })
       )
       .subscribe();
 
