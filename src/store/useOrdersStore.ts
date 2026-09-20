@@ -383,10 +383,56 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
     }));
     // Then persist to Supabase
     await ordersService.updateStatus(id, status);
+
+    // Audit: generate a red alert when an order is cancelled
+    if (status === 'cancelado') {
+      const order = get().orders.find(o => o.id === id);
+      const user = useAuthStore.getState().user;
+      get().addAuditAlert({
+        type: 'rojo',
+        title: 'Pedido Cancelado',
+        amount: order?.total || 0,
+        detail: `El pedido #${order?.orderNumber || id.slice(-4)} de ${order?.tableName || 'Sin mesa'} fue cancelado. Monto: $${(order?.total || 0).toFixed(2)}`,
+        user: user?.name || 'Sistema'
+      });
+    }
   },
 
   closeOrder: async (id, paymentMethod) => {
+    const order = get().orders.find(o => o.id === id);
+    const user = useAuthStore.getState().user;
     await ordersService.closeOrder(id, paymentMethod);
+
+    // Audit: discount applied
+    if (order && order.discount > 0) {
+      get().addAuditAlert({
+        type: 'amarillo',
+        title: 'Descuento Aplicado en Cierre',
+        amount: order.discount,
+        detail: `Pedido #${order.orderNumber || id.slice(-4)} cerrado con descuento de $${order.discount.toFixed(2)} sobre total $${order.total.toFixed(2)}.`,
+        user: user?.name || 'Sistema'
+      });
+    }
+    // Audit: no payment method
+    if (!paymentMethod) {
+      get().addAuditAlert({
+        type: 'amarillo',
+        title: 'Cierre Sin Método de Pago',
+        amount: order?.total || 0,
+        detail: `Pedido #${order?.orderNumber || id.slice(-4)} cerrado sin seleccionar método de pago. Revisá la caja.`,
+        user: user?.name || 'Sistema'
+      });
+    }
+    // Audit: tips received (positive record)
+    if (order && order.tips > 0) {
+      get().addAuditAlert({
+        type: 'verde',
+        title: 'Propina Registrada',
+        amount: order.tips,
+        detail: `Pedido #${order.orderNumber || id.slice(-4)} cerrado con propina de $${order.tips.toFixed(2)}.`,
+        user: user?.name || 'Sistema'
+      });
+    }
   },
 
   addTable: async (table) => {
@@ -479,6 +525,15 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
         ...state.incidents
       ]
     }));
+
+    // Audit: every incident generates a red alert in the Conciliation Center
+    get().addAuditAlert({
+      type: 'rojo',
+      title: `Incidente: ${inc.type}`,
+      amount: 0,
+      detail: inc.description,
+      user: inc.user
+    });
   },
 
   addAuditAlert: (alert) => set((state) => ({

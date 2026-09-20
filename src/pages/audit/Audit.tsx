@@ -93,28 +93,34 @@ export default function Audit() {
       {/* Traffic light indicator widgets */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         
-        <div className="p-4 rounded-2xl bg-green-500/5 border border-green-500/20 flex items-center justify-between">
+        <div className={`p-4 rounded-2xl flex items-center justify-between ${auditAlerts.filter((a: AuditAlert) => a.type === 'verde').length > 0 ? 'bg-green-500/5 border border-green-500/20' : 'bg-muted border border-border'}`}>
           <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground uppercase font-bold">Conciliación de Caja</span>
-            <p className="font-extrabold text-sm text-green-500">CORRECTO (Verde)</p>
+            <span className="text-[10px] text-muted-foreground uppercase font-bold">Eventos Positivos</span>
+            <p className={`font-extrabold text-sm ${auditAlerts.filter((a: AuditAlert) => a.type === 'verde').length > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
+              {auditAlerts.filter((a: AuditAlert) => a.type === 'verde').length} REGISTROS
+            </p>
           </div>
-          <CheckCircle className="w-8 h-8 text-green-500 opacity-60" />
+          <CheckCircle className={`w-8 h-8 opacity-60 ${auditAlerts.filter((a: AuditAlert) => a.type === 'verde').length > 0 ? 'text-green-500' : 'text-muted-foreground'}`} />
         </div>
 
-        <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex items-center justify-between">
+        <div className={`p-4 rounded-2xl flex items-center justify-between ${auditAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length > 0 ? 'bg-amber-500/5 border border-amber-500/20' : 'bg-muted border border-border'}`}>
           <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground uppercase font-bold">Descuentos Aplicados</span>
-            <p className="font-extrabold text-sm text-amber-500">1 ADVERTENCIA (Amarillo)</p>
+            <span className="text-[10px] text-muted-foreground uppercase font-bold">Advertencias</span>
+            <p className={`font-extrabold text-sm ${auditAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+              {auditAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length} ADVERTENCIAS
+            </p>
           </div>
-          <AlertTriangle className="w-8 h-8 text-amber-500 opacity-60" />
+          <AlertTriangle className={`w-8 h-8 opacity-60 ${auditAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
         </div>
 
-        <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/20 flex items-center justify-between">
+        <div className={`p-4 rounded-2xl flex items-center justify-between ${auditAlerts.filter((a: AuditAlert) => a.type === 'rojo').length > 0 ? 'bg-red-500/5 border border-red-500/20' : 'bg-muted border border-border'}`}>
           <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground uppercase font-bold">Facturas vs Cobros</span>
-            <p className="font-extrabold text-sm text-red-500">2 INCONSISTENCIAS (Rojo)</p>
+            <span className="text-[10px] text-muted-foreground uppercase font-bold">Críticos / Inconsistencias</span>
+            <p className={`font-extrabold text-sm ${auditAlerts.filter((a: AuditAlert) => a.type === 'rojo').length > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+              {auditAlerts.filter((a: AuditAlert) => a.type === 'rojo').length} CRÍTICOS
+            </p>
           </div>
-          <XCircle className="w-8 h-8 text-red-500 opacity-60" />
+          <XCircle className={`w-8 h-8 opacity-60 ${auditAlerts.filter((a: AuditAlert) => a.type === 'rojo').length > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
         </div>
 
       </div>
