@@ -52,7 +52,7 @@ serve(async (req) => {
             .from('tenants')
             .update({ 
               plan_type: plan_type,
-              status: 'active'
+              active: true
             })
             .eq('id', tenant_id)
 

@@ -5,10 +5,11 @@ import { useOrdersStore } from '../../store/useOrdersStore';
 import { useCashStore } from '../../store/useCashStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { supabase } from '../../services/supabase';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { MPPaymentBrick } from '../../components/payment/MPPaymentBrick';
 
 export default function Settings() {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<'general' | 'mesas' | 'personal' | 'turno' | 'qr' | 'miplan' | 'hardware'>('general');
   
   const { tables, addTable, removeTable } = useOrdersStore();
@@ -141,6 +142,12 @@ export default function Settings() {
     loadMyAlerts();
     loadQrImage();
   }, [user]);
+
+  useEffect(() => {
+    if (location.hash === '#miplan') {
+      setActiveTab('miplan');
+    }
+  }, [location]);
 
   async function loadQrImage() {
     if (!user?.tenantId) return;
@@ -1155,6 +1162,18 @@ export default function Settings() {
                       className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors">
                       <Copy className="w-4 h-4" />
                     </button>
+                  </div>
+                )}
+                {platformConfig.payment_mp_link && (
+                  <div className="pt-3 mt-3 border-t border-border flex flex-col items-center">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase mb-3">O escaneá para pagar con MercadoPago</p>
+                    <div className="p-3 bg-white rounded-2xl shadow-sm mb-3">
+                      <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(platformConfig.payment_mp_link)}`} alt="QR MercadoPago" className="w-[120px] h-[120px]" />
+                    </div>
+                    <a href={platformConfig.payment_mp_link} target="_blank" rel="noopener noreferrer"
+                      className="w-full py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors">
+                      <ExternalLink className="w-3.5 h-3.5" /> Abrir link de pago directo
+                    </a>
                   </div>
                 )}
               </div>

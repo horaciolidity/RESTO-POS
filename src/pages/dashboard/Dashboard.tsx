@@ -498,9 +498,9 @@ export default function Dashboard() {
                 <li className="flex items-center gap-2">✓ Control de Turnos Abiertos, Caja Diaria y Empleados</li>
               </ul>
             </div>
-            <button className="w-full py-2 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity text-white text-xs font-bold rounded-xl shadow-lg shadow-primary/20">
+            <Link to="/settings#miplan" className="block text-center w-full py-2 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity text-white text-xs font-bold rounded-xl shadow-lg shadow-primary/20">
               Mejorar a Plan Pro
-            </button>
+            </Link>
           </div>
         </div>
       </div>
