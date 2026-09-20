@@ -62,6 +62,34 @@ export default function Settings() {
     }
   };
 
+  useEffect(() => {
+    if (!mpPreferenceId || !user?.tenantId) return;
+
+    const channel = supabase.channel('tenant-payment-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'tenants',
+          filter: `id=eq.${user.tenantId}`
+        },
+        (payload) => {
+          // If the payment was processed by the webhook, the tenant was updated
+          alert('¡Pago acreditado con éxito! Tu plan ha sido renovado automáticamente.');
+          setMpPreferenceId(null);
+          setMpInitPoint(null);
+          // Reload to refresh the auth token/subscription state globally
+          window.location.reload();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [mpPreferenceId, user?.tenantId]);
+
   // Hardware config state
   const [hwConfig, setHwConfig] = useState(() => {
     try {
