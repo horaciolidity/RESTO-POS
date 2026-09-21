@@ -182,6 +182,12 @@ export default function Settings() {
     }
   }, [location]);
 
+  useEffect(() => {
+    if (user?.planType === 'standard' && ['mesas', 'personal', 'turno', 'qr', 'hardware'].includes(activeTab)) {
+      setActiveTab('general');
+    }
+  }, [activeTab, user?.planType]);
+
   async function loadQrImage() {
     if (!user?.tenantId) return;
     const cached = localStorage.getItem('qr_payment_image_' + user.tenantId);
@@ -366,38 +372,44 @@ export default function Settings() {
         >
           <div className="flex items-center gap-2"><Store className="w-4 h-4" /> General</div>
         </button>
-        <button
-          onClick={() => setActiveTab('mesas')}
-          className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-            activeTab === 'mesas' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <div className="flex items-center gap-2"><Layers className="w-4 h-4" /> Configurar Mesas</div>
-        </button>
-        <button
-          onClick={() => setActiveTab('personal')}
-          className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-            activeTab === 'personal' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <div className="flex items-center gap-2"><Users className="w-4 h-4" /> Personal y Mozos</div>
-        </button>
-        <button
-          onClick={() => setActiveTab('turno')}
-          className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-            activeTab === 'turno' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <div className="flex items-center gap-2"><PlayCircle className="w-4 h-4" /> Apertura de Turno</div>
-        </button>
-        <button
-          onClick={() => setActiveTab('qr')}
-          className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-            activeTab === 'qr' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <div className="flex items-center gap-2"><QrCode className="w-4 h-4" /> QR de Mesas</div>
-        </button>
+        
+        {user?.planType !== 'standard' && (
+          <>
+            <button
+              onClick={() => setActiveTab('mesas')}
+              className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
+                activeTab === 'mesas' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2"><Layers className="w-4 h-4" /> Configurar Mesas</div>
+            </button>
+            <button
+              onClick={() => setActiveTab('personal')}
+              className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
+                activeTab === 'personal' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2"><Users className="w-4 h-4" /> Personal y Mozos</div>
+            </button>
+            <button
+              onClick={() => setActiveTab('turno')}
+              className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
+                activeTab === 'turno' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2"><PlayCircle className="w-4 h-4" /> Apertura de Turno</div>
+            </button>
+            <button
+              onClick={() => setActiveTab('qr')}
+              className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
+                activeTab === 'qr' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2"><QrCode className="w-4 h-4" /> QR de Mesas</div>
+            </button>
+          </>
+        )}
+
         <button
           onClick={() => setActiveTab('miplan')}
           className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
@@ -406,14 +418,17 @@ export default function Settings() {
         >
           <div className="flex items-center gap-2"><Crown className="w-4 h-4" /> Mi Plan</div>
         </button>
-        <button
-          onClick={() => setActiveTab('hardware')}
-          className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-            activeTab === 'hardware' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <div className="flex items-center gap-2"><Printer className="w-4 h-4" /> Periféricos</div>
-        </button>
+        
+        {user?.planType !== 'standard' && (
+          <button
+            onClick={() => setActiveTab('hardware')}
+            className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
+              activeTab === 'hardware' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <div className="flex items-center gap-2"><Printer className="w-4 h-4" /> Periféricos</div>
+          </button>
+        )}
       </div>
 
       {/* Tab Content: General */}
@@ -1061,10 +1076,10 @@ export default function Settings() {
                 </div>
               </div>
               {user?.planType === 'free' && (
-                <p className="text-sm text-muted-foreground">Estás en el plan gratuito con límite de 50 ventas. Actualizá tu plan para desbloquear todas las funciones.</p>
+                <p className="text-sm text-muted-foreground">Podés empezar a usar nuestro sistema **completamente gratis en las primeras 50 ventas**. Luego de eso, podés elegir un plan para seguir operando sin límites.</p>
               )}
               {user?.planType !== 'free' && (
-                <p className="text-sm text-muted-foreground">Tu plan está activo. Si querés renovar o cambiar de plan, completá el formulario de aviso de pago.</p>
+                <p className="text-sm text-muted-foreground">Tu plan está activo. Ambas suscripciones incluyen soporte técnico 24/7 disponible para ayudarte.</p>
               )}
             </div>
 
@@ -1075,11 +1090,11 @@ export default function Settings() {
                 {
                   plan: 'standard' as const,
                   name: 'Estándar',
-                  price: platformConfig.price_standard_monthly || '28100',
+                  price: platformConfig.price_standard_monthly || '14900',
                   icon: Zap,
                   color: 'text-blue-400',
                   border: 'border-blue-500/20',
-                  features: ['POS completo', 'Caja & Arqueos', 'Inventario', 'Delivery']
+                  features: ['POS completo', 'Caja & Arqueos', 'Inventario', 'Historial General', 'Soporte Técnico 24/7']
                 },
                 {
                   plan: 'pro' as const,
@@ -1088,7 +1103,7 @@ export default function Settings() {
                   icon: Crown,
                   color: 'text-amber-400',
                   border: 'border-amber-500/20',
-                  features: ['Todo Estándar', 'KDS Cocina', 'Pantalla cliente', 'Turnos & empleados']
+                  features: ['Todo Estándar', 'Salón y Mesas', 'Delivery', 'Centro de Auditoría', 'Gestión de Turnos']
                 },
               ].map(p => {
                 const Icon = p.icon;
@@ -1129,7 +1144,7 @@ export default function Settings() {
                       <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Plan que querés contratar</label>
                       <select value={paymentPlan} onChange={e => setPaymentPlan(e.target.value as any)}
                         className="w-full p-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-                        <option value="standard">Estándar — ${Number(platformConfig.price_standard_monthly || 28100).toLocaleString('es-AR')}/mes</option>
+                        <option value="standard">Estándar — ${Number(platformConfig.price_standard_monthly || 14900).toLocaleString('es-AR')}/mes</option>
                         <option value="pro">Pro — ${Number(platformConfig.price_pro_monthly || 44900).toLocaleString('es-AR')}/mes</option>
                       </select>
                     </div>
@@ -1148,7 +1163,7 @@ export default function Settings() {
                   <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex justify-between items-center">
                     <span className="text-sm font-bold text-primary">Total a Pagar:</span>
                     <span className="text-lg font-black text-primary">
-                      ${((paymentPlan === 'standard' ? Number(platformConfig.price_standard_monthly || 28100) : Number(platformConfig.price_pro_monthly || 44900)) * paymentMonths).toLocaleString('es-AR')}
+                      ${((paymentPlan === 'standard' ? Number(platformConfig.price_standard_monthly || 14900) : Number(platformConfig.price_pro_monthly || 44900)) * paymentMonths).toLocaleString('es-AR')}
                     </span>
                   </div>
                   

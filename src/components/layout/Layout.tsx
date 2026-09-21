@@ -28,6 +28,7 @@ import {
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCashStore } from '../../store/useCashStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import UpsellScreen from '../common/UpsellScreen';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 import { useGlobalQRScanner } from '../../hooks/useGlobalQRScanner';
 import { supabase } from '../../services/supabase';
@@ -425,7 +426,16 @@ export default function Layout() {
 
         {/* Page body */}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
-          <Outlet />
+          {(user.planType === 'standard' && ['/tables', '/delivery', '/audit', '/incidents'].includes(location.pathname)) ? (
+            <UpsellScreen featureName={
+              location.pathname === '/tables' ? 'Salón y Mesas' :
+              location.pathname === '/delivery' ? 'Módulo de Delivery' :
+              location.pathname === '/audit' ? 'Centro de Auditoría' :
+              'Gestión de Incidencias'
+            } />
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
 
