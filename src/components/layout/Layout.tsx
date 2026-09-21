@@ -426,7 +426,7 @@ export default function Layout() {
 
         {/* Page body */}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
-          {(user.planType === 'standard' && ['/tables', '/delivery', '/audit', '/incidents'].includes(location.pathname)) ? (
+          {((user.planType === 'standard' || user.planType === 'free') && ['/tables', '/delivery', '/audit', '/incidents'].includes(location.pathname)) ? (
             <UpsellScreen featureName={
               location.pathname === '/tables' ? 'Salón y Mesas' :
               location.pathname === '/delivery' ? 'Módulo de Delivery' :

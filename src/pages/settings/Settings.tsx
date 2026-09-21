@@ -183,7 +183,7 @@ export default function Settings() {
   }, [location]);
 
   useEffect(() => {
-    if (user?.planType === 'standard' && ['mesas', 'personal', 'turno', 'qr', 'hardware'].includes(activeTab)) {
+    if ((user?.planType === 'standard' || user?.planType === 'free') && ['mesas', 'personal', 'turno', 'qr', 'hardware'].includes(activeTab)) {
       setActiveTab('general');
     }
   }, [activeTab, user?.planType]);
@@ -373,7 +373,7 @@ export default function Settings() {
           <div className="flex items-center gap-2"><Store className="w-4 h-4" /> General</div>
         </button>
         
-        {user?.planType !== 'standard' && (
+        {(user?.planType !== 'standard' && user?.planType !== 'free') && (
           <>
             <button
               onClick={() => setActiveTab('mesas')}
@@ -419,7 +419,7 @@ export default function Settings() {
           <div className="flex items-center gap-2"><Crown className="w-4 h-4" /> Mi Plan</div>
         </button>
         
-        {user?.planType !== 'standard' && (
+        {(user?.planType !== 'standard' && user?.planType !== 'free') && (
           <button
             onClick={() => setActiveTab('hardware')}
             className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
