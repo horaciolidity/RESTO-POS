@@ -20,7 +20,7 @@ export const authService = {
   async getProfile(userId: string): Promise<UserProfile | null> {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*, branches(name), tenants(name, plan_type)')
+      .select('*, branches(name), tenants(name, plan_type, subscription_end)')
       .eq('id', userId)
       .single();
 
@@ -36,6 +36,7 @@ export const authService = {
       tenantId: data.tenant_id,
       tenantName: (data as any).tenants?.name || 'Mi Restaurante',
       planType: (data as any).tenants?.plan_type || 'free',
+      subscriptionEnd: (data as any).tenants?.subscription_end || null,
     };
   },
 

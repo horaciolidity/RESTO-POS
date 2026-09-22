@@ -365,29 +365,66 @@ export default function Layout() {
             </div>
           </div>
 
-          {/* Subscription / Sales Info */}
-          <div className="hidden lg:flex items-center gap-3 ml-6 p-1.5 bg-muted/40 rounded-xl border border-border/50 text-xs shadow-sm">
-            <div className="flex flex-col items-end px-2">
-              <span className="font-bold text-muted-foreground flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                Plan Gratis (Prueba)
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                {50 - orders.length > 0 ? (
-                  <>Te quedan <b>{50 - orders.length}</b> ventas gratis</>
-                ) : (
-                  <span className="text-red-500 font-bold">Límite de prueba agotado</span>
-                )}
-              </span>
-            </div>
-            <Link 
-              to="/settings" 
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white rounded-lg font-bold shadow-md shadow-orange-500/20 transition-all"
-            >
-              <Crown className="w-3.5 h-3.5" />
-              Mejorar a PRO
-            </Link>
+          {/* Subscription / Plan Status Widget */}
+          <div className="hidden lg:flex items-center gap-2 ml-4">
+            {user.planType === 'free' ? (() => {
+              const paidCount = orders.filter((o: any) => o.paid).length;
+              const remaining = Math.max(0, 50 - paidCount);
+              const pct = Math.min(100, Math.round((paidCount / 50) * 100));
+              return (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs">
+                  <div className="relative w-7 h-7 shrink-0">
+                    <svg className="w-7 h-7 -rotate-90" viewBox="0 0 28 28">
+                      <circle cx="14" cy="14" r="11" strokeWidth="2.5" className="stroke-amber-500/20" fill="none" />
+                      <circle cx="14" cy="14" r="11" strokeWidth="2.5" className="stroke-amber-400" fill="none"
+                        strokeDasharray={`${Math.round(2 * Math.PI * 11 * pct / 100)} ${Math.round(2 * Math.PI * 11)}`}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-amber-400">{pct}%</span>
+                  </div>
+                  <div>
+                    <p className="font-black text-amber-400 leading-none">Prueba Gratis</p>
+                    <p className="text-amber-500/80 leading-none mt-0.5">
+                      {remaining > 0 ? <><b>{paidCount}</b>/50 ventas usadas</> : <span className="text-red-400 font-bold">¡Límite agotado!</span>}
+                    </p>
+                  </div>
+                  <Link to="/settings#miplan" className="ml-1 px-2 py-1 bg-amber-500 hover:bg-amber-400 text-white text-[10px] font-black rounded-lg transition-all whitespace-nowrap">
+                    Mejorar
+                  </Link>
+                </div>
+              );
+            })() : user.planType === 'standard' || user.planType === 'pro' ? (() => {
+              const endDate = user.subscriptionEnd ? new Date(user.subscriptionEnd) : null;
+              const daysLeft = endDate ? Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+              const isExpiring = daysLeft !== null && daysLeft <= 7;
+              const isExpired = daysLeft !== null && daysLeft <= 0;
+              return (
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border ${
+                  isExpired ? 'bg-red-500/10 border-red-500/30' :
+                  isExpiring ? 'bg-amber-500/10 border-amber-500/30' :
+                  'bg-green-500/10 border-green-500/30'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${isExpired ? 'bg-red-400' : isExpiring ? 'bg-amber-400 animate-pulse' : 'bg-green-400'}`} />
+                  <div>
+                    <p className={`font-black leading-none ${isExpired ? 'text-red-400' : isExpiring ? 'text-amber-400' : 'text-green-400'}`}>
+                      Plan {user.planType === 'pro' ? 'Pro' : 'Estándar'}
+                    </p>
+                    <p className="text-muted-foreground leading-none mt-0.5">
+                      {isExpired ? <span className="text-red-400 font-bold">Vencido</span> :
+                       daysLeft !== null ? <><b>{daysLeft}</b> días restantes</> : 'Activo'}
+                    </p>
+                  </div>
+                  {(isExpiring || isExpired) && (
+                    <Link to="/settings#miplan" className="ml-1 px-2 py-1 bg-amber-500 hover:bg-amber-400 text-white text-[10px] font-black rounded-lg transition-all whitespace-nowrap">
+                      Renovar
+                    </Link>
+                  )}
+                </div>
+              );
+            })() : null}
           </div>
+
 
           {/* Center: Configurable Banner slot */}
           <div className="flex-1 mx-4 h-14 overflow-hidden hidden lg:flex items-center justify-center">

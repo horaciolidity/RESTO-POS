@@ -13,6 +13,7 @@ export interface UserProfile {
   tenantId?: string;
   tenantName?: string;
   planType?: 'free' | 'standard' | 'pro' | 'premium' | 'enterprise';
+  subscriptionEnd?: string | null;
 }
 
 interface AuthState {
