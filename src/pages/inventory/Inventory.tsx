@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   History,
   Search,
@@ -63,6 +64,14 @@ export default function Inventory() {
   // Modal state & tab
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [modalTab, setModalTab] = useState<'producto' | 'menu'>('producto');
+
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash === '#add') {
+      setIsAddModalOpen(true);
+    }
+  }, [location.hash]);
 
   // ─── Producto / Insumo Form State ───
   const [newName, setNewName] = useState('');
