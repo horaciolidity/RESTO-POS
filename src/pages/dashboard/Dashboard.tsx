@@ -12,7 +12,11 @@ import {
   DollarSign,
   ChefHat,
   ChevronRight,
-  Tv
+  Tv,
+  Crown,
+  Zap,
+  Shield,
+  MessageCircle
 } from 'lucide-react';
 import {
   AreaChart,
@@ -444,64 +448,98 @@ export default function Dashboard() {
       </div>
 
       {/* SaaS Pricing Plans Details Widgets */}
-      <div className="p-6 rounded-2xl bg-card border border-border space-y-4">
-        <div>
-          <h3 className="font-extrabold text-lg">Información de Suscripción ROTI POS</h3>
-          <p className="text-xs text-muted-foreground">Revisa los detalles de tu plan y las condiciones de la plataforma SaaS</p>
+      <div className="p-6 rounded-2xl bg-card border border-border space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="font-extrabold text-lg flex items-center gap-2"><Crown className="w-5 h-5 text-amber-400" /> Planes ROTI POS</h3>
+            <p className="text-xs text-muted-foreground mt-1">Empezá gratis con las primeras 50 ventas. Luego elegí el plan que mejor se adapta a tu negocio.</p>
+          </div>
+          {(user?.planType === 'free') && (
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+              <div className="text-center">
+                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Ventas Gratuitas Usadas</p>
+                <p className="text-2xl font-black text-amber-400">{orders.filter((o: Order) => o.paid).length} <span className="text-xs font-bold text-amber-500">/ 50</span></p>
+              </div>
+              <div className="w-14 h-14 rounded-full border-4 border-amber-500/30 flex items-center justify-center">
+                <span className="text-lg font-black text-amber-400">{Math.min(100, Math.round((orders.filter((o: Order) => o.paid).length / 50) * 100))}%</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Plan Estándar */}
-          <div className="p-5 rounded-2xl bg-slate-900/40 border border-border flex flex-col justify-between space-y-4 relative overflow-hidden">
-            <div className="space-y-2">
-              <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 tracking-wider">Plan Básico</span>
-              <h4 className="font-bold text-xl text-foreground">Plan Estándar</h4>
-              <p className="text-xs text-slate-400">Perfecto para negocios gastronómicos en crecimiento.</p>
-              
-              <div className="pt-2 space-y-1">
-                <p className="text-2xl font-black text-primary">${Number(platformConfig.price_standard_monthly || 28100).toLocaleString('es-AR')} <span className="text-xs text-muted-foreground">/ mes</span></p>
-                <p className="text-[11px] text-green-500 font-semibold">Anual: ${Number(platformConfig.price_standard_annual || 281000).toLocaleString('es-AR')} / año (¡Ahorra 2 meses de suscripción!)</p>
+          <div className="p-5 rounded-2xl bg-card border border-blue-500/20 flex flex-col justify-between space-y-4 relative overflow-hidden">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-500/10 rounded-lg"><Zap className="w-4 h-4 text-blue-400" /></div>
+                <div>
+                  <span className="text-[10px] uppercase font-black text-blue-400 tracking-wider">Plan Estándar</span>
+                  <p className="font-bold text-lg leading-tight">Para empezar a crecer</p>
+                </div>
               </div>
-
-              <ul className="text-xs space-y-2 pt-2 text-slate-300">
-                <li className="flex items-center gap-2">✓ Modo de Venta POS de Caja Principal</li>
-                <li className="flex items-center gap-2">✓ Gestión de Mesas e Inventario de Insumos</li>
-                <li className="flex items-center gap-2">✓ <strong>Prueba gratis limitada a 50 ventas</strong></li>
+              <div>
+                <p className="text-3xl font-black text-foreground">${Number(platformConfig.price_standard_monthly || 14900).toLocaleString('es-AR')} <span className="text-xs text-muted-foreground font-normal">/ mes</span></p>
+                <p className="text-[11px] text-green-500 font-semibold mt-0.5">Pagá 10 meses y te regalamos 2 ↓</p>
+              </div>
+              <ul className="text-xs space-y-1.5 text-muted-foreground pt-1">
+                {['POS completo de Caja', 'Historial General de Ventas', 'Inventario & Stock', 'Soporte Técnico 24/7'].map(f => (
+                  <li key={f} className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />{f}</li>
+                ))}
               </ul>
             </div>
-            <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 text-center">
-              <span className="text-xs text-primary font-bold">Prueba Gratuita Activa (Límite: 50 Ventas)</span>
-            </div>
+            <Link to="/settings#miplan" className="block text-center w-full py-2.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 transition-all text-blue-400 text-xs font-bold rounded-xl">
+              Suscribirme a Estándar
+            </Link>
           </div>
 
           {/* Plan Pro */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-primary/5 to-purple-500/5 border border-primary/20 flex flex-col justify-between space-y-4 relative overflow-hidden">
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 border border-primary/30 flex flex-col justify-between space-y-4 relative overflow-hidden shadow-lg shadow-primary/10">
             <div className="absolute top-3 right-3">
               <span className="text-[9px] uppercase font-black px-2 py-0.5 rounded-full bg-primary text-white tracking-widest animate-pulse">RECOMENDADO</span>
             </div>
-            
-            <div className="space-y-2">
-              <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-primary/20 text-primary tracking-wider">Plan Completo</span>
-              <h4 className="font-bold text-xl text-foreground">Plan Pro</h4>
-              <p className="text-xs text-slate-400">La suite completa e integrada en tiempo real para tu personal y tus clientes.</p>
 
-              <div className="pt-2 space-y-1">
-                <p className="text-2xl font-black text-purple-400">${Number(platformConfig.price_pro_monthly || 44900).toLocaleString('es-AR')} <span className="text-xs text-muted-foreground">/ mes</span></p>
-                <p className="text-[11px] text-green-400 font-semibold">Anual: ${Number(platformConfig.price_pro_annual || 449000).toLocaleString('es-AR')} / año (¡Ahorra 2 meses de suscripción!)</p>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-primary/20 rounded-lg"><Crown className="w-4 h-4 text-amber-400" /></div>
+                <div>
+                  <span className="text-[10px] uppercase font-black text-amber-400 tracking-wider">Plan Pro</span>
+                  <p className="font-bold text-lg leading-tight">Suite completa</p>
+                </div>
               </div>
-
-              <ul className="text-xs space-y-2 pt-2 text-slate-300">
-                <li className="flex items-center gap-2">✓ Pantalla para Clientes (2da pantalla de facturación)</li>
-                <li className="flex items-center gap-2">✓ Pantallas de Cocina KDS y Monitor de Turnos de TV</li>
-                <li className="flex items-center gap-2">✓ Módulo Mozo Móvil (Toma de comandas en mesas)</li>
-                <li className="flex items-center gap-2">✓ Autopedidos por Código QR en Mesa para clientes</li>
-                <li className="flex items-center gap-2">✓ Control de Turnos Abiertos, Caja Diaria y Empleados</li>
+              <div>
+                <p className="text-3xl font-black text-foreground">${Number(platformConfig.price_pro_monthly || 44900).toLocaleString('es-AR')} <span className="text-xs text-muted-foreground font-normal">/ mes</span></p>
+                <p className="text-[11px] text-green-400 font-semibold mt-0.5">Pagá 20 meses y te regalamos 4 ↓</p>
+              </div>
+              <ul className="text-xs space-y-1.5 text-muted-foreground pt-1">
+                {[
+                  'Todo lo del Plan Estándar',
+                  'Salón & Mesas con Mozos',
+                  'Delivery & Repartos',
+                  'Centro de Auditoría',
+                  'Incidencias & Turnos',
+                  'Soporte Técnico 24/7'
+                ].map(f => (
+                  <li key={f} className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />{f}</li>
+                ))}
               </ul>
             </div>
-            <Link to="/settings#miplan" className="block text-center w-full py-2 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity text-white text-xs font-bold rounded-xl shadow-lg shadow-primary/20">
-              Mejorar a Plan Pro
-            </Link>
+            <div className="flex flex-col gap-2">
+              <Link to="/settings#miplan" className="block text-center w-full py-2.5 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity text-white text-xs font-bold rounded-xl shadow-lg shadow-primary/20">
+                Mejorar a Plan Pro
+              </Link>
+              <a href="https://wa.me/542617048835" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 text-center w-full py-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-green-500 text-xs font-semibold rounded-xl transition-all">
+                <MessageCircle className="w-3.5 h-3.5" /> Hablar con un Asesor
+              </a>
+            </div>
           </div>
+        </div>
+
+        <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-xl border border-border">
+          <Shield className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Ambos planes incluyen soporte técnico 24/7</strong> y contamos con técnicos disponibles para las instalaciones que requiera tu negocio. Con solo 1 mes de suscripción activa ya tenés acceso prioritario.
+          </p>
         </div>
       </div>
 
