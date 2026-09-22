@@ -23,7 +23,7 @@ import {
   Bell,
   BellRing,
   MessageCircle,
-  Crown
+  Crown as _Crown
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCashStore } from '../../store/useCashStore';
