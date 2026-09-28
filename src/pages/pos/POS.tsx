@@ -21,6 +21,7 @@ import { useCartStore } from '../../store/useCartStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { useCashStore } from '../../store/useCashStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useTutorialStore } from '../../store/useTutorialStore';
 import { supabase } from '../../services/supabase';
 
 export default function POS() {
@@ -135,6 +136,50 @@ export default function POS() {
 
   // Payment timing: 'now' = charge immediately, 'later' = open tab (send to kitchen, pay at end)
   const [paymentTiming, setPaymentTiming] = useState<'now' | 'later'>('now');
+
+  const { hasSeenTutorials, startTutorial } = useTutorialStore();
+
+  const handleStartTutorial = useCallback(() => {
+    startTutorial('pos', [
+      {
+        target: '#pos-categories',
+        content: 'Acá podés filtrar tus productos por categoría rápidamente.',
+        title: 'Categorías',
+        skipBeacon: true,
+      },
+      {
+        target: '#pos-products',
+        content: 'Hacé clic en cualquier producto para agregarlo a la venta actual.',
+        title: 'Grilla de Productos',
+      },
+      {
+        target: '#pos-cart',
+        content: 'Acá vas a ver los productos seleccionados, aplicar descuentos y elegir si es salón, mostrador o delivery.',
+        title: 'Pre-venta / Carrito',
+      },
+      {
+        target: '#pos-payment',
+        content: 'Cuando esté todo listo, elegí el método de pago y cobrá.',
+        title: 'Cobro y Cierre',
+      }
+    ]);
+  }, [startTutorial]);
+
+  useEffect(() => {
+    if (!hasSeenTutorials.pos) {
+      handleStartTutorial();
+    }
+  }, [hasSeenTutorials.pos, handleStartTutorial]);
+
+  useEffect(() => {
+    const listener = (e: any) => {
+      if (e.detail?.key === 'pos') {
+        handleStartTutorial();
+      }
+    };
+    window.addEventListener('request-tutorial', listener);
+    return () => window.removeEventListener('request-tutorial', listener);
+  }, [handleStartTutorial]);
 
   // Delivery customer info
   const [deliveryName, setDeliveryName] = useState('');
@@ -406,7 +451,7 @@ export default function POS() {
             <Layers className="w-4 h-4" />
             Comandas por Cobrar ({orders.filter(o => o.source === 'mesas' && !o.paid).length})
           </button>
-          <div className="flex gap-2 overflow-x-auto pb-1.5 shrink-0 scrollbar-thin">
+          <div id="pos-categories" className="flex gap-2 overflow-x-auto pb-1.5 shrink-0 scrollbar-thin">
             <button
               onClick={() => setSelectedCategory(null)}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
@@ -441,7 +486,7 @@ export default function POS() {
               <p className="text-xs">No se encontraron productos coincidentes.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div id="pos-products" className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
               {filteredProducts.map((p) => {
                 const isOutOfStock = p.currentStock <= p.stockCritical;
                 return (
@@ -506,7 +551,7 @@ export default function POS() {
       </div>
 
       {/* Right panel: Active Cart & totals */}
-      <div className="lg:col-span-4 bg-card border border-border rounded-2xl p-4 flex flex-col justify-between h-full min-h-0">
+      <div id="pos-cart" className="lg:col-span-4 bg-card border border-border rounded-2xl p-4 flex flex-col justify-between h-full min-h-0">
         
         {/* Cart Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
@@ -736,6 +781,7 @@ export default function POS() {
           </div>
 
           <button
+            id="pos-payment"
             onClick={handleCheckout}
             disabled={items.length === 0}
             className="w-full py-3.5 rounded-xl text-xs font-bold text-white gradient-bg hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"

@@ -24,6 +24,7 @@ import {
   Bell,
   BellRing,
   MessageCircle,
+  HelpCircle,
   Crown as _Crown
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -31,6 +32,7 @@ import { useCashStore } from '../../store/useCashStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import UpsellScreen from '../common/UpsellScreen';
 import PlanStatusWidget from '../common/PlanStatusWidget';
+import TutorialRunner from '../tutorial/TutorialRunner';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 import { useGlobalQRScanner } from '../../hooks/useGlobalQRScanner';
 import { supabase } from '../../services/supabase';
@@ -54,6 +56,16 @@ export default function Layout() {
   const [darkMode, setDarkMode] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [globalBanner, setGlobalBanner] = useState('');
+
+  const handleTutorialTrigger = () => {
+    let key = '';
+    if (location.pathname === '/') key = 'dashboard';
+    if (location.pathname.startsWith('/pos')) key = 'pos';
+    if (location.pathname.startsWith('/inventory')) key = 'inventory';
+    if (key) {
+      window.dispatchEvent(new CustomEvent('request-tutorial', { detail: { key } }));
+    }
+  };
 
   // Notifications State
   const [orderAlerts, setOrderAlerts] = useState<OrderAlert[]>([]);
@@ -214,6 +226,7 @@ export default function Layout() {
 
   return (
     <div className="h-screen flex bg-background text-foreground transition-colors duration-300 overflow-hidden">
+      <TutorialRunner />
       
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-72 bg-card border-r border-border p-5 shrink-0 justify-between h-full overflow-y-auto">
@@ -388,6 +401,13 @@ export default function Layout() {
               {orderAlerts.length > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-card animate-pulse"></span>
               )}
+            </button>
+            <button
+              onClick={handleTutorialTrigger}
+              title="Ver Tutorial de esta pantalla"
+              className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
+            >
+              <HelpCircle className="w-4 h-4" />
             </button>
             <button
               onClick={handleRefresh}

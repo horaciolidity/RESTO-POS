@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useTutorialStore } from '../../store/useTutorialStore';
 import { supabase } from '../../services/supabase';
 import {
   TrendingUp,
@@ -70,6 +71,45 @@ export default function Dashboard() {
       }
     }
     loadPlatformConfig();
+  }, []);
+
+  const { hasSeenTutorials, startTutorial } = useTutorialStore();
+
+  const handleStartTutorial = () => {
+    startTutorial('dashboard', [
+      {
+        target: '#dashboard-kpis',
+        content: 'Acá vas a ver el resumen de tus ventas del día, la cantidad de pedidos y el ticket promedio.',
+        title: 'Métricas Principales',
+        skipBeacon: true,
+      },
+      {
+        target: '#dashboard-charts',
+        content: 'Gráficos en tiempo real de tus ventas por hora y los productos más vendidos.',
+        title: 'Estadísticas',
+      },
+      {
+        target: '#dashboard-stock-alerts',
+        content: 'Si algún producto se está quedando sin stock, te vamos a avisar acá para que repongas.',
+        title: 'Alertas de Stock',
+      }
+    ]);
+  };
+
+  useEffect(() => {
+    if (!hasSeenTutorials.dashboard && user?.role === 'admin') {
+      handleStartTutorial();
+    }
+  }, [hasSeenTutorials.dashboard, user]);
+
+  useEffect(() => {
+    const listener = (e: any) => {
+      if (e.detail?.key === 'dashboard') {
+        handleStartTutorial();
+      }
+    };
+    window.addEventListener('request-tutorial', listener);
+    return () => window.removeEventListener('request-tutorial', listener);
   }, []);
 
   if (user?.role === 'mozo') {
@@ -180,7 +220,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div id="dashboard-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Metric Card 1 */}
         <div className="p-5 rounded-2xl bg-card border border-border flex items-center justify-between">
@@ -274,7 +314,7 @@ export default function Dashboard() {
       </div>
 
       {/* Chart Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div id="dashboard-charts" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Sales by Hour Chart */}
         <div className="p-6 rounded-2xl bg-card border border-border lg:col-span-8 flex flex-col justify-between">
@@ -395,7 +435,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stock Alerts Widget */}
-        <div className="p-6 rounded-2xl bg-card border border-border md:col-span-6 flex flex-col justify-between">
+        <div id="dashboard-stock-alerts" className="p-6 rounded-2xl bg-card border border-border md:col-span-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>

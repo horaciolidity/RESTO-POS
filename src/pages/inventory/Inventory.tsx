@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   History,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useInventoryStore, Product, ProductType } from '../../store/useInventoryStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useTutorialStore } from '../../store/useTutorialStore';
 
 interface MenuComponent {
   productId: string;
@@ -72,6 +73,45 @@ export default function Inventory() {
       setIsAddModalOpen(true);
     }
   }, [location.hash]);
+
+  const { hasSeenTutorials, startTutorial } = useTutorialStore();
+
+  const handleStartTutorial = useCallback(() => {
+    startTutorial('inventory', [
+      {
+        target: '#inventory-add-button',
+        content: 'Acá podés agregar nuevos productos, insumos o recetas a tu catálogo.',
+        title: 'Agregar Producto',
+        skipBeacon: true,
+      },
+      {
+        target: '#inventory-filters',
+        content: 'Buscá rápido por nombre o filtrá por tipo de producto (Bebidas, Platos, etc).',
+        title: 'Búsqueda y Filtros',
+      },
+      {
+        target: '#inventory-table',
+        content: 'Desde la tabla vas a poder ajustar el stock manualmente o editar precios al instante.',
+        title: 'Gestión Rápida',
+      }
+    ]);
+  }, [startTutorial]);
+
+  useEffect(() => {
+    if (!hasSeenTutorials.inventory) {
+      handleStartTutorial();
+    }
+  }, [hasSeenTutorials.inventory, handleStartTutorial]);
+
+  useEffect(() => {
+    const listener = (e: any) => {
+      if (e.detail?.key === 'inventory') {
+        handleStartTutorial();
+      }
+    };
+    window.addEventListener('request-tutorial', listener);
+    return () => window.removeEventListener('request-tutorial', listener);
+  }, [handleStartTutorial]);
 
   // ─── Producto / Insumo Form State ───
   const [newName, setNewName] = useState('');
@@ -416,6 +456,7 @@ export default function Inventory() {
             <FileText className="w-3.5 h-3.5" /> JSON
           </button>
           <button
+            id="inventory-add-button"
             onClick={() => { setModalTab('producto'); resetProductForm(); setIsAddModalOpen(true); }}
             className="px-4 py-2 bg-muted border border-border hover:bg-primary/10 hover:border-primary hover:text-primary text-foreground font-bold text-sm rounded-xl transition-all flex items-center gap-2"
           >
@@ -451,7 +492,7 @@ export default function Inventory() {
       </div>
 
       {/* Type Filter Chips */}
-      <div className="flex flex-wrap gap-2">
+      <div id="inventory-filters" className="flex flex-wrap gap-2">
         {Object.entries(typeLabels).map(([key, label]) => (
           <button
             key={key}
@@ -496,7 +537,7 @@ export default function Inventory() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div id="inventory-table" className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-muted/50 border-b border-border text-muted-foreground font-extrabold">

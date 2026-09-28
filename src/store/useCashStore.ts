@@ -26,15 +26,15 @@ export interface CashMovement {
 }
 
 // ── localStorage helpers (fallback when Supabase not configured) ──
-const LS_SESSION_KEY = (branchId: string) => `cash_session_${branchId}`;
+const LS_SESSION_KEY = (branchId: string, tenantId: string = 'default') => `cash_session_${tenantId}_${branchId}`;
 const LS_MOVES_KEY   = (sessionId: string) => `cash_moves_${sessionId}`;
-const LS_SESSIONS_LIST_KEY = (branchId: string) => `cash_sessions_list_${branchId}`;
+const LS_SESSIONS_LIST_KEY = (branchId: string, tenantId: string = 'default') => `cash_sessions_list_${tenantId}_${branchId}`;
 
-function saveLocalSession(branchId: string, session: CashSession) {
-  try { localStorage.setItem(LS_SESSION_KEY(branchId), JSON.stringify(session)); } catch {}
+function saveLocalSession(branchId: string, session: CashSession, tenantId?: string) {
+  try { localStorage.setItem(LS_SESSION_KEY(branchId, tenantId), JSON.stringify(session)); } catch {}
 }
-function loadLocalSession(branchId: string): CashSession | null {
-  try { const r = localStorage.getItem(LS_SESSION_KEY(branchId)); return r ? JSON.parse(r) : null; }
+function loadLocalSession(branchId: string, tenantId?: string): CashSession | null {
+  try { const r = localStorage.getItem(LS_SESSION_KEY(branchId, tenantId)); return r ? JSON.parse(r) : null; }
   catch { return null; }
 }
 function saveLocalMovements(sessionId: string, moves: CashMovement[]) {
@@ -44,16 +44,16 @@ function loadLocalMovements(sessionId: string): CashMovement[] {
   try { const r = localStorage.getItem(LS_MOVES_KEY(sessionId)); return r ? JSON.parse(r) : []; }
   catch { return []; }
 }
-function saveLocalSessionsList(branchId: string, list: CashSession[]) {
-  try { localStorage.setItem(LS_SESSIONS_LIST_KEY(branchId), JSON.stringify(list)); } catch {}
+function saveLocalSessionsList(branchId: string, list: CashSession[], tenantId?: string) {
+  try { localStorage.setItem(LS_SESSIONS_LIST_KEY(branchId, tenantId), JSON.stringify(list)); } catch {}
 }
-function loadLocalSessionsList(branchId: string): CashSession[] {
-  try { const r = localStorage.getItem(LS_SESSIONS_LIST_KEY(branchId)); return r ? JSON.parse(r) : []; }
+function loadLocalSessionsList(branchId: string, tenantId?: string): CashSession[] {
+  try { const r = localStorage.getItem(LS_SESSIONS_LIST_KEY(branchId, tenantId)); return r ? JSON.parse(r) : []; }
   catch { return []; }
 }
-function clearLocalSession(branchId: string, sessionId: string) {
+function clearLocalSession(branchId: string, sessionId: string, tenantId?: string) {
   try {
-    localStorage.removeItem(LS_SESSION_KEY(branchId));
+    localStorage.removeItem(LS_SESSION_KEY(branchId, tenantId));
     localStorage.removeItem(LS_MOVES_KEY(sessionId));
   } catch {}
 }
@@ -90,7 +90,7 @@ interface CashState {
   sessions: CashSession[];
   loading: boolean;
   /** Call this explicitly with the branchId once user is authenticated */
-  initializeCash: (branchId: string) => Promise<void>;
+  initializeCash: (branchId: string, customTenantId?: string) => Promise<void>;
   openRegister: (openedBy: string, userId: string, initialBalance: number, branchId: string) => Promise<void>;
   closeRegister: (actualBalance: number, branchId: string) => Promise<void>;
   addMovement: (type: 'ingreso' | 'egreso' | 'retiro', amount: number, description: string, branchId: string) => Promise<void>;
@@ -105,16 +105,17 @@ export const useCashStore = create<CashState>((set, get) => ({
   sessions: [],
   loading: false,
 
-  initializeCash: async (branchId: string) => {
+  initializeCash: async (branchId: string, customTenantId?: string) => {
     if (_initializing) return;          // guard: skip if already loading
     _initializing = true;
     set({ loading: true });
 
     try {
+      const tenantId = customTenantId || useAuthStore.getState().user?.tenantId;
       if (isSupabaseConfigured()) {
         // ── Supabase ──
-        const session = await cashService.getCurrentSession(branchId);
-        const allSessions = await cashService.getAllSessions(branchId);
+        const session = await cashService.getCurrentSession(branchId, tenantId);
+        const allSessions = await cashService.getAllSessions(branchId, tenantId);
         if (session) {
           const rawMoves = await cashService.getMovements(session.id);
           set({
@@ -132,8 +133,8 @@ export const useCashStore = create<CashState>((set, get) => ({
 
         // Helper to reload data when change detected
         const reloadCashData = async () => {
-          const updatedSession = await cashService.getCurrentSession(branchId);
-          const freshSessions = await cashService.getAllSessions(branchId);
+          const updatedSession = await cashService.getCurrentSession(branchId, tenantId);
+          const freshSessions = await cashService.getAllSessions(branchId, tenantId);
           if (updatedSession) {
             const rawMoves = await cashService.getMovements(updatedSession.id);
             set({
@@ -151,14 +152,14 @@ export const useCashStore = create<CashState>((set, get) => ({
         };
 
         // Subscribe to real-time changes of cash sessions
-        cashService.subscribeToCashSessions(reloadCashData, branchId);
+        cashService.subscribeToCashSessions(reloadCashData, branchId, tenantId);
         // Subscribe to real-time changes of cash movements
-        cashService.subscribeToCashMovements(reloadCashData);
+        cashService.subscribeToCashMovements(reloadCashData, tenantId);
 
       } else {
         // ── localStorage only ──
-        const local = loadLocalSession(branchId);
-        const list = loadLocalSessionsList(branchId);
+        const local = loadLocalSession(branchId, tenantId);
+        const list = loadLocalSessionsList(branchId, tenantId);
         if (local && local.status === 'open') {
           set({
             sessions: list,
@@ -184,8 +185,8 @@ export const useCashStore = create<CashState>((set, get) => ({
   openRegister: async (openedBy, userId, initialBalance, branchId) => {
     set({ loading: true });
 
+    const tenantId = useAuthStore.getState().user?.tenantId || 'a1000000-0000-0000-0000-000000000001';
     if (isSupabaseConfigured()) {
-      const tenantId = useAuthStore.getState().user?.tenantId || 'a1000000-0000-0000-0000-000000000001';
       // Pass undefined for empty userId so Postgres doesn't choke on empty string UUID
       const sessionId = await cashService.openRegister(
         openedBy,
@@ -197,7 +198,7 @@ export const useCashStore = create<CashState>((set, get) => ({
       if (sessionId) {
         // Reload from DB so we get the exact record that was saved
         _initializing = false;                   // reset guard so initializeCash can run
-        await get().initializeCash(branchId);
+        await get().initializeCash(branchId, tenantId);
         return;
       }
       // Supabase insert failed → fall through to localStorage
@@ -226,12 +227,12 @@ export const useCashStore = create<CashState>((set, get) => ({
     };
     const moves = initialBalance > 0 ? [initMove] : [];
 
-    saveLocalSession(branchId, session);
+    saveLocalSession(branchId, session, tenantId);
     saveLocalMovements(id, moves);
 
-    const list = loadLocalSessionsList(branchId);
+    const list = loadLocalSessionsList(branchId, tenantId);
     const updatedList = [session, ...list];
-    saveLocalSessionsList(branchId, updatedList);
+    saveLocalSessionsList(branchId, updatedList, tenantId);
 
     set({
       currentSession: session,
@@ -247,11 +248,12 @@ export const useCashStore = create<CashState>((set, get) => ({
 
     set({ loading: true });
 
+    const tenantId = useAuthStore.getState().user?.tenantId;
     if (isSupabaseConfigured()) {
       await cashService.closeRegister(currentSession.id, actualBalance);
       // Reload everything to get closedAt, difference, status closed, etc.
       _initializing = false;
-      await get().initializeCash(branchId);
+      await get().initializeCash(branchId, tenantId);
       return;
     }
 
@@ -264,12 +266,12 @@ export const useCashStore = create<CashState>((set, get) => ({
       status: 'closed'
     };
 
-    clearLocalSession(branchId, currentSession.id);
+    clearLocalSession(branchId, currentSession.id, tenantId);
 
-    const list = loadLocalSessionsList(branchId);
+    const list = loadLocalSessionsList(branchId, tenantId);
     // Replace the open session in the list with the closed session details
     const updatedList = list.map(s => s.id === currentSession.id ? closed : s);
-    saveLocalSessionsList(branchId, updatedList);
+    saveLocalSessionsList(branchId, updatedList, tenantId);
 
     set({
       currentSession: closed,
@@ -283,13 +285,14 @@ export const useCashStore = create<CashState>((set, get) => ({
     if (!currentSession) return;
 
     const factor = type === 'ingreso' ? 1 : -1;
+    const tenantId = useAuthStore.getState().user?.tenantId;
 
     if (isSupabaseConfigured()) {
       await cashService.addMovement(currentSession.id, branchId, type, amount, description);
       // Reload from DB for accurate state
       const rawMoves = await cashService.getMovements(currentSession.id);
-      const freshSession = await cashService.getCurrentSession(branchId);
-      const freshSessions = await cashService.getAllSessions(branchId);
+      const freshSession = await cashService.getCurrentSession(branchId, tenantId);
+      const freshSessions = await cashService.getAllSessions(branchId, tenantId);
       set({
         sessions: freshSessions.map(mapSession),
         movements: mapMovements(rawMoves),
@@ -313,13 +316,11 @@ export const useCashStore = create<CashState>((set, get) => ({
         ...currentSession,
         expectedBalance: currentSession.expectedBalance + amount * factor
       };
-      saveLocalSession(branchId, updatedSession);
+      saveLocalSession(branchId, updatedSession, tenantId);
       saveLocalMovements(currentSession.id, updatedMoves);
 
-      const list = loadLocalSessionsList(branchId);
+      const list = loadLocalSessionsList(branchId, tenantId);
       const updatedList = list.map(s => s.id === currentSession.id ? updatedSession : s);
-      saveLocalSessionsList(branchId, updatedList);
-
       set({
         movements: updatedMoves,
         currentSession: updatedSession,

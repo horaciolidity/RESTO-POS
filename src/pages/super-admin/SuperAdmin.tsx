@@ -4,7 +4,7 @@ import {
   Building2, Shield, CheckCircle, XCircle, Crown, Zap, Star,
   RefreshCw, ToggleLeft, ToggleRight, BarChart3, Globe, CreditCard, AlertCircle,
   Search, Calendar, Bell, QrCode, DollarSign, Copy, Check,
-  ExternalLink, Save, Banknote, Wallet, Sparkles
+  ExternalLink, Save, Banknote, Wallet, Sparkles, Package, Eye, X, AlertTriangle
 } from 'lucide-react';
 
 /* ─────────────────────── Types ─────────────────────── */
@@ -15,6 +15,15 @@ interface Tenant {
   plan_type: 'free' | 'standard' | 'pro' | 'premium' | 'enterprise';
   active: boolean;
   created_at: string;
+}
+
+interface TenantProduct {
+  id: string;
+  tenant_id: string;
+  name: string;
+  sale_price: number;
+  type: string;
+  active: boolean;
 }
 
 interface PaymentAlert {
@@ -68,14 +77,19 @@ type TabId = 'empresas' | 'alertas' | 'pagos' | 'precios' | 'ajustes';
 export default function SuperAdmin() {
   const [activeTab, setActiveTab] = useState<TabId>('empresas');
 
-  // Empresas
+  // Empresas & Productos
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [tenantProductsMap, setTenantProductsMap] = useState<Record<string, TenantProduct[]>>({});
+  const [tenantSalesMap, setTenantSalesMap] = useState<Record<string, number>>({});
+  const [selectedTenantForProducts, setSelectedTenantForProducts] = useState<Tenant | null>(null);
+  const [productSearch, setProductSearch] = useState('');
+
   const [loadingTenants, setLoadingTenants] = useState(true);
   const [search, setSearch] = useState('');
   const [filterPlan, setFilterPlan] = useState('all');
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [stats, setStats] = useState({ total: 0, active: 0, pro: 0, standard: 0, free: 0 });
+  const [stats, setStats] = useState({ total: 0, active: 0, pro: 0, standard: 0, free: 0, limitReached: 0 });
 
   // Alertas de pago
   const [alerts, setAlerts] = useState<PaymentAlert[]>([]);
@@ -98,12 +112,44 @@ export default function SuperAdmin() {
   /* ── Data loaders ── */
   async function loadTenants() {
     setLoadingTenants(true);
-    const { data } = await supabase.from('tenants').select('*').order('created_at', { ascending: false });
-    // Filter out the platform itself from the list
-    const list = (data || []).filter((t: Tenant) => t.subdomain !== 'platform');
-    setTenants(list);
-    computeStats(list);
-    setLoadingTenants(false);
+    try {
+      // 1. Fetch Tenants
+      const { data: tenantsData } = await supabase.from('tenants').select('*').order('created_at', { ascending: false });
+      const list = (tenantsData || []).filter((t: Tenant) => t.subdomain !== 'platform');
+      setTenants(list);
+
+      // 2. Fetch Products per tenant
+      const { data: productsData } = await supabase
+        .from('products')
+        .select('id, tenant_id, name, sale_price, type, active');
+      
+      const prodMap: Record<string, TenantProduct[]> = {};
+      (productsData || []).forEach((p: TenantProduct) => {
+        if (!p.tenant_id) return;
+        if (!prodMap[p.tenant_id]) prodMap[p.tenant_id] = [];
+        prodMap[p.tenant_id].push(p);
+      });
+      setTenantProductsMap(prodMap);
+
+      // 3. Fetch Paid Orders per tenant to check 50-sales free trial limit
+      const { data: ordersData } = await supabase
+        .from('orders')
+        .select('id, tenant_id, paid')
+        .eq('paid', true);
+
+      const salesMap: Record<string, number> = {};
+      (ordersData || []).forEach((o: any) => {
+        if (!o.tenant_id) return;
+        salesMap[o.tenant_id] = (salesMap[o.tenant_id] || 0) + 1;
+      });
+      setTenantSalesMap(salesMap);
+
+      computeStats(list, salesMap);
+    } catch (err) {
+      console.error('[SuperAdmin.loadTenants]', err);
+    } finally {
+      setLoadingTenants(false);
+    }
   }
 
   async function loadAlerts() {
@@ -127,13 +173,14 @@ export default function SuperAdmin() {
     }
   }
 
-  function computeStats(data: Tenant[]) {
+  function computeStats(data: Tenant[], salesMap: Record<string, number> = tenantSalesMap) {
     setStats({
-      total:    data.length,
-      active:   data.filter(t => t.active).length,
-      pro:      data.filter(t => ['pro','premium','enterprise'].includes(t.plan_type)).length,
-      standard: data.filter(t => t.plan_type === 'standard').length,
-      free:     data.filter(t => t.plan_type === 'free').length,
+      total:        data.length,
+      active:       data.filter(t => t.active).length,
+      pro:          data.filter(t => ['pro','premium','enterprise'].includes(t.plan_type)).length,
+      standard:     data.filter(t => t.plan_type === 'standard').length,
+      free:         data.filter(t => t.plan_type === 'free').length,
+      limitReached: data.filter(t => t.plan_type === 'free' && (salesMap[t.id] || 0) >= 50).length,
     });
   }
 
@@ -200,7 +247,11 @@ export default function SuperAdmin() {
 
   const filtered = tenants.filter(t => {
     const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || (t.subdomain || '').toLowerCase().includes(search.toLowerCase());
-    const matchPlan = filterPlan === 'all' || t.plan_type === filterPlan;
+    const matchPlan = filterPlan === 'all'
+      ? true
+      : filterPlan === 'limit'
+      ? t.plan_type === 'free' && (tenantSalesMap[t.id] || 0) >= 50
+      : t.plan_type === filterPlan;
     return matchSearch && matchPlan;
   });
 
@@ -240,13 +291,14 @@ export default function SuperAdmin() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: 'Empresas',   value: stats.total,    icon: Building2,  color: 'from-violet-600 to-indigo-600',   shadow: 'shadow-violet-500/20' },
-          { label: 'Activas',    value: stats.active,   icon: CheckCircle,color: 'from-emerald-500 to-teal-600',    shadow: 'shadow-emerald-500/20' },
-          { label: 'Plan Pro',   value: stats.pro,      icon: Crown,      color: 'from-amber-500 to-orange-500',    shadow: 'shadow-amber-500/20' },
-          { label: 'Estándar',   value: stats.standard, icon: Zap,        color: 'from-blue-500 to-cyan-500',       shadow: 'shadow-blue-500/20' },
-          { label: 'En prueba',  value: stats.free,     icon: Star,       color: 'from-gray-500 to-slate-600',      shadow: 'shadow-slate-500/20' },
+          { label: 'Empresas',        value: stats.total,        icon: Building2,     color: 'from-violet-600 to-indigo-600', shadow: 'shadow-violet-500/20' },
+          { label: 'Activas',         value: stats.active,       icon: CheckCircle,   color: 'from-emerald-500 to-teal-600',  shadow: 'shadow-emerald-500/20' },
+          { label: 'Plan Pro',        value: stats.pro,          icon: Crown,         color: 'from-amber-500 to-orange-500',  shadow: 'shadow-amber-500/20' },
+          { label: 'Estándar',        value: stats.standard,     icon: Zap,           color: 'from-blue-500 to-cyan-500',     shadow: 'shadow-blue-500/20' },
+          { label: 'En prueba',       value: stats.free,         icon: Star,          color: 'from-gray-500 to-slate-600',    shadow: 'shadow-slate-500/20' },
+          { label: 'Límite Agotado',  value: stats.limitReached, icon: AlertTriangle, color: 'from-orange-500 to-red-600',     shadow: 'shadow-orange-500/20' },
         ].map(s => {
           const Icon = s.icon;
           return (
@@ -317,7 +369,8 @@ export default function SuperAdmin() {
               <select value={filterPlan} onChange={e => setFilterPlan(e.target.value)}
                 className="text-xs bg-muted rounded-lg border border-border px-3 py-1.5 focus:outline-none">
                 <option value="all">Todos los planes</option>
-                <option value="free">Gratis</option>
+                <option value="free">Prueba Gratis</option>
+                <option value="limit">⚠️ Límite Ventas Gratis Agotado</option>
                 <option value="standard">Estándar</option>
                 <option value="pro">Pro</option>
               </select>
@@ -339,7 +392,8 @@ export default function SuperAdmin() {
                   <tr className="border-b border-border text-left">
                     <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Empresa</th>
                     <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider hidden md:table-cell">Subdominio</th>
-                    <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Plan</th>
+                    <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Productos Creados</th>
+                    <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Plan / Ventas</th>
                     <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider hidden lg:table-cell">Registro</th>
                     <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Estado</th>
                     <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider text-right">Acciones</th>
@@ -349,6 +403,10 @@ export default function SuperAdmin() {
                   {filtered.map(tenant => {
                     const planInfo = PLAN_LABELS[tenant.plan_type] || PLAN_LABELS.free;
                     const PlanIcon = planInfo.icon;
+                    const productsCount = tenantProductsMap[tenant.id]?.length || 0;
+                    const paidSales = tenantSalesMap[tenant.id] || 0;
+                    const isTrialLimitReached = tenant.plan_type === 'free' && paidSales >= 50;
+
                     return (
                       <tr key={tenant.id} className="hover:bg-muted/30 transition-colors group">
                         <td className="px-5 py-4">
@@ -356,11 +414,26 @@ export default function SuperAdmin() {
                             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600/20 to-indigo-600/20 border border-violet-500/20 flex items-center justify-center text-sm font-bold text-violet-400 shrink-0">
                               {tenant.name.slice(0,2).toUpperCase()}
                             </div>
-                            <p className="font-semibold leading-none">{tenant.name}</p>
+                            <div>
+                              <p className="font-semibold leading-none">{tenant.name}</p>
+                              <span className="text-[10px] text-muted-foreground md:hidden">{tenant.subdomain || '—'}</span>
+                            </div>
                           </div>
                         </td>
                         <td className="px-5 py-4 hidden md:table-cell">
                           <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">{tenant.subdomain || '—'}</span>
+                        </td>
+                        {/* Productos creados por cuenta */}
+                        <td className="px-5 py-4">
+                          <button
+                            onClick={() => { setSelectedTenantForProducts(tenant); setProductSearch(''); }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 font-bold text-xs border border-violet-500/20 transition-colors"
+                            title="Ver productos creados por esta cuenta"
+                          >
+                            <Package className="w-3.5 h-3.5 text-violet-400" />
+                            <span>{productsCount} prod.</span>
+                            <Eye className="w-3 h-3 text-violet-400/70 ml-0.5" />
+                          </button>
                         </td>
                         <td className="px-5 py-4">
                           {editingTenant?.id === tenant.id ? (
@@ -368,14 +441,27 @@ export default function SuperAdmin() {
                               onChange={e => changePlan(tenant.id, e.target.value)}
                               onBlur={() => setEditingTenant(null)}
                               className="text-xs bg-card border border-primary rounded-lg px-2 py-1 focus:outline-none">
-                              <option value="free">Prueba Gratis</option>
+                              <option value="free">Prueba Gratis (hasta 50 ventas)</option>
                               <option value="standard">Estándar — ${Number(config.price_standard_monthly).toLocaleString('es-AR')}/mes</option>
                               <option value="pro">Pro — ${Number(config.price_pro_monthly).toLocaleString('es-AR')}/mes</option>
                             </select>
                           ) : (
-                            <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border ${planInfo.color}`}>
-                              <PlanIcon className="w-3 h-3" />{planInfo.label}
-                            </span>
+                            <div className="flex flex-col gap-1 items-start">
+                              <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border ${planInfo.color}`}>
+                                <PlanIcon className="w-3 h-3" />{planInfo.label}
+                              </span>
+                              {tenant.plan_type === 'free' && (
+                                isTrialLimitReached ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse">
+                                    <AlertTriangle className="w-3 h-3 text-amber-400" /> Límite 50/50 ventas
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground font-medium pl-1">
+                                    {paidSales}/50 ventas de prueba
+                                  </span>
+                                )
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="px-5 py-4 hidden lg:table-cell">
@@ -385,12 +471,29 @@ export default function SuperAdmin() {
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          {tenant.active
-                            ? <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><CheckCircle className="w-3 h-3" /> Activa</span>
-                            : <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20"><XCircle className="w-3 h-3" /> Inactiva</span>}
+                          {!tenant.active ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                              <XCircle className="w-3 h-3" /> Inactiva
+                            </span>
+                          ) : isTrialLimitReached ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                              <AlertTriangle className="w-3 h-3 text-amber-400" /> Límite ventas gratis completo
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              <CheckCircle className="w-3 h-3" /> Activa
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-4 text-right">
                           <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => { setSelectedTenantForProducts(tenant); setProductSearch(''); }}
+                              title="Ver productos de esta cuenta"
+                              className="p-1.5 hover:bg-violet-500/10 text-violet-400 rounded-lg transition-colors"
+                            >
+                              <Package className="w-3.5 h-3.5" />
+                            </button>
                             <button onClick={() => setEditingTenant(tenant)} title="Cambiar plan"
                               className="p-1.5 hover:bg-blue-500/10 text-blue-400 rounded-lg transition-colors">
                               <CreditCard className="w-3.5 h-3.5" />
@@ -815,6 +918,97 @@ export default function SuperAdmin() {
                 Sin banner global configurado.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: PRODUCTOS DE LA CUENTA ── */}
+      {selectedTenantForProducts && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-border flex items-center justify-between bg-muted/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 font-bold">
+                  <Package className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg leading-tight">Productos Creados por {selectedTenantForProducts.name}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Total: <b>{tenantProductsMap[selectedTenantForProducts.id]?.length || 0} productos</b> en catálogo
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedTenantForProducts(null)}
+                className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Search Bar */}
+            <div className="p-4 border-b border-border bg-card">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={e => setProductSearch(e.target.value)}
+                  placeholder="Buscar producto por nombre..."
+                  className="w-full pl-9 pr-4 py-2 text-sm bg-muted rounded-xl border border-border focus:outline-none focus:border-primary/50"
+                />
+              </div>
+            </div>
+
+            {/* Modal Content / Product List */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-2">
+              {(() => {
+                const prods = (tenantProductsMap[selectedTenantForProducts.id] || []).filter(p =>
+                  p.name.toLowerCase().includes(productSearch.toLowerCase())
+                );
+
+                if (prods.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-muted-foreground flex flex-col items-center gap-2">
+                      <Package className="w-10 h-10 opacity-30" />
+                      <p className="text-sm font-semibold">Esta cuenta no tiene productos creados todavía</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {prods.map(prod => (
+                      <div key={prod.id} className="p-3 bg-muted/30 border border-border rounded-xl flex items-center justify-between gap-3 hover:border-violet-500/30 transition-colors">
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm truncate">{prod.name}</p>
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full inline-block mt-1">
+                            {prod.type || 'producto'}
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-black text-sm text-emerald-400">${Number(prod.sale_price).toLocaleString('es-AR')}</p>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${prod.active ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                            {prod.active ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-border bg-muted/20 text-right">
+              <button
+                onClick={() => setSelectedTenantForProducts(null)}
+                className="px-5 py-2 bg-muted hover:bg-muted/80 text-foreground font-bold text-xs rounded-xl transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}

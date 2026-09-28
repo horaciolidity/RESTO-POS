@@ -32,10 +32,10 @@ export type SupabaseCashMovement = {
 
 export const cashService = {
   /**
-   * Fetch the current open session for a branch.
+   * Fetch the current open session for a branch and tenant.
    * Returns null if no session is open.
    */
-  async getCurrentSession(branchId?: string): Promise<SupabaseCashSession | null> {
+  async getCurrentSession(branchId?: string, tenantId?: string): Promise<SupabaseCashSession | null> {
     if (!isSupabaseConfigured()) return null;
 
     let query = supabase
@@ -43,6 +43,10 @@ export const cashService = {
       .select('*')
       .eq('status', 'open')
       .order('opened_at', { ascending: false });
+
+    if (tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
 
     if (branchId && branchId !== 'local-branch' && branchId !== 'default') {
       query = query.eq('branch_id', branchId);
@@ -58,31 +62,23 @@ export const cashService = {
       return data[0] as SupabaseCashSession;
     }
 
-    // Fallback: If we filtered by branch and got nothing, try to find any active session for the tenant
-    if (branchId) {
-      const { data: fallbackData } = await supabase
-        .from('cash_sessions')
-        .select('*')
-        .eq('status', 'open')
-        .order('opened_at', { ascending: false });
-      if (fallbackData && fallbackData.length > 0) {
-        return fallbackData[0] as SupabaseCashSession;
-      }
-    }
-
     return null;
   },
 
   /**
-   * Fetch all cash sessions for a branch.
+   * Fetch all cash sessions for a branch and tenant.
    */
-  async getAllSessions(branchId?: string): Promise<SupabaseCashSession[]> {
+  async getAllSessions(branchId?: string, tenantId?: string): Promise<SupabaseCashSession[]> {
     if (!isSupabaseConfigured()) return [];
 
     let query = supabase
       .from('cash_sessions')
       .select('*')
       .order('opened_at', { ascending: false });
+
+    if (tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
 
     if (branchId && branchId !== 'local-branch' && branchId !== 'default') {
       query = query.eq('branch_id', branchId);
@@ -253,35 +249,36 @@ export const cashService = {
   },
 
   // ── Real-time subscription handle ────────────────────────────────
-  subscribeToCashSessions(onUpdate: () => void, branchId?: string) {
+  subscribeToCashSessions(onUpdate: () => void, branchId?: string, tenantId?: string) {
     if (!isSupabaseConfigured()) return null;
 
-    const channelName = `cash-sessions-realtime-${branchId || 'all'}-${Date.now()}`;
+    const channelName = `cash-sessions-realtime-${tenantId || 'all'}-${branchId || 'all'}-${Date.now()}`;
     return supabase
       .channel(channelName)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'cash_sessions'
+        table: 'cash_sessions',
+        ...(tenantId ? { filter: `tenant_id=eq.${tenantId}` } : {})
       }, () => {
         onUpdate();
       })
       .subscribe();
   },
 
-  subscribeToCashMovements(onUpdate: () => void) {
+  subscribeToCashMovements(onUpdate: () => void, tenantId?: string) {
     if (!isSupabaseConfigured()) return null;
 
-    const channelName = `cash-movements-realtime-${Date.now()}`;
+    const channelName = `cash-movements-realtime-${tenantId || 'all'}-${Date.now()}`;
     return supabase
       .channel(channelName)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'cash_movements'
+        table: 'cash_movements',
+        ...(tenantId ? { filter: `tenant_id=eq.${tenantId}` } : {})
       }, () => {
         onUpdate();
       })
-      .subscribe();
   }
 };
