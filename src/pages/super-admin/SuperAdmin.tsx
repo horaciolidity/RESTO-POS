@@ -4,7 +4,8 @@ import {
   Building2, Shield, CheckCircle, XCircle, Crown, Zap, Star,
   RefreshCw, ToggleLeft, ToggleRight, BarChart3, Globe, CreditCard, AlertCircle,
   Search, Calendar, Bell, QrCode, DollarSign, Copy, Check,
-  ExternalLink, Save, Banknote, Wallet, Sparkles, Package, Eye, X, AlertTriangle
+  ExternalLink, Save, Banknote, Wallet, Sparkles, Package, Eye, X, AlertTriangle,
+  CalendarDays, Mail, PlusCircle, MinusCircle
 } from 'lucide-react';
 
 /* ─────────────────────── Types ─────────────────────── */
@@ -15,6 +16,7 @@ interface Tenant {
   plan_type: 'free' | 'standard' | 'pro' | 'premium' | 'enterprise';
   active: boolean;
   created_at: string;
+  subscription_end: string | null;
 }
 
 interface TenantProduct {
@@ -81,8 +83,14 @@ export default function SuperAdmin() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantProductsMap, setTenantProductsMap] = useState<Record<string, TenantProduct[]>>({});
   const [tenantSalesMap, setTenantSalesMap] = useState<Record<string, number>>({});
+  const [tenantEmailsMap, setTenantEmailsMap] = useState<Record<string, string>>({});
   const [selectedTenantForProducts, setSelectedTenantForProducts] = useState<Tenant | null>(null);
   const [productSearch, setProductSearch] = useState('');
+
+  // Adjust days modal
+  const [adjustingTenant, setAdjustingTenant] = useState<Tenant | null>(null);
+  const [adjustDays, setAdjustDays] = useState<number>(30);
+  const [savingDays, setSavingDays] = useState(false);
 
   const [loadingTenants, setLoadingTenants] = useState(true);
   const [search, setSearch] = useState('');
@@ -143,6 +151,20 @@ export default function SuperAdmin() {
         salesMap[o.tenant_id] = (salesMap[o.tenant_id] || 0) + 1;
       });
       setTenantSalesMap(salesMap);
+
+      // 4. Fetch admin email per tenant from profiles
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('tenant_id, email, role')
+        .eq('role', 'admin');
+
+      const emailMap: Record<string, string> = {};
+      (profilesData || []).forEach((p: any) => {
+        if (p.tenant_id && p.email && !emailMap[p.tenant_id]) {
+          emailMap[p.tenant_id] = p.email;
+        }
+      });
+      setTenantEmailsMap(emailMap);
 
       computeStats(list, salesMap);
     } catch (err) {
@@ -207,6 +229,30 @@ export default function SuperAdmin() {
       setEditingTenant(null);
     }
     setSavingId(null);
+  }
+
+  async function adjustDaysForTenant(tenant: Tenant, days: number) {
+    setSavingDays(true);
+    try {
+      const base = tenant.subscription_end && new Date(tenant.subscription_end) > new Date()
+        ? new Date(tenant.subscription_end)
+        : new Date();
+      base.setDate(base.getDate() + days);
+      const newEnd = base.toISOString();
+      const { error } = await supabase
+        .from('tenants')
+        .update({ subscription_end: newEnd })
+        .eq('id', tenant.id);
+      if (!error) {
+        const updated = tenants.map(t =>
+          t.id === tenant.id ? { ...t, subscription_end: newEnd } : t
+        );
+        setTenants(updated);
+        setAdjustingTenant(null);
+      }
+    } finally {
+      setSavingDays(false);
+    }
   }
 
   /* ── Alert actions ── */
@@ -390,11 +436,11 @@ export default function SuperAdmin() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Empresa</th>
+                    <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Empresa / Email</th>
                     <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider hidden md:table-cell">Subdominio</th>
-                    <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Productos Creados</th>
+                    <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Productos</th>
                     <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Plan / Ventas</th>
-                    <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider hidden lg:table-cell">Registro</th>
+                    <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider hidden lg:table-cell">Vencimiento</th>
                     <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Estado</th>
                     <th className="px-5 py-3 text-[11px] text-muted-foreground font-bold uppercase tracking-wider text-right">Acciones</th>
                   </tr>
@@ -414,8 +460,14 @@ export default function SuperAdmin() {
                             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600/20 to-indigo-600/20 border border-violet-500/20 flex items-center justify-center text-sm font-bold text-violet-400 shrink-0">
                               {tenant.name.slice(0,2).toUpperCase()}
                             </div>
-                            <div>
-                              <p className="font-semibold leading-none">{tenant.name}</p>
+                            <div className="min-w-0">
+                              <p className="font-semibold leading-none truncate max-w-[140px]">{tenant.name}</p>
+                              {tenantEmailsMap[tenant.id] && (
+                                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
+                                  <Mail className="w-2.5 h-2.5 shrink-0" />
+                                  <span className="truncate max-w-[130px]">{tenantEmailsMap[tenant.id]}</span>
+                                </span>
+                              )}
                               <span className="text-[10px] text-muted-foreground md:hidden">{tenant.subdomain || '—'}</span>
                             </div>
                           </div>
@@ -465,10 +517,24 @@ export default function SuperAdmin() {
                           )}
                         </td>
                         <td className="px-5 py-4 hidden lg:table-cell">
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {new Date(tenant.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              Alta: {new Date(tenant.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                            {tenant.subscription_end ? (
+                              <span className={`text-[10px] flex items-center gap-1 font-bold ${
+                                new Date(tenant.subscription_end) > new Date() ? 'text-emerald-500' : 'text-red-500'
+                              }`}>
+                                <CalendarDays className="w-3 h-3" />
+                                Vence: {new Date(tenant.subscription_end).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
+                                <CalendarDays className="w-3 h-3" /> Sin vencimiento
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-5 py-4">
                           {!tenant.active ? (
@@ -497,6 +563,13 @@ export default function SuperAdmin() {
                             <button onClick={() => setEditingTenant(tenant)} title="Cambiar plan"
                               className="p-1.5 hover:bg-blue-500/10 text-blue-400 rounded-lg transition-colors">
                               <CreditCard className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => { setAdjustingTenant(tenant); setAdjustDays(30); }}
+                              title="Ajustar días de suscripción"
+                              className="p-1.5 hover:bg-amber-500/10 text-amber-400 rounded-lg transition-colors"
+                            >
+                              <CalendarDays className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => toggleActive(tenant)} disabled={savingId === tenant.id}
                               title={tenant.active ? 'Desactivar' : 'Activar'}
@@ -1008,6 +1081,134 @@ export default function SuperAdmin() {
               >
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: AJUSTAR DÍAS DE SUSCRIPCIÓN ── */}
+      {adjustingTenant && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-border flex items-center justify-between bg-muted/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <CalendarDays className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base leading-tight">Ajustar Días de Suscripción</h3>
+                  <p className="text-xs text-muted-foreground">{adjustingTenant.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setAdjustingTenant(null)} className="p-2 hover:bg-muted rounded-xl text-muted-foreground">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Current expiry info */}
+              <div className="p-3 bg-muted/40 rounded-xl border border-border text-xs space-y-1">
+                <p className="text-muted-foreground font-semibold">Vencimiento actual:</p>
+                {adjustingTenant.subscription_end ? (
+                  <p className={`font-extrabold ${
+                    new Date(adjustingTenant.subscription_end) > new Date() ? 'text-emerald-400' : 'text-red-400'
+                  }`}>
+                    {new Date(adjustingTenant.subscription_end).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    {new Date(adjustingTenant.subscription_end) <= new Date() && ' ⚠️ Vencido'}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground italic">Sin fecha configurada (se tomará desde hoy)</p>
+                )}
+              </div>
+
+              {/* Days selector */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">
+                  Días a agregar o descontar
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setAdjustDays(d => Math.max(-365, d - 1))}
+                    className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+                  >
+                    <MinusCircle className="w-5 h-5" />
+                  </button>
+                  <input
+                    type="number"
+                    value={adjustDays}
+                    onChange={e => setAdjustDays(Number(e.target.value))}
+                    className="flex-1 p-3 bg-muted border border-border rounded-xl text-center text-2xl font-extrabold focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <button
+                    onClick={() => setAdjustDays(d => Math.min(365, d + 1))}
+                    className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors"
+                  >
+                    <PlusCircle className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground text-center">
+                  {adjustDays >= 0
+                    ? `Se agregarán ${adjustDays} días a la suscripción`
+                    : `Se descontarán ${Math.abs(adjustDays)} días de la suscripción`}
+                </p>
+              </div>
+
+              {/* Quick presets */}
+              <div className="flex flex-wrap gap-2">
+                {[7, 15, 30, 60, 90, 365].map(d => (
+                  <button key={d} onClick={() => setAdjustDays(d)}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${
+                      adjustDays === d
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-muted text-muted-foreground border-border hover:border-primary/40'
+                    }`}>
+                    +{d}d
+                  </button>
+                ))}
+                {[-7, -15, -30].map(d => (
+                  <button key={d} onClick={() => setAdjustDays(d)}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${
+                      adjustDays === d
+                        ? 'bg-red-500 text-white border-red-500'
+                        : 'bg-muted text-red-400 border-red-500/20 hover:bg-red-500/10'
+                    }`}>
+                    {d}d
+                  </button>
+                ))}
+              </div>
+
+              {/* New expiry preview */}
+              {adjustDays !== 0 && (() => {
+                const base = adjustingTenant.subscription_end && new Date(adjustingTenant.subscription_end) > new Date()
+                  ? new Date(adjustingTenant.subscription_end)
+                  : new Date();
+                const preview = new Date(base);
+                preview.setDate(preview.getDate() + adjustDays);
+                return (
+                  <div className={`p-3 rounded-xl border text-xs text-center font-bold ${
+                    adjustDays > 0 ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-red-500/5 border-red-500/20 text-red-400'
+                  }`}>
+                    Nuevo vencimiento: {preview.toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </div>
+                );
+              })()}
+
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <button
+                  onClick={() => setAdjustingTenant(null)}
+                  className="py-2.5 rounded-xl text-xs font-bold bg-muted hover:bg-muted/80 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => adjustDaysForTenant(adjustingTenant, adjustDays)}
+                  disabled={savingDays || adjustDays === 0}
+                  className="py-2.5 rounded-xl text-xs font-bold text-white bg-amber-500 hover:bg-amber-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {savingDays ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CalendarDays className="w-3.5 h-3.5" />}
+                  {savingDays ? 'Guardando...' : 'Confirmar Ajuste'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
