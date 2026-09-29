@@ -87,8 +87,40 @@ export const productsService = {
       const { data } = await supabase.from('products').select('current_stock').eq('id', productId).single();
       if (!data) return;
       const factor = type === 'entrada' ? 1 : -1;
-      const newStock = Math.max(0, data.current_stock + qty * factor);
+      const newStock = Math.max(0, Number(data.current_stock) + qty * factor);
       await supabase.from('products').update({ current_stock: newStock }).eq('id', productId);
+    }
+  },
+
+  /**
+   * Deduct stock for order items (handles direct products/insumos and composite menu recipe ingredients)
+   */
+  async deductOrderStock(items: Array<{ product_id?: string; quantity: number }>): Promise<void> {
+    if (!isSupabaseConfigured()) return;
+
+    for (const item of items) {
+      const prodId = item.product_id;
+      if (!prodId) continue;
+      const qty = item.quantity || 1;
+
+      // Fetch product detail to check if it's a combo/recipe with components
+      const { data: prod } = await supabase.from('products').select('id, type, description').eq('id', prodId).single();
+      if (!prod) continue;
+
+      if (prod.type === 'combo' && prod.description && prod.description.includes('RECIPE:')) {
+        try {
+          const recipePart = prod.description.split('RECIPE:')[1]?.split('|')[0] || '';
+          const recipeItems: Array<{ id: string; qty: number }> = JSON.parse(recipePart);
+          for (const rItem of recipeItems) {
+            const insumoQtyToDeduct = (rItem.qty || 1) * qty;
+            await productsService.adjustStock(rItem.id, insumoQtyToDeduct, 'salida');
+          }
+        } catch (e) {
+          console.error('[productsService.deductOrderStock] Error parsing recipe:', e);
+        }
+      } else if (prod.type !== 'combo') {
+        await productsService.adjustStock(prodId, qty, 'salida');
+      }
     }
   },
 

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { Product } from './useInventoryStore';
+import { Product, useInventoryStore } from './useInventoryStore';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { ordersService } from '../services/ordersService';
+import { productsService } from '../services/productsService';
 import { tablesService } from '../services/tablesService';
 import { useAuthStore } from './useAuthStore';
 
@@ -368,6 +369,14 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       paid: order.paid,
       createdAt: new Date().toISOString()
     };
+
+    // Automatically deduct stock for direct products/insumos and composite menu recipe ingredients
+    productsService.deductOrderStock(order.items.map(item => ({
+      product_id: item.product.id || undefined,
+      quantity: item.quantity
+    }))).then(() => {
+      useInventoryStore.getState().initializeStore();
+    }).catch(err => console.error('[useOrdersStore.addOrder] stock deduction error:', err));
 
     set((state) => ({
       orders: [newOrder, ...state.orders]

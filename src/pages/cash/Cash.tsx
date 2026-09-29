@@ -15,6 +15,7 @@ import {
 import { useCashStore } from '../../store/useCashStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
+import { useTutorialStore } from '../../store/useTutorialStore';
 import { CreditCard, QrCode } from 'lucide-react';
 
 interface Toast {
@@ -27,6 +28,7 @@ export default function Cash() {
   const { currentSession, movements, openRegister, closeRegister, addMovement, loading, initializeCash } = useCashStore();
   const { orders } = useOrdersStore();
   const { user } = useAuthStore();
+  const { hasSeenTutorials, startTutorial } = useTutorialStore();
 
   const [openingBalance, setOpeningBalance] = useState<number>(0);
   const [moveAmount, setMoveAmount] = useState<number>(0);
@@ -35,6 +37,66 @@ export default function Cash() {
   const [closingActualAmount, setClosingActualAmount] = useState<number>(0);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const handleStartTutorial = () => {
+    const steps: any[] = [
+      {
+        target: '#cash-header',
+        content: 'Bienvenido al Control de Caja. Desde esta pantalla gestionás la apertura, cobros, egresos y el arqueo de cierre de tu turno.',
+        title: 'Control de Caja & Turnos',
+        skipBeacon: true,
+      }
+    ];
+
+    if (currentSession?.status === 'open') {
+      steps.push(
+        {
+          target: '#cash-status-card',
+          content: 'Acá ves en tiempo real el efectivo en caja, el desglosado por medios de pago (Efectivo, Débito, Crédito, QR) y la ganancia del turno.',
+          title: 'Estado & Arqueo del Turno',
+        },
+        {
+          target: '#cash-movement-form',
+          content: 'Podés registrar ingresos manuales o egresos de dinero (como pagos a proveedores o retiros a caja fuerte).',
+          title: 'Movimientos Manuales',
+        },
+        {
+          target: '#cash-close-section',
+          content: 'Al finalizar la jornada, ingresás el efectivo contado para realizar el cierre de turno y comparar diferencias.',
+          title: 'Cierre y Arqueo',
+        },
+        {
+          target: '#cash-movements-log',
+          content: 'Historial detallado minuto a minuto de todas las transacciones realizadas durante la sesión.',
+          title: 'Historial del Turno',
+        }
+      );
+    } else {
+      steps.push({
+        target: '#cash-open-card',
+        content: 'Para comenzar a registrar ventas e ingresos en el POS, ingresá el monto inicial en efectivo y presioná "Abrir Caja".',
+        title: 'Apertura de Caja',
+      });
+    }
+
+    startTutorial('cash', steps);
+  };
+
+  useEffect(() => {
+    if (!hasSeenTutorials.cash && (user?.role === 'admin' || user?.role === 'cajero' || user?.role === 'super_admin' || user?.role === 'supervisor')) {
+      handleStartTutorial();
+    }
+  }, [hasSeenTutorials.cash, currentSession?.status, user]);
+
+  useEffect(() => {
+    const listener = (e: any) => {
+      if (e.detail?.key === 'cash') {
+        handleStartTutorial();
+      }
+    };
+    window.addEventListener('request-tutorial', listener);
+    return () => window.removeEventListener('request-tutorial', listener);
+  }, [currentSession?.status]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     const id = `t-${Date.now()}`;
@@ -234,7 +296,7 @@ export default function Cash() {
       )}
 
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div id="cash-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Control de Caja & Turno</h2>
           <p className="text-muted-foreground text-xs">Administración del flujo de efectivo, registros diarios y arqueos de cierre.</p>
@@ -258,7 +320,7 @@ export default function Cash() {
           <div className="lg:col-span-8 space-y-5">
 
             {/* Status card */}
-            <div className="p-5 rounded-2xl bg-card border border-border space-y-4">
+            <div id="cash-status-card" className="p-5 rounded-2xl bg-card border border-border space-y-4">
               <div className="flex justify-between items-center pb-3 border-b border-border">
                 <div className="flex items-center gap-2 text-green-500 font-extrabold text-sm">
                   <Unlock className="w-4 h-4" />
@@ -363,7 +425,7 @@ export default function Cash() {
             </div>
 
             {/* Movement form */}
-            <div className="p-5 rounded-2xl bg-card border border-border space-y-4">
+            <div id="cash-movement-form" className="p-5 rounded-2xl bg-card border border-border space-y-4">
               <h3 className="font-extrabold text-sm flex items-center gap-2">
                 <PlusCircle className="w-4 h-4 text-primary" />
                 Registrar Movimiento Manual de Efectivo
@@ -419,7 +481,7 @@ export default function Cash() {
             </div>
 
             {/* Close session form */}
-            <div className="p-5 rounded-2xl bg-card border border-red-500/20 space-y-4">
+            <div id="cash-close-section" className="p-5 rounded-2xl bg-card border border-red-500/20 space-y-4">
               <h3 className="font-extrabold text-sm flex items-center gap-2 text-red-500">
                 <Lock className="w-4 h-4" /> Cierre de Turno & Arqueo de Caja
               </h3>
@@ -472,7 +534,7 @@ export default function Cash() {
 
           {/* Right: Movements log */}
           <div className="lg:col-span-4 space-y-5">
-            <div className="p-5 bg-card border border-border rounded-2xl space-y-4 shadow-sm">
+            <div id="cash-movements-log" className="p-5 bg-card border border-border rounded-2xl space-y-4 shadow-sm">
               <h3 className="font-extrabold text-sm flex items-center gap-2">
                 <History className="w-4 h-4 text-primary" /> Movimientos del Turno
                 <span className="ml-auto text-[10px] text-muted-foreground font-semibold">{movements.length} registros</span>
@@ -581,7 +643,7 @@ export default function Cash() {
 
       ) : !loading ? (
         /* Box closed / no session */
-        <div className="max-w-md mx-auto p-6 bg-card border border-border rounded-3xl text-center space-y-5 shadow-xl">
+        <div id="cash-open-card" className="max-w-md mx-auto p-6 bg-card border border-border rounded-3xl text-center space-y-5 shadow-xl">
           <div className="w-14 h-14 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center mx-auto">
             <Lock className="w-7 h-7" />
           </div>

@@ -62,6 +62,7 @@ export default function Layout() {
     if (location.pathname === '/') key = 'dashboard';
     if (location.pathname.startsWith('/pos')) key = 'pos';
     if (location.pathname.startsWith('/inventory')) key = 'inventory';
+    if (location.pathname.startsWith('/cash')) key = 'cash';
     if (key) {
       window.dispatchEvent(new CustomEvent('request-tutorial', { detail: { key } }));
     }

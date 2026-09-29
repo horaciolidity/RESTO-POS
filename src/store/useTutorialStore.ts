@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Step } from 'react-joyride';
 
-type TutorialKey = 'dashboard' | 'pos' | 'inventory';
+type TutorialKey = 'dashboard' | 'pos' | 'inventory' | 'cash';
 
 interface TutorialState {
   hasSeenTutorials: Record<TutorialKey, boolean>;
@@ -23,6 +23,7 @@ export const useTutorialStore = create<TutorialState>()(
         dashboard: false,
         pos: false,
         inventory: false,
+        cash: false,
       },
       isTutorialRunning: false,
       currentTutorialKey: null,

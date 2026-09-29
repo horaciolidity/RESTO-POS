@@ -367,11 +367,13 @@ export default function Inventory() {
       return p ? `${c.quantity}x ${p.name}` : '';
     }).join(', ');
     const autoSku = menuSku || `MEN-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const recipeMeta = `RECIPE:${JSON.stringify(validComponents.map(c => ({ id: c.productId, qty: c.quantity })))}|`;
+    const descText = menuDescription ? `${menuDescription} - Compuesto por: ${componentNames}` : `Compuesto por: ${componentNames}`;
     await addProduct({
       name: menuName, code: menuCode || autoSku, sku: autoSku, categoryId: catId,
       costPrice: menuCostTotal, salePrice: menuSalePrice, taxRate: menuTaxRate,
       imageUrl: menuImageUrl || '',
-      description: menuDescription || `Compuesto por: ${componentNames}`,
+      description: `${recipeMeta}${descText}`,
       type: 'combo', active: true, stockMin: 0, stockCritical: 0, currentStock: 999
     });
     setMenuName(''); setMenuDescription(''); setMenuSalePrice(0); setMenuImageUrl('');
@@ -811,19 +813,49 @@ export default function Inventory() {
             {/* ─── Tab: Producto / Insumo ─── */}
             {modalTab === 'producto' && (
               <form onSubmit={handleAddNewProduct} className="flex-1 overflow-y-auto p-6 space-y-6">
+
+                {/* Helpful Banner when selecting Insumo */}
+                {newType === 'insumo' && (
+                  <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl flex items-start gap-3 text-xs text-orange-400 font-medium animate-in fade-in duration-200">
+                    <Package className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-sm block mb-1">💡 Carga de Insumos &amp; Materias Primas</span>
+                      <p className="leading-relaxed text-orange-300/90">
+                        Los insumos son los ingredientes con los que preparás tus platos y menús (ej: <b>Carne Molida, Pan de Hamburguesa, Queso Cheddar, Salsa de Tomate, Harina</b>). Su stock se descontará automáticamente con cada venta de los menús que los incluyan.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-4">
-                  <h4 className="text-sm font-bold text-primary flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</span> Información General</h4>
+                  <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</span>
+                    {newType === 'insumo' ? 'Información del Insumo' : 'Información General'}
+                  </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div>
-                      <label className="text-muted-foreground mb-1 font-semibold block">Nombre del Producto *</label>
-                      <input required type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: Milanesa Napolitana" className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none" />
+                      <label className="text-muted-foreground mb-1 font-semibold block">
+                        {newType === 'insumo' ? 'Nombre del Insumo / Ingrediente *' : 'Nombre del Producto *'}
+                      </label>
+                      <input
+                        required
+                        type="text"
+                        value={newName}
+                        onChange={e => setNewName(e.target.value)}
+                        placeholder={
+                          newType === 'insumo'
+                            ? 'Ej: Pan de Hamburguesa (Unid), Carne Molida (Kg), Queso Cheddar (Gramos)'
+                            : 'Ej: Milanesa Napolitana con Papas Fritas'
+                        }
+                        className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-medium"
+                      />
                     </div>
                     <div>
                       <label className="text-muted-foreground mb-1 font-semibold block">Tipo *</label>
-                      <select value={newType} onChange={e => setNewType(e.target.value as ProductType)} className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none">
+                      <select value={newType} onChange={e => setNewType(e.target.value as ProductType)} className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-bold">
                         <option value="producto">🍽️ Producto Final (Plato)</option>
                         <option value="bebida">🥤 Bebida</option>
-                        <option value="insumo">📦 Insumo / Materia Prima</option>
+                        <option value="insumo">📦 Insumo / Materia Prima (Ingrediente)</option>
                         <option value="promocion">🏷️ Promoción</option>
                       </select>
                     </div>
@@ -838,7 +870,17 @@ export default function Inventory() {
                     </div>
                     <div>
                       <label className="text-muted-foreground mb-1 font-semibold block">Descripción</label>
-                      <input type="text" value={newDescription} onChange={e => setNewDescription(e.target.value)} placeholder="Detalle opcional..." className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none" />
+                      <input
+                        type="text"
+                        value={newDescription}
+                        onChange={e => setNewDescription(e.target.value)}
+                        placeholder={
+                          newType === 'insumo'
+                            ? 'Ej: Carne vacuna molida 80/20 para hamburguesas y sándwiches'
+                            : 'Detalle opcional...'
+                        }
+                        className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none"
+                      />
                     </div>
                   </div>
                 </div>
@@ -852,7 +894,13 @@ export default function Inventory() {
                     </div>
                     <div>
                       <label className="text-muted-foreground mb-1 font-semibold block">SKU Interno (auto si vacío)</label>
-                      <input type="text" value={newSku} onChange={e => setNewSku(e.target.value)} placeholder="Ej: INS-HAR-001" className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-mono" />
+                      <input
+                        type="text"
+                        value={newSku}
+                        onChange={e => setNewSku(e.target.value)}
+                        placeholder={newType === 'insumo' ? 'Ej: INS-PAN-001, INS-CARNE-01' : 'Ej: PROD-MIL-001'}
+                        className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-mono"
+                      />
                     </div>
                   </div>
                 </div>
@@ -861,12 +909,16 @@ export default function Inventory() {
                   <h4 className="text-sm font-bold text-primary flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">3</span> Precios e Impuestos</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                     <div>
-                      <label className="text-muted-foreground mb-1 font-semibold block">Costo de Compra ($)</label>
-                      <input type="number" step="0.01" min="0" value={newCostPrice} onChange={e => setNewCostPrice(Number(e.target.value))} className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-mono" />
+                      <label className="text-muted-foreground mb-1 font-semibold block">
+                        {newType === 'insumo' ? 'Costo por Unidad/Kg ($)' : 'Costo de Compra ($)'}
+                      </label>
+                      <input type="number" step="0.01" min="0" value={newCostPrice} onChange={e => setNewCostPrice(Number(e.target.value))} className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-mono font-bold" />
                     </div>
                     <div>
-                      <label className="text-muted-foreground mb-1 font-semibold block">Precio de Venta ($) *</label>
-                      <input required type="number" step="0.01" min="0" value={newSalePrice} onChange={e => setNewSalePrice(Number(e.target.value))} className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-mono" />
+                      <label className="text-muted-foreground mb-1 font-semibold block">
+                        {newType === 'insumo' ? 'Precio Venta Directa ($) (0 si es insumo de cocina)' : 'Precio de Venta ($) *'}
+                      </label>
+                      <input required={newType !== 'insumo'} type="number" step="0.01" min="0" value={newSalePrice} onChange={e => setNewSalePrice(Number(e.target.value))} className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-mono font-bold" />
                     </div>
                     <div>
                       <label className="text-muted-foreground mb-1 font-semibold block">IVA (%)</label>
@@ -883,15 +935,17 @@ export default function Inventory() {
                   <h4 className="text-sm font-bold text-primary flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">4</span> Gestión de Stock</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                     <div>
-                      <label className="text-muted-foreground mb-1 font-semibold block">Stock Inicial</label>
-                      <input type="number" min="0" value={newCurrentStock} onChange={e => setNewCurrentStock(Number(e.target.value))} className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-mono" />
+                      <label className="text-muted-foreground mb-1 font-semibold block">
+                        {newType === 'insumo' ? 'Stock Inicial (Kg / Unid)' : 'Stock Inicial'}
+                      </label>
+                      <input type="number" min="0" value={newCurrentStock} onChange={e => setNewCurrentStock(Number(e.target.value))} className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-mono font-bold" />
                     </div>
                     <div>
                       <label className="text-muted-foreground mb-1 font-semibold block">Mínimo (⚠️ Alerta)</label>
                       <input type="number" min="0" value={newStockMin} onChange={e => setNewStockMin(Number(e.target.value))} className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-mono" />
                     </div>
                     <div>
-                      <label className="text-muted-foreground mb-1 font-semibold block">Crítico (🔴 Sin Stock)</label>
+                      <label className="text-muted-foreground mb-1 font-semibold block">Crítico (🔴 Reposición Urgente)</label>
                       <input type="number" min="0" value={newStockCritical} onChange={e => setNewStockCritical(Number(e.target.value))} className="w-full p-2.5 bg-muted border border-border rounded-xl focus:ring-1 focus:ring-primary outline-none font-mono" />
                     </div>
                   </div>
