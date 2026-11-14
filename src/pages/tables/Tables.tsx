@@ -13,12 +13,69 @@ import { useAuthStore } from '../../store/useAuthStore';
 export default function Tables() {
   const { tables, updateTableStatus, orders, closeOrder, updateOrderStatus, addIncident } = useOrdersStore();
   const { user } = useAuthStore();
+  const isProPreview = user?.planType === 'standard' || user?.planType === 'free';
+
+  const DEMO_PREVIEW_TABLES: RestaurantTable[] = [
+    { id: 'preview-1', number: 1, zone: 'Salón Principal', capacity: 2, status: 'comiendo', currentOrderId: 'demo-ord-1' },
+    { id: 'preview-2', number: 2, zone: 'Salón Principal', capacity: 4, status: 'ocupada', currentOrderId: 'demo-ord-2' },
+    { id: 'preview-3', number: 3, zone: 'Salón Principal', capacity: 4, status: 'libre' },
+    { id: 'preview-4', number: 4, zone: 'Salón Principal', capacity: 6, status: 'solicita_cuenta', currentOrderId: 'demo-ord-3' },
+    { id: 'preview-5', number: 5, zone: 'Terraza', capacity: 2, status: 'esperando_comida', currentOrderId: 'demo-ord-4' },
+    { id: 'preview-6', number: 6, zone: 'Terraza', capacity: 4, status: 'libre' },
+    { id: 'preview-7', number: 7, zone: 'Planta Alta', capacity: 8, status: 'ocupada' },
+    { id: 'preview-8', number: 8, zone: 'Planta Alta', capacity: 4, status: 'libre' },
+  ];
+
+  const DEMO_ORDERS: Record<string, any> = {
+    'demo-ord-1': {
+      id: 'demo-ord-1',
+      orderNumber: '101',
+      total: 18500,
+      items: [
+        { id: 'i1', product: { name: 'Bife de Chorizo con Fritas' }, quantity: 1, price: 14500 },
+        { id: 'i2', product: { name: 'Cerveza Patagonia 730ml' }, quantity: 1, price: 4000 }
+      ]
+    },
+    'demo-ord-2': {
+      id: 'demo-ord-2',
+      orderNumber: '102',
+      total: 12200,
+      items: [
+        { id: 'i3', product: { name: 'Ravioles con Salsa Mixta' }, quantity: 1, price: 9200 },
+        { id: 'i4', product: { name: 'Gaseosa 500ml' }, quantity: 1, price: 3000 }
+      ]
+    },
+    'demo-ord-3': {
+      id: 'demo-ord-3',
+      orderNumber: '104',
+      total: 24800,
+      items: [
+        { id: 'i5', product: { name: 'Parrillada para 2 personas' }, quantity: 1, price: 21000 },
+        { id: 'i6', product: { name: 'Agua Mineral' }, quantity: 2, price: 1900 }
+      ]
+    },
+    'demo-ord-4': {
+      id: 'demo-ord-4',
+      orderNumber: '105',
+      total: 7800,
+      items: [
+        { id: 'i7', product: { name: 'Hamburguesa Completa' }, quantity: 1, price: 7800 }
+      ]
+    }
+  };
+
+  const actualTables = (tables.length === 0 && isProPreview) ? DEMO_PREVIEW_TABLES : tables;
+
   const [selectedZone, setSelectedZone] = useState<string>('Todos');
   const [activeTableDetail, setActiveTableDetail] = useState<RestaurantTable | null>(null);
   const [novedadText, setNovedadText] = useState('');
   const [novedadType, setNovedadType] = useState<'incidente' | 'reclamo' | 'rotura' | 'error_cocina'>('incidente');
 
   const handleFinalizeTable = async (table: RestaurantTable) => {
+    if (isProPreview) {
+      alert('⭐ Vista Previa Plan PRO: El cierre y cobro de mesas en vivo requiere el Plan PRO.');
+      return;
+    }
     const activeOrder = getTableOrder(table);
     if (activeOrder) {
       await closeOrder(activeOrder.id);
@@ -38,13 +95,18 @@ export default function Tables() {
 
   // Filter tables by zone
   const filteredTables = selectedZone === 'Todos' 
-    ? tables 
-    : tables.filter((t: RestaurantTable) => t.zone === selectedZone);
+    ? actualTables 
+    : actualTables.filter((t: RestaurantTable) => t.zone === selectedZone);
 
   // Get active order associated with the table
   const getTableOrder = (table: RestaurantTable) => {
     if (!table.currentOrderId) return null;
-    return orders.find(o => o.id === table.currentOrderId);
+    const real = orders.find(o => o.id === table.currentOrderId);
+    if (real) return real;
+    if (isProPreview && DEMO_ORDERS[table.currentOrderId]) {
+      return DEMO_ORDERS[table.currentOrderId];
+    }
+    return null;
   };
 
   const getStatusColor = (status: RestaurantTable['status']) => {
@@ -181,6 +243,10 @@ export default function Tables() {
                     <button
                       key={statusItem.id}
                       onClick={() => {
+                        if (isProPreview) {
+                          alert('⭐ Vista Previa Plan PRO: El cambio de estado de mesas en tiempo real requiere el Plan PRO.');
+                          return;
+                        }
                         updateTableStatus(activeTableDetail.id, statusItem.id as RestaurantTable['status']);
                         setActiveTableDetail({
                           ...activeTableDetail,
@@ -249,9 +315,13 @@ export default function Tables() {
 
                 <button
                   onClick={() => handleFinalizeTable(activeTableDetail)}
-                  className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-red-600/10 flex items-center justify-center gap-1.5"
+                  className={`w-full py-3 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 ${
+                    isProPreview
+                      ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/10'
+                      : 'bg-red-600 hover:bg-red-500 shadow-red-600/10'
+                  }`}
                 >
-                  Finalizar Pedido y Desocupar Mesa
+                  {isProPreview ? 'Finalizar Pedido (Vista Previa PRO)' : 'Finalizar Pedido y Desocupar Mesa'}
                 </button>
               </div>
             ) : (

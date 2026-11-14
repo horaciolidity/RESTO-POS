@@ -182,12 +182,6 @@ export default function Settings() {
     }
   }, [location]);
 
-  useEffect(() => {
-    if ((user?.planType === 'standard' || user?.planType === 'free') && ['mesas', 'personal', 'turno', 'qr', 'hardware'].includes(activeTab)) {
-      setActiveTab('general');
-    }
-  }, [activeTab, user?.planType]);
-
   async function loadQrImage() {
     if (!user?.tenantId) return;
     const cached = localStorage.getItem('qr_payment_image_' + user.tenantId);
@@ -311,8 +305,64 @@ export default function Settings() {
     }
   };
 
+  const isProPreview = user?.planType === 'standard' || user?.planType === 'free';
+
+  const DEMO_SETTINGS_TABLES = [
+    { id: 'demo-t-1', number: 1, zone: 'Salón Principal', capacity: 2, status: 'comiendo' as const, qr_token: 'demo-t1' },
+    { id: 'demo-t-2', number: 2, zone: 'Salón Principal', capacity: 4, status: 'ocupada' as const, qr_token: 'demo-t2' },
+    { id: 'demo-t-3', number: 3, zone: 'Salón Principal', capacity: 4, status: 'libre' as const, qr_token: 'demo-t3' },
+    { id: 'demo-t-4', number: 4, zone: 'Terraza', capacity: 6, status: 'solicita_cuenta' as const, qr_token: 'demo-t4' },
+    { id: 'demo-t-5', number: 5, zone: 'Planta Alta', capacity: 8, status: 'libre' as const, qr_token: 'demo-t5' },
+  ];
+
+  const DEMO_SETTINGS_EMPLOYEES: Employee[] = [
+    { id: 'demo-emp-1', firstName: 'Juan', lastName: 'Pérez', role: 'mozo', assignedTables: ['1', '2'] },
+    { id: 'demo-emp-2', firstName: 'Sofía', lastName: 'González', role: 'mozo', assignedTables: ['3', '4'] },
+    { id: 'demo-emp-3', firstName: 'Lucas', lastName: 'Martínez', role: 'delivery' },
+    { id: 'demo-emp-4', firstName: 'Carlos', lastName: 'Ayala', role: 'cocina' },
+    { id: 'demo-emp-5', firstName: 'Romina', lastName: 'Vázquez', role: 'cajero' },
+  ];
+
+  const displayTables = (tables.length === 0 && isProPreview) ? DEMO_SETTINGS_TABLES : tables;
+  const displayEmployees = (employees.length === 0 && isProPreview) ? DEMO_SETTINGS_EMPLOYEES : employees;
+
+  const renderProPreviewBanner = (moduleTitle: string) => {
+    if (!isProPreview) return null;
+    return (
+      <div className="mb-6 p-4 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in duration-200">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-500 shrink-0">
+            <Crown className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                Vista Previa · Función del Plan PRO
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Estás explorando la configuración de <strong className="text-foreground">{moduleTitle}</strong>. Podés probar y recorrer las opciones; para guardar cambios en vivo se requiere el <strong className="text-amber-500">Plan PRO</strong>.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab('miplan')}
+          className="shrink-0 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white text-xs font-bold rounded-xl shadow-md shadow-orange-500/20 transition-all flex items-center gap-1.5 whitespace-nowrap hover:scale-105"
+        >
+          <Crown className="w-3.5 h-3.5" />
+          Activar Plan PRO
+        </button>
+      </div>
+    );
+  };
+
   const handleAddTable = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isProPreview) {
+      alert('⭐ Vista Previa Plan PRO: La creación y edición de mesas físicas y zonas requiere el Plan PRO. Podés explorar todas las configuraciones aquí; para guardar cambios activá tu Plan PRO.');
+      return;
+    }
     if (!newTableNum || !newTableCap) return;
     addTable({
       number: Number(newTableNum),
@@ -325,6 +375,10 @@ export default function Settings() {
 
   const handleAddEmployee = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isProPreview) {
+      alert('⭐ Vista Previa Plan PRO: El registro de personal, mozos y repartidores de delivery requiere el Plan PRO. Mejorá tu suscripción para guardar y gestionar tu equipo.');
+      return;
+    }
     if (!newEmpFirst || !newEmpLast) return;
     addEmployee({
       firstName: newEmpFirst,
@@ -337,6 +391,10 @@ export default function Settings() {
   };
 
   const handleOpenShift = () => {
+    if (isProPreview) {
+      alert('⭐ Vista Previa Plan PRO: La apertura y control de turnos de personal requiere el Plan PRO.');
+      return;
+    }
     if (selectedStaffIds.length === 0) {
       alert("Debes seleccionar al menos un empleado para abrir el turno.");
       return;
@@ -373,42 +431,58 @@ export default function Settings() {
           <div className="flex items-center gap-2"><Store className="w-4 h-4" /> General</div>
         </button>
         
-        {(user?.planType !== 'standard' && user?.planType !== 'free') && (
-          <>
-            <button
-              onClick={() => setActiveTab('mesas')}
-              className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-                activeTab === 'mesas' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <div className="flex items-center gap-2"><Layers className="w-4 h-4" /> Configurar Mesas</div>
-            </button>
-            <button
-              onClick={() => setActiveTab('personal')}
-              className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-                activeTab === 'personal' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <div className="flex items-center gap-2"><Users className="w-4 h-4" /> Personal y Mozos</div>
-            </button>
-            <button
-              onClick={() => setActiveTab('turno')}
-              className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-                activeTab === 'turno' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <div className="flex items-center gap-2"><PlayCircle className="w-4 h-4" /> Apertura de Turno</div>
-            </button>
-            <button
-              onClick={() => setActiveTab('qr')}
-              className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-                activeTab === 'qr' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <div className="flex items-center gap-2"><QrCode className="w-4 h-4" /> QR de Mesas</div>
-            </button>
-          </>
-        )}
+        <button
+          onClick={() => setActiveTab('mesas')}
+          className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'mesas' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2"><Layers className="w-4 h-4" /> Configurar Mesas</div>
+          {isProPreview && (
+            <span className="text-[9px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
+              PRO
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('personal')}
+          className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'personal' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2"><Users className="w-4 h-4" /> Personal y Mozos</div>
+          {isProPreview && (
+            <span className="text-[9px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
+              PRO
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('turno')}
+          className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'turno' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2"><PlayCircle className="w-4 h-4" /> Apertura de Turno</div>
+          {isProPreview && (
+            <span className="text-[9px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
+              PRO
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('qr')}
+          className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'qr' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2"><QrCode className="w-4 h-4" /> QR de Mesas</div>
+          {isProPreview && (
+            <span className="text-[9px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
+              PRO
+            </span>
+          )}
+        </button>
 
         <button
           onClick={() => setActiveTab('miplan')}
@@ -419,16 +493,19 @@ export default function Settings() {
           <div className="flex items-center gap-2"><Crown className="w-4 h-4" /> Mi Plan</div>
         </button>
         
-        {(user?.planType !== 'standard' && user?.planType !== 'free') && (
-          <button
-            onClick={() => setActiveTab('hardware')}
-            className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-              activeTab === 'hardware' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <div className="flex items-center gap-2"><Printer className="w-4 h-4" /> Periféricos</div>
-          </button>
-        )}
+        <button
+          onClick={() => setActiveTab('hardware')}
+          className={`px-4 py-2 font-bold text-sm border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'hardware' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2"><Printer className="w-4 h-4" /> Periféricos</div>
+          {isProPreview && (
+            <span className="text-[9px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
+              PRO
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Tab Content: General */}
@@ -574,7 +651,9 @@ export default function Settings() {
 
       {/* Tab Content: Mesas */}
       {activeTab === 'mesas' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="space-y-6">
+          {renderProPreviewBanner('Salón y Configuración de Mesas')}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Settings Left Column */}
           <div className="col-span-1 space-y-6">
             
@@ -618,6 +697,10 @@ export default function Settings() {
               />
               <button
                 onClick={() => {
+                  if (isProPreview) {
+                    alert('⭐ Vista Previa Plan PRO: La administración de zonas físicas de salón requiere el Plan PRO.');
+                    return;
+                  }
                   if (newZoneName) {
                     addTableZone(newZoneName);
                     setNewZoneName('');
@@ -636,6 +719,10 @@ export default function Settings() {
                   <span className="text-sm font-bold">{zone}</span>
                   <button
                     onClick={() => {
+                      if (isProPreview) {
+                        alert('⭐ Vista Previa Plan PRO: La administración de zonas requiere el Plan PRO.');
+                        return;
+                      }
                       if (confirm(`¿Eliminar la zona "${zone}"?`)) {
                         removeTableZone(zone);
                       }
@@ -657,9 +744,11 @@ export default function Settings() {
 
           {/* Tables List */}
           <div className="col-span-1 md:col-span-2 bg-card border border-border rounded-2xl p-5">
-            <h3 className="font-bold text-lg mb-4">Mesas Registradas ({tables.length})</h3>
+            <h3 className="font-bold text-lg mb-4">
+              Mesas Registradas ({displayTables.length}) {isProPreview && tables.length === 0 && <span className="text-xs text-amber-500 font-semibold">(Demostración)</span>}
+            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {tables.map(t => {
+              {displayTables.map(t => {
                 const callUrl = `${window.location.origin}/llamar/${t.qr_token || 'table-' + t.number}`;
                 const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(callUrl)}&bgcolor=ffffff&color=1a1a2e&qzone=2`;
                 const handlePrintQr = () => {
@@ -702,7 +791,16 @@ export default function Settings() {
                         <span className="font-bold text-base block">Mesa {t.number}</span>
                         <span className="text-[11px] text-muted-foreground">{t.zone} · {t.capacity} pax</span>
                       </div>
-                      <button onClick={() => removeTable(t.id)} className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => {
+                          if (isProPreview) {
+                            alert('⭐ Vista Previa Plan PRO: La administración y baja de mesas requiere el Plan PRO.');
+                            return;
+                          }
+                          removeTable(t.id);
+                        }} 
+                        className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -728,11 +826,14 @@ export default function Settings() {
             </div>
           </div>
         </div>
+        </div>
       )}
 
       {/* Tab Content: Personal */}
       {activeTab === 'personal' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="space-y-6">
+          {renderProPreviewBanner('Personal y Mozos')}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Add Employee Form */}
           <div className="col-span-1 space-y-4">
             <div className="bg-card border border-border rounded-2xl p-5 space-y-4 h-fit">
@@ -791,16 +892,18 @@ export default function Settings() {
 
           {/* Employee List */}
           <div className="col-span-1 md:col-span-2 bg-card border border-border rounded-2xl p-5">
-            <h3 className="font-bold text-lg mb-4">Plantilla de Empleados ({employees.length})</h3>
+            <h3 className="font-bold text-lg mb-4">
+              Plantilla de Empleados ({displayEmployees.length}) {isProPreview && employees.length === 0 && <span className="text-xs text-amber-500 font-semibold">(Demostración)</span>}
+            </h3>
             <div className="space-y-3">
-              {employees.length === 0 && (
+              {displayEmployees.length === 0 && (
                 <div className="py-10 text-center text-muted-foreground text-sm">
                   <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
                   <p>No hay empleados registrados aún.</p>
                   <p className="text-xs mt-1">Usá el formulario de la izquierda para agregar personal.</p>
                 </div>
               )}
-              {employees.map(e => {
+              {displayEmployees.map(e => {
                 const isDelivery = e.role === 'delivery';
                 const deliveryLink = `${window.location.origin}/d/${e.id}`;
                 const waiterLink = `${window.location.origin}/m/${e.id}`;
@@ -827,7 +930,16 @@ export default function Settings() {
                           </span>
                         </div>
                       </div>
-                      <button onClick={() => removeEmployee(e.id)} className="p-2 text-muted-foreground hover:text-red-500 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => {
+                          if (isProPreview) {
+                            alert('⭐ Vista Previa Plan PRO: La administración y baja de personal requiere el Plan PRO.');
+                            return;
+                          }
+                          removeEmployee(e.id);
+                        }} 
+                        className="p-2 text-muted-foreground hover:text-red-500 rounded-lg transition-colors"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -838,10 +950,16 @@ export default function Settings() {
                         <span className="text-[10px] font-bold text-muted-foreground block">Mesas Asignadas (Opcional):</span>
                         <div className="flex flex-wrap gap-1">
                           {e.assignedTables?.map(tId => {
-                            const t = tables.find(tbl => tbl.id === tId);
+                            const t = displayTables.find(tbl => tbl.id === tId || String(tbl.number) === tId);
                             if (!t) return null;
                             return (
-                              <span key={tId} onClick={() => unassignTableFromWaiter(e.id, tId)} className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded cursor-pointer hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 text-[10px] font-bold transition-colors">
+                              <span key={tId} onClick={() => {
+                                if (isProPreview) {
+                                  alert('⭐ Vista Previa Plan PRO: La asignación de mesas a mozos requiere el Plan PRO.');
+                                  return;
+                                }
+                                unassignTableFromWaiter(e.id, tId);
+                              }} className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded cursor-pointer hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 text-[10px] font-bold transition-colors">
                                 Mesa {t.number} ✕
                               </span>
                             );
@@ -849,10 +967,16 @@ export default function Settings() {
                           <select 
                             className="px-2 py-0.5 bg-card border border-dashed border-border rounded text-[10px] font-bold outline-none cursor-pointer"
                             value=""
-                            onChange={(ev) => assignTableToWaiter(e.id, ev.target.value)}
+                            onChange={(ev) => {
+                              if (isProPreview) {
+                                alert('⭐ Vista Previa Plan PRO: La asignación de mesas a mozos requiere el Plan PRO.');
+                                return;
+                              }
+                              assignTableToWaiter(e.id, ev.target.value);
+                            }}
                           >
                             <option value="" disabled>+ Asignar Mesa</option>
-                            {tables.filter(t => !e.assignedTables?.includes(t.id)).map(t => (
+                            {displayTables.filter(t => !e.assignedTables?.includes(t.id) && !e.assignedTables?.includes(String(t.number))).map(t => (
                               <option key={t.id} value={t.id}>Mesa {t.number}</option>
                             ))}
                           </select>
@@ -905,85 +1029,100 @@ export default function Settings() {
             </div>
           </div>
         </div>
+        </div>
       )}
 
       {/* Tab Content: Turno */}
       {activeTab === 'turno' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
-            <div>
-              <h3 className="font-bold text-xl flex items-center gap-2">
-                <PlayCircle className="w-5 h-5 text-primary" /> Apertura de Turno General
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Selecciona al personal que se encuentra presente en este turno.
-              </p>
-            </div>
-
-            {shift.isOpen ? (
-              <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-xl text-center space-y-3">
-                <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
-                <div>
-                  <h4 className="text-green-500 font-bold text-lg">Turno Abierto</h4>
-                  <p className="text-green-600/80 text-xs font-semibold">Iniciado a las {new Date(shift.openedAt!).toLocaleTimeString()}</p>
-                  <p className="text-green-600/80 text-xs mt-1">Personal activo: {shift.activeStaffIds.length} empleados.</p>
-                </div>
-                <button onClick={closeShift} className="px-4 py-2 mt-4 bg-red-500 text-white font-bold text-xs rounded-xl hover:bg-red-600 transition-colors">
-                  Cerrar Turno (Fin de Jornada)
-                </button>
+        <div className="space-y-6">
+          {renderProPreviewBanner('Apertura y Control de Turno')}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+              <div>
+                <h3 className="font-bold text-xl flex items-center gap-2">
+                  <PlayCircle className="w-5 h-5 text-primary" /> Apertura de Turno General
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Selecciona al personal que se encuentra presente en este turno.
+                </p>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Seleccionar Empleados Activos</span>
-                  {employees.map(e => (
-                    <label key={e.id} className="flex items-center gap-3 p-3 border border-border rounded-xl cursor-pointer hover:bg-muted/30 transition-colors">
-                      <input 
-                        type="checkbox" 
-                        className="w-4 h-4 accent-primary" 
-                        checked={selectedStaffIds.includes(e.id)}
-                        onChange={() => toggleStaffSelection(e.id)}
-                      />
-                      <span className="font-semibold text-sm">{e.firstName} {e.lastName} <span className="text-[10px] text-muted-foreground ml-2 uppercase">({e.role})</span></span>
-                    </label>
-                  ))}
-                </div>
-                
-                <button onClick={handleOpenShift} className="w-full py-3 bg-primary text-white font-bold text-sm rounded-xl hover:opacity-90 transition-opacity">
-                  Iniciar Turno con {selectedStaffIds.length} Empleados
-                </button>
-              </div>
-            )}
-          </div>
 
-          <div className="space-y-6">
-            <div className="bg-card border border-border rounded-2xl p-6">
-              <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
-                <ShieldCheck className="w-5 h-5 text-amber-500" /> Requisito: Caja Inicial
-              </h3>
-              
-              <p className="text-sm text-muted-foreground mb-4">
-                Para poder utilizar el Punto de Venta (POS) y cobrar órdenes, es obligatorio realizar la apertura de la caja registradora asignando un fondo inicial.
-              </p>
-
-              {(!currentSession || currentSession.status === 'closed') ? (
-                <div className="p-4 border border-red-500/20 bg-red-500/5 rounded-xl space-y-3">
-                  <p className="text-red-500 font-bold text-sm">⚠️ La caja se encuentra CERRADA.</p>
-                  <Link to="/cash" className="block w-full text-center py-2 bg-red-500 hover:bg-red-600 text-white font-bold text-xs rounded-lg transition-colors">
-                    Ir a Módulo de Caja para Abrir
-                  </Link>
+              {shift.isOpen ? (
+                <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-xl text-center space-y-3">
+                  <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
+                  <div>
+                    <h4 className="text-green-500 font-bold text-lg">Turno Abierto</h4>
+                    <p className="text-green-600/80 text-xs font-semibold">Iniciado a las {new Date(shift.openedAt!).toLocaleTimeString()}</p>
+                    <p className="text-green-600/80 text-xs mt-1">Personal activo: {shift.activeStaffIds.length} empleados.</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (isProPreview) {
+                        alert('⭐ Vista Previa Plan PRO: El cierre de turno de personal requiere el Plan PRO.');
+                        return;
+                      }
+                      closeShift();
+                    }} 
+                    className="px-4 py-2 mt-4 bg-red-500 text-white font-bold text-xs rounded-xl hover:bg-red-600 transition-colors"
+                  >
+                    Cerrar Turno (Fin de Jornada)
+                  </button>
                 </div>
               ) : (
-                <div className="p-4 border border-green-500/20 bg-green-500/5 rounded-xl flex items-center justify-between">
-                  <div>
-                    <p className="text-green-500 font-bold text-sm">✅ Caja ABIERTA.</p>
-                    <p className="text-green-600/80 text-xs">Lista para operar en el POS.</p>
+                <div className="space-y-4">
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                      Seleccionar Empleados Activos {isProPreview && employees.length === 0 && <span className="text-amber-500 text-[10px] lowercase font-normal">(modo prueba)</span>}
+                    </span>
+                    {displayEmployees.map(e => (
+                      <label key={e.id} className="flex items-center gap-3 p-3 border border-border rounded-xl cursor-pointer hover:bg-muted/30 transition-colors">
+                        <input 
+                          type="checkbox" 
+                          className="w-4 h-4 accent-primary" 
+                          checked={selectedStaffIds.includes(e.id)}
+                          onChange={() => toggleStaffSelection(e.id)}
+                        />
+                        <span className="font-semibold text-sm">{e.firstName} {e.lastName} <span className="text-[10px] text-muted-foreground ml-2 uppercase">({e.role})</span></span>
+                      </label>
+                    ))}
                   </div>
-                  <Link to="/cash" className="px-3 py-1.5 bg-green-500/10 text-green-600 hover:bg-green-500/20 font-bold text-xs rounded-lg transition-colors">
-                    Ver Caja
-                  </Link>
+                  
+                  <button onClick={handleOpenShift} className="w-full py-3 bg-primary text-white font-bold text-sm rounded-xl hover:opacity-90 transition-opacity">
+                    Iniciar Turno con {selectedStaffIds.length} Empleados
+                  </button>
                 </div>
               )}
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-card border border-border rounded-2xl p-6">
+                <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
+                  <ShieldCheck className="w-5 h-5 text-amber-500" /> Requisito: Caja Inicial
+                </h3>
+                
+                <p className="text-sm text-muted-foreground mb-4">
+                  Para poder utilizar el Punto de Venta (POS) y cobrar órdenes, es obligatorio realizar la apertura de la caja registradora asignando un fondo inicial.
+                </p>
+
+                {(!currentSession || currentSession.status === 'closed') ? (
+                  <div className="p-4 border border-red-500/20 bg-red-500/5 rounded-xl space-y-3">
+                    <p className="text-red-500 font-bold text-sm">⚠️ La caja se encuentra CERRADA.</p>
+                    <Link to="/cash" className="block w-full text-center py-2 bg-red-500 hover:bg-red-600 text-white font-bold text-xs rounded-lg transition-colors">
+                      Ir a Módulo de Caja para Abrir
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="p-4 border border-green-500/20 bg-green-500/5 rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-green-500 font-bold text-sm">✅ Caja ABIERTA.</p>
+                      <p className="text-green-600/80 text-xs">Lista para operar en el POS.</p>
+                    </div>
+                    <Link to="/cash" className="px-3 py-1.5 bg-green-500/10 text-green-600 hover:bg-green-500/20 font-bold text-xs rounded-lg transition-colors">
+                      Ver Caja
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -992,12 +1131,13 @@ export default function Settings() {
       {/* Tab Content: QR Codes */}
       {activeTab === 'qr' && (
         <div className="space-y-6">
+          {renderProPreviewBanner('Códigos QR de Mesas')}
           <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 text-sm text-amber-600">
             <strong>¿Cómo funciona?</strong> Cada mesa tiene un link único. El cliente escanea el QR → abre el menú en su celular → hace el pedido → llega directo a la cocina. No necesita instalar nada.
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tables.map(t => {
+            {displayTables.map(t => {
               const baseUrl = window.location.origin;
               const qrUrl = `${baseUrl}/mesa/${t.qr_token || 'table-' + t.number}`;
               return (
@@ -1323,6 +1463,7 @@ export default function Settings() {
       {/* Tab Content: Periféricos */}
       {activeTab === 'hardware' && (
         <div className="space-y-6">
+          {renderProPreviewBanner('Periféricos e Impresoras')}
           <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 text-sm text-amber-600">
             <strong>Nota:</strong> La impresión se realiza a través del diálogo nativo del sistema. Asegúrate de seleccionar la impresora correcta cada vez que imprimas, o configúrala como predeterminada en Windows. El ancho de papel aquí configura el formato del ticket.
           </div>
@@ -1372,7 +1513,13 @@ export default function Settings() {
                   <Printer className="w-3.5 h-3.5" /> Imprimir Prueba
                 </button>
                 <button
-                  onClick={() => saveHwConfig(hwConfig)}
+                  onClick={() => {
+                    if (isProPreview) {
+                      alert('⭐ Vista Previa Plan PRO: El guardado y sincronización de impresoras térmicas requiere el Plan PRO.');
+                      return;
+                    }
+                    saveHwConfig(hwConfig);
+                  }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors ${hwSaved ? 'bg-green-500 text-white' : 'bg-primary text-white hover:opacity-90'}`}
                 >
                   <Check className="w-3.5 h-3.5" /> {hwSaved ? 'Guardado' : 'Guardar'}
@@ -1424,7 +1571,13 @@ export default function Settings() {
                   <Printer className="w-3.5 h-3.5" /> Imprimir Prueba
                 </button>
                 <button
-                  onClick={() => saveHwConfig(hwConfig)}
+                  onClick={() => {
+                    if (isProPreview) {
+                      alert('⭐ Vista Previa Plan PRO: El guardado y sincronización de impresoras térmicas requiere el Plan PRO.');
+                      return;
+                    }
+                    saveHwConfig(hwConfig);
+                  }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors ${hwSaved ? 'bg-green-500 text-white' : 'bg-primary text-white hover:opacity-90'}`}
                 >
                   <Check className="w-3.5 h-3.5" /> {hwSaved ? 'Guardado' : 'Guardar'}
@@ -1446,7 +1599,13 @@ export default function Settings() {
                 </div>
               </div>
               <button
-                onClick={() => saveHwConfig({ ...hwConfig, scannerEnabled: !hwConfig.scannerEnabled })}
+                onClick={() => {
+                  if (isProPreview) {
+                    alert('⭐ Vista Previa Plan PRO: La habilitación de escáner USB/código QR físico requiere el Plan PRO.');
+                    return;
+                  }
+                  saveHwConfig({ ...hwConfig, scannerEnabled: !hwConfig.scannerEnabled });
+                }}
                 className="flex items-center gap-2"
                 title={hwConfig.scannerEnabled ? 'Desactivar escáner' : 'Activar escáner'}
               >

@@ -8,14 +8,49 @@ import {
   Clock
 } from 'lucide-react';
 import { useOrdersStore, AuditAlert } from '../../store/useOrdersStore';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function Audit() {
   const { auditAlerts, resolveAuditAlert } = useOrdersStore();
+  const { user } = useAuthStore();
+  const isProPreview = user?.planType === 'standard' || user?.planType === 'free';
   const [selectedFilter, setSelectedFilter] = useState<'todos' | 'rojo' | 'amarillo'>('todos');
 
+  const DEMO_AUDIT_ALERTS: AuditAlert[] = [
+    {
+      id: 'demo-aud-1',
+      time: '14:32',
+      user: 'Cajero Turno Mañana',
+      type: 'amarillo',
+      title: 'Diferencia en Arqueo de Efectivo',
+      amount: 450,
+      detail: 'El efectivo reportado en caja tiene un sobrante de $450 respecto al total facturado en comandas.'
+    },
+    {
+      id: 'demo-aud-2',
+      time: '13:15',
+      user: 'Cocina / Comandas',
+      type: 'rojo',
+      title: 'Plato despachado sin cobro registrado',
+      amount: 3200,
+      detail: 'Comanda #1038 despachada en pantalla de cocina KDS sin confirmación de pago previo en mostrador.'
+    },
+    {
+      id: 'demo-aud-3',
+      time: '12:00',
+      user: 'Sistema Automático',
+      type: 'verde',
+      title: 'Conciliación de Turno Matutino Exitosa',
+      amount: 48900,
+      detail: 'Cruce exitoso entre órdenes cerradas, stock descontado y total de cobros recibidos.'
+    }
+  ];
+
+  const actualAlerts = (auditAlerts.length === 0 && isProPreview) ? DEMO_AUDIT_ALERTS : auditAlerts;
+
   const filteredAlerts = selectedFilter === 'todos' 
-    ? auditAlerts 
-    : auditAlerts.filter((a: AuditAlert) => a.type === selectedFilter);
+    ? actualAlerts 
+    : actualAlerts.filter((a: AuditAlert) => a.type === selectedFilter);
 
 
   const getAlertIcon = (type: AuditAlert['type']) => {
@@ -41,6 +76,10 @@ export default function Audit() {
   };
 
   const handleResolveAlert = (id: string) => {
+    if (isProPreview) {
+      alert('⭐ Vista Previa Plan PRO: La conciliación y archivo de alertas de auditoría es una función del Plan PRO.');
+      return;
+    }
     resolveAuditAlert(id);
     alert('Alerta conciliada y archivada.');
   };
@@ -64,7 +103,7 @@ export default function Audit() {
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Todos ({auditAlerts.length})
+            Todos ({actualAlerts.length})
           </button>
           <button
             onClick={() => setSelectedFilter('rojo')}
@@ -74,7 +113,7 @@ export default function Audit() {
                 : 'text-muted-foreground hover:text-red-500'
             }`}
           >
-            Críticos ({auditAlerts.filter((a: AuditAlert) => a.type === 'rojo').length})
+            Críticos ({actualAlerts.filter((a: AuditAlert) => a.type === 'rojo').length})
           </button>
           <button
             onClick={() => setSelectedFilter('amarillo')}
@@ -84,7 +123,7 @@ export default function Audit() {
                 : 'text-muted-foreground hover:text-amber-500'
             }`}
           >
-            Advertencias ({auditAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length})
+            Advertencias ({actualAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length})
           </button>
 
         </div>
@@ -93,41 +132,43 @@ export default function Audit() {
       {/* Traffic light indicator widgets */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         
-        <div className={`p-4 rounded-2xl flex items-center justify-between ${auditAlerts.filter((a: AuditAlert) => a.type === 'verde').length > 0 ? 'bg-green-500/5 border border-green-500/20' : 'bg-muted border border-border'}`}>
+        <div className={`p-4 rounded-2xl flex items-center justify-between ${actualAlerts.filter((a: AuditAlert) => a.type === 'verde').length > 0 ? 'bg-green-500/5 border border-green-500/20' : 'bg-muted border border-border'}`}>
           <div className="space-y-1">
             <span className="text-[10px] text-muted-foreground uppercase font-bold">Eventos Positivos</span>
-            <p className={`font-extrabold text-sm ${auditAlerts.filter((a: AuditAlert) => a.type === 'verde').length > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
-              {auditAlerts.filter((a: AuditAlert) => a.type === 'verde').length} REGISTROS
+            <p className={`font-extrabold text-sm ${actualAlerts.filter((a: AuditAlert) => a.type === 'verde').length > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
+              {actualAlerts.filter((a: AuditAlert) => a.type === 'verde').length} REGISTROS
             </p>
           </div>
-          <CheckCircle className={`w-8 h-8 opacity-60 ${auditAlerts.filter((a: AuditAlert) => a.type === 'verde').length > 0 ? 'text-green-500' : 'text-muted-foreground'}`} />
+          <CheckCircle className={`w-8 h-8 opacity-60 ${actualAlerts.filter((a: AuditAlert) => a.type === 'verde').length > 0 ? 'text-green-500' : 'text-muted-foreground'}`} />
         </div>
 
-        <div className={`p-4 rounded-2xl flex items-center justify-between ${auditAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length > 0 ? 'bg-amber-500/5 border border-amber-500/20' : 'bg-muted border border-border'}`}>
+        <div className={`p-4 rounded-2xl flex items-center justify-between ${actualAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length > 0 ? 'bg-amber-500/5 border border-amber-500/20' : 'bg-muted border border-border'}`}>
           <div className="space-y-1">
             <span className="text-[10px] text-muted-foreground uppercase font-bold">Advertencias</span>
-            <p className={`font-extrabold text-sm ${auditAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
-              {auditAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length} ADVERTENCIAS
+            <p className={`font-extrabold text-sm ${actualAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+              {actualAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length} ADVERTENCIAS
             </p>
           </div>
-          <AlertTriangle className={`w-8 h-8 opacity-60 ${auditAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
+          <AlertTriangle className={`w-8 h-8 opacity-60 ${actualAlerts.filter((a: AuditAlert) => a.type === 'amarillo').length > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
         </div>
 
-        <div className={`p-4 rounded-2xl flex items-center justify-between ${auditAlerts.filter((a: AuditAlert) => a.type === 'rojo').length > 0 ? 'bg-red-500/5 border border-red-500/20' : 'bg-muted border border-border'}`}>
+        <div className={`p-4 rounded-2xl flex items-center justify-between ${actualAlerts.filter((a: AuditAlert) => a.type === 'rojo').length > 0 ? 'bg-red-500/5 border border-red-500/20' : 'bg-muted border border-border'}`}>
           <div className="space-y-1">
             <span className="text-[10px] text-muted-foreground uppercase font-bold">Críticos / Inconsistencias</span>
-            <p className={`font-extrabold text-sm ${auditAlerts.filter((a: AuditAlert) => a.type === 'rojo').length > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-              {auditAlerts.filter((a: AuditAlert) => a.type === 'rojo').length} CRÍTICOS
+            <p className={`font-extrabold text-sm ${actualAlerts.filter((a: AuditAlert) => a.type === 'rojo').length > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+              {actualAlerts.filter((a: AuditAlert) => a.type === 'rojo').length} CRÍTICOS
             </p>
           </div>
-          <XCircle className={`w-8 h-8 opacity-60 ${auditAlerts.filter((a: AuditAlert) => a.type === 'rojo').length > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+          <XCircle className={`w-8 h-8 opacity-60 ${actualAlerts.filter((a: AuditAlert) => a.type === 'rojo').length > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
         </div>
 
       </div>
 
       {/* Audit Inconsistencies logs */}
       <div className="space-y-4">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase">Alertas de Auditoría Activas</h3>
+        <h3 className="text-xs font-bold text-muted-foreground uppercase">
+          Alertas de Auditoría Activas {isProPreview && auditAlerts.length === 0 && <span className="text-amber-500 font-normal lowercase">(modo vista previa)</span>}
+        </h3>
 
         {filteredAlerts.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground bg-card border border-border rounded-2xl flex flex-col items-center justify-center space-y-2">

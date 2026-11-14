@@ -9,21 +9,68 @@ import {
 } from 'lucide-react';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 
 export default function Delivery() {
   const { orders, updateOrderStatus } = useOrdersStore();
   const { employees } = useSettingsStore();
+  const { user } = useAuthStore();
+  const isProPreview = user?.planType === 'standard' || user?.planType === 'free';
   const [selectedOrderForDriver, setSelectedOrderForDriver] = useState<Order | null>(null);
   
   // Real drivers from employees with role 'delivery'
   const realDrivers = employees.filter(e => e.role === 'delivery');
-  const [assignedDriverId, setAssignedDriverId] = useState(realDrivers[0]?.id || '');
+  const [assignedDriverId, setAssignedDriverId] = useState(realDrivers[0]?.id || 'demo-d-1');
 
   const deliveryOrders = orders.filter((o: Order) => 
     (o.orderType === 'delivery' || o.source === 'delivery' || o.orderType === 'llevar') &&
     o.status !== 'cancelado'
   );
+
+  const DEMO_DELIVERY_ORDERS: Order[] = [
+    {
+      id: 'demo-del-1',
+      orderNumber: '1042',
+      source: 'delivery',
+      status: 'preparando',
+      customerName: 'Martín Rodríguez',
+      customerPhone: '+54 9 261 456-7890',
+      customerAddress: 'Av. San Martín 1420, Dpto 4B',
+      orderType: 'delivery',
+      subtotal: 12500,
+      discount: 0,
+      tips: 500,
+      total: 13000,
+      paid: true,
+      createdAt: new Date().toISOString(),
+      items: []
+    },
+    {
+      id: 'demo-del-2',
+      orderNumber: '1045',
+      source: 'delivery',
+      status: 'pendiente',
+      customerName: 'Sofía Álvarez',
+      customerPhone: '+54 9 261 987-6543',
+      customerAddress: 'Calle Belgrano 530',
+      orderType: 'delivery',
+      subtotal: 8200,
+      discount: 0,
+      tips: 0,
+      total: 8200,
+      paid: false,
+      createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
+      items: []
+    }
+  ];
+
+  const DEMO_DRIVERS_LIST = [
+    { id: 'demo-d-1', name: 'Franco Martínez', status: 'libre' as const, ordersToday: 4 },
+    { id: 'demo-d-2', name: 'Lucas Benítez', status: 'ocupado' as const, ordersToday: 7 },
+  ];
+
+  const actualDeliveryOrders = (deliveryOrders.length === 0 && isProPreview) ? DEMO_DELIVERY_ORDERS : deliveryOrders;
 
   const driversList = realDrivers.map(d => {
     const ordersForDriver = deliveryOrders.filter(o => o.deliveryDriverId === d.id);
@@ -36,7 +83,14 @@ export default function Delivery() {
     };
   });
 
+  const actualDriversList = (driversList.length === 0 && isProPreview) ? DEMO_DRIVERS_LIST : driversList;
+
   const handleAssignDriver = async () => {
+    if (isProPreview) {
+      alert('⭐ Vista Previa Plan PRO: La asignación y despacho de pedidos a repartidores en tiempo real requiere el Plan PRO.');
+      setSelectedOrderForDriver(null);
+      return;
+    }
     if (selectedOrderForDriver && assignedDriverId) {
       // Optimistic local update
       useOrdersStore.getState().updateOrderLocally({
@@ -74,17 +128,17 @@ export default function Delivery() {
           <div className="flex justify-between items-center pb-2 border-b border-border">
             <h3 className="font-extrabold text-sm">Pedidos de Delivery Hoy</h3>
             <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black">
-              {deliveryOrders.length} envíos
+              {actualDeliveryOrders.length} envíos {isProPreview && deliveryOrders.length === 0 && '(Vista Previa)'}
             </span>
           </div>
 
-          {deliveryOrders.length === 0 ? (
+          {actualDeliveryOrders.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground bg-card border border-border rounded-2xl">
               No hay pedidos asignados a delivery para la fecha.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {deliveryOrders.map((order: Order) => (
+              {actualDeliveryOrders.map((order: Order) => (
                 <div key={order.id} className="p-5 bg-card border border-border rounded-2xl hover:border-primary/40 transition-all flex flex-col justify-between space-y-4 h-64">
                   <div className="space-y-2">
                     <div className="flex justify-between items-start">
@@ -149,11 +203,11 @@ export default function Delivery() {
           {/* Driver List status panel */}
           <div className="p-5 bg-card border border-border rounded-2xl space-y-4">
             <h3 className="font-extrabold text-sm flex items-center gap-2">
-              <Truck className="w-4 h-4 text-primary" /> Repartidores Activos
+              <Truck className="w-4 h-4 text-primary" /> Repartidores Activos {isProPreview && driversList.length === 0 && <span className="text-[10px] text-amber-500 font-normal">(modo prueba)</span>}
             </h3>
 
             <div className="space-y-3">
-              {driversList.map(driver => (
+              {actualDriversList.map(driver => (
                 <div key={driver.name} className="flex justify-between items-center p-3 rounded-xl bg-muted/40 border border-border/50 text-xs">
                   <div>
                     <h5 className="font-bold">{driver.name}</h5>
@@ -196,7 +250,7 @@ export default function Delivery() {
               className="w-full p-3 bg-muted border border-border rounded-xl focus:outline-none focus:ring-1 focus:ring-primary text-xs"
             >
               <option value="" disabled>-- Seleccione --</option>
-              {driversList.map(d => (
+              {actualDriversList.map(d => (
                 <option key={d.id} value={d.id}>{d.name} ({d.status})</option>
               ))}
             </select>
@@ -212,7 +266,7 @@ export default function Delivery() {
                 onClick={handleAssignDriver}
                 className="py-2.5 rounded-xl text-xs font-bold text-white gradient-bg hover:opacity-90 shadow-lg shadow-primary/20"
               >
-                Confirmar Despacho
+                {isProPreview ? 'Despachar (Vista Previa PRO)' : 'Confirmar Despacho'}
               </button>
             </div>
           </div>

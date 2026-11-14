@@ -13,12 +13,38 @@ import { useOrdersStore, Incident } from '../../store/useOrdersStore';
 export default function Incidents() {
   const { incidents, addIncident } = useOrdersStore();
   const { user } = useAuthStore();
+  const isProPreview = user?.planType === 'standard' || user?.planType === 'free';
   const [incidentTitle, setIncidentTitle] = useState('');
   const [incidentDesc, setIncidentDesc] = useState('');
   const [incidentType, setIncidentType] = useState<'incidente' | 'reclamo' | 'faltante' | 'rotura' | 'error_caja' | 'error_cocina' | 'error_sistema'>('rotura');
 
+  const DEMO_INCIDENTS: Incident[] = [
+    {
+      id: 'demo-inc-1',
+      user: 'Mozo Salón (Mesa 3)',
+      type: 'rotura',
+      description: 'Rotura de copa de vino: El comensal volteó la copa accidentalmente en el brindis.',
+      time: '14:15',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'demo-inc-2',
+      user: 'Cajera Turno Tarde',
+      type: 'reclamo',
+      description: 'Demora en Cocina: Pedido #1041 tuvo demora de 25 min en guarnición caliente.',
+      time: '13:50',
+      createdAt: new Date().toISOString()
+    }
+  ];
+
+  const actualIncidents = (incidents.length === 0 && isProPreview) ? DEMO_INCIDENTS : incidents;
+
   const handleRegisterIncident = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isProPreview) {
+      alert('⭐ Vista Previa Plan PRO: El registro y libro de novedades e incidencias del turno requiere el Plan PRO.');
+      return;
+    }
     if (!incidentTitle || !incidentDesc) return;
     
     addIncident({
@@ -93,7 +119,7 @@ export default function Incidents() {
                 type="submit"
                 className="w-full py-3 text-xs font-bold text-white gradient-bg hover:opacity-90 rounded-xl shadow-lg shadow-primary/20"
               >
-                Asentar Incidencia
+                {isProPreview ? 'Asentar Incidencia (Vista Previa PRO)' : 'Asentar Incidencia'}
               </button>
             </form>
           </div>
@@ -104,12 +130,12 @@ export default function Incidents() {
           <div className="flex justify-between items-center pb-2 border-b border-border">
             <h3 className="font-extrabold text-sm flex items-center gap-1.5"><History className="w-4 h-4 text-primary" /> Historial de Turno Actual</h3>
             <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black">
-              {incidents.length} novedades
+              {actualIncidents.length} novedades {isProPreview && incidents.length === 0 && '(modo prueba)'}
             </span>
           </div>
 
           <div className="space-y-3">
-            {incidents.map((inc: Incident) => (
+            {actualIncidents.map((inc: Incident) => (
               <div key={inc.id} className="p-4 bg-card border border-border rounded-2xl hover:border-primary/20 transition-all text-xs space-y-3 flex flex-col justify-between">
                 <div className="flex justify-between items-start">
                   <div className="flex gap-2.5">

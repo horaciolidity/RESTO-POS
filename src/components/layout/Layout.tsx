@@ -25,7 +25,7 @@ import {
   BellRing,
   MessageCircle,
   HelpCircle,
-  Crown as _Crown
+  Crown
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCashStore } from '../../store/useCashStore';
@@ -211,11 +211,11 @@ export default function Layout() {
     { path: '/history', label: 'Historial General', icon: History, roles: ['super_admin', 'admin', 'supervisor'] },
     { path: '/inventory#add', label: 'Agregar Producto', icon: PackagePlus, roles: ['super_admin', 'admin', 'supervisor'] },
     // — Middle section —
-    { path: '/tables', label: 'Salón & Mesas', icon: Layers, roles: ['super_admin', 'admin', 'mozo', 'supervisor'] },
-    { path: '/delivery', label: 'Delivery & Repartos', icon: Truck, roles: ['super_admin', 'admin', 'cajero', 'delivery', 'supervisor'] },
+    { path: '/tables', label: 'Salón & Mesas', icon: Layers, roles: ['super_admin', 'admin', 'mozo', 'supervisor'], pro: true },
+    { path: '/delivery', label: 'Delivery & Repartos', icon: Truck, roles: ['super_admin', 'admin', 'cajero', 'delivery', 'supervisor'], pro: true },
     { path: '/inventory', label: 'Inventario & Stock', icon: Package, roles: ['super_admin', 'admin', 'supervisor'] },
-    { path: '/audit', label: 'Centro Conciliación', icon: ShieldCheck, roles: ['super_admin', 'admin', 'supervisor'] },
-    { path: '/incidents', label: 'Incidencias & Turno', icon: AlertTriangle, roles: ['super_admin', 'admin', 'cajero', 'mozo', 'cocina', 'delivery', 'supervisor'] },
+    { path: '/audit', label: 'Centro Conciliación', icon: ShieldCheck, roles: ['super_admin', 'admin', 'supervisor'], pro: true },
+    { path: '/incidents', label: 'Incidencias & Turno', icon: AlertTriangle, roles: ['super_admin', 'admin', 'cajero', 'mozo', 'cocina', 'delivery', 'supervisor'], pro: true },
     // — Bottom —
     { path: '/settings', label: 'Ajustes & Personal', icon: Settings2, roles: ['super_admin', 'admin', 'supervisor'] },
   ];
@@ -299,6 +299,9 @@ export default function Layout() {
             {visibleMenuItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
+              const isProItem = (item as any).pro;
+              const showProBadge = isProItem && (user.planType === 'standard' || user.planType === 'free');
+
               return (
                 <Link
                   key={item.path}
@@ -309,8 +312,13 @@ export default function Layout() {
                       : 'hover:bg-muted hover:text-foreground text-muted-foreground'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                  {showProBadge && (
+                    <span className="ml-auto text-[9px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded font-black tracking-wider uppercase shrink-0">
+                      PRO
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -428,16 +436,38 @@ export default function Layout() {
 
         {/* Page body */}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
-          {((user.planType === 'standard' || user.planType === 'free') && ['/tables', '/delivery', '/audit', '/incidents'].includes(location.pathname)) ? (
-            <UpsellScreen featureName={
-              location.pathname === '/tables' ? 'Salón y Mesas' :
-              location.pathname === '/delivery' ? 'Módulo de Delivery' :
-              location.pathname === '/audit' ? 'Centro de Auditoría' :
-              'Gestión de Incidencias'
-            } />
-          ) : (
-            <Outlet />
+          {((user.planType === 'standard' || user.planType === 'free') && ['/tables', '/delivery', '/audit', '/incidents'].includes(location.pathname)) && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in duration-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-500 shrink-0">
+                  <Crown className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                      Vista Previa · Modo PRO
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Estás explorando <strong className="text-foreground">{
+                      location.pathname === '/tables' ? 'Salón y Mesas' :
+                      location.pathname === '/delivery' ? 'Módulo de Delivery' :
+                      location.pathname === '/audit' ? 'Centro de Auditoría' :
+                      'Gestión de Incidencias'
+                    }</strong> en modo vista previa. Las operaciones en vivo se habilitan en el <strong className="text-amber-500">Plan PRO</strong>.
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/settings#miplan"
+                className="shrink-0 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white text-xs font-bold rounded-xl shadow-md shadow-orange-500/20 transition-all flex items-center gap-1.5 whitespace-nowrap hover:scale-105"
+              >
+                <Crown className="w-3.5 h-3.5" />
+                Activar Plan PRO
+              </Link>
+            </div>
           )}
+          <Outlet />
         </main>
       </div>
 
@@ -493,6 +523,9 @@ export default function Layout() {
                 {visibleMenuItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.path;
+                  const isProItem = (item as any).pro;
+                  const showProBadge = isProItem && (user.planType === 'standard' || user.planType === 'free');
+
                   return (
                     <Link
                       key={item.path}
@@ -504,8 +537,13 @@ export default function Layout() {
                           : 'hover:bg-muted text-muted-foreground'
                       }`}
                     >
-                      <Icon className="w-4 h-4" />
-                      {item.label}
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="flex-1">{item.label}</span>
+                      {showProBadge && (
+                        <span className="text-[9px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded font-black tracking-wider uppercase shrink-0">
+                          PRO
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
