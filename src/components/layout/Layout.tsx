@@ -30,7 +30,6 @@ import {
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCashStore } from '../../store/useCashStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import UpsellScreen from '../common/UpsellScreen';
 import PlanStatusWidget from '../common/PlanStatusWidget';
 import TutorialRunner from '../tutorial/TutorialRunner';
 import { useOrdersStore, Order } from '../../store/useOrdersStore';

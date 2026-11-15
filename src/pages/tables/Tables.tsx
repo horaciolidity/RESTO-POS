@@ -277,7 +277,7 @@ export default function Tables() {
                       Activo
                     </span>
                   </div>
-                  {getTableOrder(activeTableDetail)?.items.map((item) => (
+                  {getTableOrder(activeTableDetail)?.items.map((item: any) => (
                     <div key={item.id} className="flex justify-between items-center">
                       <span>{item.product.name} x {item.quantity}</span>
                       <span className="font-bold">${(item.price * item.quantity).toFixed(2)}</span>
