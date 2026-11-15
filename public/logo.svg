@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <defs>
+    <linearGradient id="logoPrimaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6B35" />
+      <stop offset="50%" stop-color="#FF4500" />
+      <stop offset="100%" stop-color="#FFA000" />
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F3F4F6" />
+    </linearGradient>
+    <filter id="logoShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#FF4500" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Left: Icon Mark (160x160 centered at x=100, y=100) -->
+  <g transform="translate(20, 20)">
+    <!-- Base Squircle -->
+    <rect x="0" y="0" width="160" height="160" rx="40" fill="#0B0F19" />
+    <rect x="2" y="2" width="156" height="156" rx="38" fill="none" stroke="url(#logoPrimaryGrad)" stroke-width="3" opacity="0.8" />
+    
+    <!-- Steam / Aroma waves -->
+    <path d="M68 40 C66 32 72 26 70 18" stroke="url(#logoPrimaryGrad)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.8" />
+    <path d="M80 36 C78 28 84 22 82 14" stroke="#FFA000" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.9" />
+    <path d="M92 40 M92 40 C90 32 96 26 94 18" stroke="url(#logoPrimaryGrad)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.8" />
+
+    <!-- Cloche Top Ring -->
+    <circle cx="80" cy="46" r="7" fill="url(#logoPrimaryGrad)" filter="url(#logoShadow)" />
+    <circle cx="80" cy="46" r="4.5" fill="#0B0F19" />
+
+    <!-- Cloche Dome -->
+    <path d="M38 90 C38 58 58 51 80 51 C102 51 122 58 122 90 Z" fill="url(#logoPrimaryGrad)" filter="url(#logoShadow)" />
+    <path d="M48 85 C49 67 62 58 80 56 C70 58 54 67 52 85 Z" fill="#FFFFFF" opacity="0.35" />
+
+    <!-- Tray Edge Line -->
+    <rect x="32" y="93" width="96" height="7" rx="3.5" fill="#FFFFFF" />
+
+    <!-- Tray Base -->
+    <path d="M26 103 C26 101 28 100 30 100 L130 100 C132 100 134 101 134 103 C134 105 131 107 127 108 L33 108 C29 107 26 105 26 103 Z" fill="url(#logoPrimaryGrad)" />
+
+    <!-- Monogram 'R' -->
+    <g transform="translate(72, 62)">
+      <path d="M2 2 L2 20 M2 2 L10 2 C14 2 16 5 16 8 C16 11 14 14 10 14 L2 14 M9 14 L15 20" 
+            stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    </g>
+
+    <!-- Mini POS Pill -->
+    <rect x="60" y="118" width="40" height="15" rx="4" fill="url(#logoPrimaryGrad)" />
+    <text x="80" y="129" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="9" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">POS</text>
+  </g>
+
+  <!-- Right: Brand Typography -->
+  <!-- "ROTI" in bold crisp white -->
+  <text x="210" y="112" font-family="'Outfit', system-ui, -apple-system, sans-serif" font-weight="900" font-size="78" fill="url(#textGrad)" letter-spacing="-1">ROTI</text>
+
+  <!-- "POS" in radiant gastro gradient badge -->
+  <g transform="translate(425, 48)">
+    <rect x="0" y="0" width="165" height="72" rx="18" fill="url(#logoPrimaryGrad)" filter="url(#logoShadow)" />
+    <text x="82.5" y="52" font-family="'Outfit', system-ui, -apple-system, sans-serif" font-weight="900" font-size="52" fill="#FFFFFF" text-anchor="middle" letter-spacing="3">POS</text>
+  </g>
+
+  <!-- Spark icon on top of POS -->
+  <path d="M596 42 L600 52 L610 55 L600 58 L596 68 L592 58 L582 55 L592 52 Z" fill="#FFA000" />
+
+  <!-- Tagline / Subtitle -->
+  <text x="215" y="148" font-family="'Outfit', system-ui, -apple-system, sans-serif" font-weight="700" font-size="16" fill="#94A3B8" letter-spacing="6">SISTEMA POS GASTRONÓMICO</text>
+
+  <!-- Small accent dots -->
+  <circle cx="585" cy="143" r="3" fill="#FF512F" />
+  <text x="596" y="148" font-family="'Outfit', system-ui, -apple-system, sans-serif" font-weight="700" font-size="14" fill="#F59E0B" letter-spacing="2">CLOUD</text>
+</svg>
+

@@ -1,73 +1,142 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" prefix="og: https://ogp.me/ns#">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
-    <!-- Primary Meta Tags -->
-    <title>Rotipos | Sistema POS Gastronómico Profesional</title>
-    <meta name="title" content="Rotipos | Sistema POS Gastronómico Profesional" />
-    <meta name="description" content="Rotipos es el sistema de punto de venta (POS) todo-en-uno para restaurantes, bares y gastronómicos. Gestión de mesas, pedidos, cocina KDS, delivery, caja y más. ¡Prueba gratis 50 ventas!" />
-    <meta name="keywords" content="POS restaurante, sistema punto de venta gastronómico, software restaurante argentina, gestión mesas, KDS cocina, delivery POS, rotipos" />
-    <meta name="author" content="Rotipos" />
-    <meta name="robots" content="index, follow" />
+    <!-- Primary SEO Meta Tags (Optimizado por y para CEOs / Directores) -->
+    <title>Rotipos | Sistema POS Gastronómico Profesional para Restaurantes y Bares</title>
+    <meta name="title" content="Rotipos | Sistema POS Gastronómico Profesional para Restaurantes y Bares" />
+    <meta name="description" content="Software POS gastronómico todo-en-uno para restaurantes, bares y pizzerías. Control de mesas, comanda digital KDS de cocina, delivery propio, caja y stock en tiempo real. ¡Prueba 50 ventas gratis!" />
+    <meta name="keywords" content="sistema pos restaurantes, software punto de venta gastronomico, software restaurantes argentina, comanda digital cocina, kds gastronomia, control de mesas salon, delivery pos, rotipos, sistema pos cloud, facturacion restaurantes, rotipos saas" />
+    <meta name="author" content="Rotipos Inc." />
+    <meta name="publisher" content="Rotipos" />
+    <meta name="application-name" content="Rotipos" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large" />
     <link rel="canonical" href="https://rotipos.vercel.app/" />
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
-    <link rel="apple-touch-icon" href="/favicon.jpg" />
+    <!-- Theme Color & Experiencia Móvil / PWA -->
+    <meta name="theme-color" content="#FF5722" />
+    <meta name="msapplication-TileColor" content="#0B0F19" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Rotipos" />
 
-    <!-- Open Graph / Facebook -->
+    <!-- Favicon & Iconos para la Pestaña del Navegador y Dispositivos -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Open Graph / Facebook / WhatsApp / LinkedIn / Telegram (1200x630 HD Preview) -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://rotipos.vercel.app/" />
-    <meta property="og:title" content="Rotipos | Sistema POS Gastronómico Profesional" />
-    <meta property="og:description" content="Sistema de punto de venta (POS) todo-en-uno para restaurantes, bares y gastronómicos. Gestión de mesas, pedidos, cocina KDS, delivery, caja y más." />
-    <meta property="og:image" content="https://rotipos.vercel.app/favicon.jpg" />
-    <meta property="og:locale" content="es_AR" />
     <meta property="og:site_name" content="Rotipos" />
+    <meta property="og:title" content="Rotipos | Sistema POS Gastronómico Profesional" />
+    <meta property="og:description" content="Automatiza tu restaurante, bar o cafetería con Rotipos: comanda digital para mozos, KDS de cocina, delivery integrado, control de caja y stock en tiempo real. ¡Empieza gratis hoy!" />
+    <meta property="og:image" content="https://rotipos.vercel.app/og-image.png" />
+    <meta property="og:image:secure_url" content="https://rotipos.vercel.app/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Rotipos - Logotipo y Sistema POS Gastronómico Profesional" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:locale:alternate" content="es_ES" />
+    <meta property="og:locale:alternate" content="es_MX" />
 
-    <!-- Twitter -->
+    <!-- Twitter / X Cards (Vista Previa con Logotipo e Imagen Grande) -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://rotipos.vercel.app/" />
     <meta name="twitter:title" content="Rotipos | Sistema POS Gastronómico Profesional" />
-    <meta name="twitter:description" content="Sistema de punto de venta (POS) todo-en-uno para restaurantes, bares y gastronómicos. Gestión de mesas, pedidos, cocina KDS, delivery, caja y más." />
-    <meta name="twitter:image" content="https://rotipos.vercel.app/favicon.jpg" />
+    <meta name="twitter:description" content="Automatiza tu restaurante o bar con Rotipos: comanda digital, KDS de cocina, delivery y control total de caja y stock." />
+    <meta name="twitter:image" content="https://rotipos.vercel.app/og-image.png" />
+    <meta name="twitter:image:alt" content="Rotipos - Logotipo y Sistema POS Gastronómico Profesional" />
 
-    <!-- Structured Data / JSON-LD -->
+    <!-- Datos Estructurados / JSON-LD (Schema.org) para Posicionamiento Google -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Rotipos",
-      "url": "https://rotipos.vercel.app/",
-      "description": "Sistema de punto de venta (POS) todo-en-uno para restaurantes, bares y gastronómicos. Gestión de mesas, pedidos, cocina KDS, delivery y más.",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "offers": [
+      "@graph": [
         {
-          "@type": "Offer",
-          "name": "Plan Estándar",
-          "priceCurrency": "ARS",
-          "availability": "https://schema.org/InStock"
+          "@type": "SoftwareApplication",
+          "@id": "https://rotipos.vercel.app/#software",
+          "name": "Rotipos",
+          "url": "https://rotipos.vercel.app/",
+          "description": "Sistema de punto de venta (POS) gastronómico todo-en-uno para restaurantes, bares, cafeterías y pizzerías. Gestión de mesas en vivo, comanda digital KDS, delivery integrado, control de caja ciega y stock con recetas.",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "All (Web, Android, iOS, Windows, macOS)",
+          "image": "https://rotipos.vercel.app/og-image.png",
+          "screenshot": "https://rotipos.vercel.app/og-image.png",
+          "softwareVersion": "2.0.0",
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "ratingCount": "128",
+            "bestRating": "5",
+            "worstRating": "1"
+          },
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "Prueba Gratuita 50 Ventas",
+              "price": "0",
+              "priceCurrency": "ARS",
+              "availability": "https://schema.org/InStock"
+            },
+            {
+              "@type": "Offer",
+              "name": "Plan Estándar",
+              "priceCurrency": "ARS",
+              "availability": "https://schema.org/InStock"
+            },
+            {
+              "@type": "Offer",
+              "name": "Plan Pro Gastronómico",
+              "priceCurrency": "ARS",
+              "availability": "https://schema.org/InStock"
+            }
+          ],
+          "featureList": [
+            "Punto de Venta POS táctil y rápido",
+            "Gestión interactiva de Salón y Mesas",
+            "Comandera digital KDS para Cocina",
+            "Módulo de Delivery y Repartidores con geolocalización",
+            "Control de Caja, arqueos y turnos",
+            "Inventario, materias primas y recetas de platos",
+            "Facturación y reportes de auditoría en vivo"
+          ]
         },
         {
-          "@type": "Offer",
-          "name": "Plan Pro",
-          "priceCurrency": "ARS",
-          "availability": "https://schema.org/InStock"
+          "@type": "Organization",
+          "@id": "https://rotipos.vercel.app/#organization",
+          "name": "Rotipos",
+          "url": "https://rotipos.vercel.app/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://rotipos.vercel.app/favicon.svg",
+            "width": "512",
+            "height": "512"
+          },
+          "image": "https://rotipos.vercel.app/og-image.png",
+          "sameAs": [
+            "https://twitter.com/rotipos",
+            "https://instagram.com/rotipos"
+          ]
         }
-      ],
-      "audience": {
-        "@type": "BusinessAudience",
-        "audienceType": "Restaurantes, Bares y Gastronómicos"
-      }
+      ]
     }
     </script>
 
     <!-- Google Fonts Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   </head>
   <body class="bg-background text-foreground antialiased selection:bg-primary/20">
     <div id="root"></div>

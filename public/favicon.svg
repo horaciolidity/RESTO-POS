@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF512F" />
+      <stop offset="100%" stop-color="#DD2476" />
+    </linearGradient>
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6B35" />
+      <stop offset="50%" stop-color="#FF4500" />
+      <stop offset="100%" stop-color="#FFA000" />
+    </linearGradient>
+    <linearGradient id="metalGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F1F5F9" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#FF4500" flood-opacity="0.4" />
+    </filter>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Squircle Base with Deep Modern Dark Tone and Orange Glow Ring -->
+  <rect x="16" y="16" width="480" height="480" rx="120" fill="#0B0F19" />
+  <rect x="20" y="20" width="472" height="472" rx="116" fill="none" stroke="url(#primaryGrad)" stroke-width="8" opacity="0.85" />
+
+  <!-- Subtle Radial Glow in Center -->
+  <circle cx="256" cy="270" r="180" fill="url(#primaryGrad)" opacity="0.12" />
+
+  <!-- Decorative Spark / Speed Star (Top Right) -->
+  <path d="M380 110 L386 130 L406 136 L386 142 L380 162 L374 142 L354 136 L374 130 Z" fill="#FFA000" opacity="0.9" />
+
+  <!-- Steam / Aroma waves over Cloche -->
+  <path d="M220 135 C215 115 228 100 222 80" stroke="url(#primaryGrad)" stroke-width="8" stroke-linecap="round" fill="none" opacity="0.8" />
+  <path d="M256 125 C250 105 264 92 258 72" stroke="#FFA000" stroke-width="8" stroke-linecap="round" fill="none" opacity="0.9" />
+  <path d="M292 135 C287 115 300 100 294 80" stroke="url(#primaryGrad)" stroke-width="8" stroke-linecap="round" fill="none" opacity="0.8" />
+
+  <!-- Cloche Top Handle (Glow) -->
+  <circle cx="256" cy="155" r="22" fill="url(#primaryGrad)" filter="url(#glow)" />
+  <circle cx="256" cy="155" r="14" fill="#0B0F19" />
+
+  <!-- Cloche Dome -->
+  <path d="M120 285 C120 190 180 170 256 170 C332 170 392 190 392 285 Z" fill="url(#primaryGrad)" filter="url(#softShadow)" />
+
+  <!-- Cloche Gloss/Reflection Accent -->
+  <path d="M152 270 C155 215 195 190 256 186 C225 190 175 215 168 270 Z" fill="#FFFFFF" opacity="0.35" />
+
+  <!-- Central POS / Tech Accent: Digital Screen / Receipt Notch in Plate -->
+  <rect x="100" y="295" width="312" height="22" rx="11" fill="#FFFFFF" filter="url(#softShadow)" />
+  
+  <!-- Lower Plate / Serving Tray Base -->
+  <path d="M80 327 C80 322 85 318 92 318 L420 318 C427 318 432 322 432 327 C432 334 424 340 412 342 L100 342 C88 340 80 334 80 327 Z" fill="url(#primaryGrad)" />
+
+  <!-- Stylized Brand Monogram 'R' on Cloche Dome -->
+  <g transform="translate(230, 205)" filter="url(#softShadow)">
+    <path d="M8 8 L8 64 M8 8 L32 8 C44 8 50 16 50 25 C50 34 44 42 32 42 L8 42 M28 42 L48 64" 
+          stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </g>
+
+  <!-- Subtitle Badge at Bottom: 'POS' -->
+  <g transform="translate(196, 375)">
+    <rect x="0" y="0" width="120" height="38" rx="10" fill="url(#primaryGrad)" />
+    <text x="60" y="26" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="22" fill="#FFFFFF" text-anchor="middle" letter-spacing="4">POS</text>
+  </g>
+</svg>
+

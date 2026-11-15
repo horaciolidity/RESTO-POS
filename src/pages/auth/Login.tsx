@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Coffee, User, Lock, Mail, Building, Check, AlertCircle } from 'lucide-react';
+import { User, Lock, Mail, Building, Check, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { authService } from '../../services/authService';
 import { supabase } from '../../services/supabase';
@@ -100,10 +100,11 @@ export default function Login() {
         <div className="lg:col-span-6 space-y-6 flex flex-col justify-between">
           <div className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center shadow-lg">
-                <Coffee className="w-5 h-5 text-white" />
+              <img src="/favicon.svg" alt="ROTI POS Logo" className="w-11 h-11 rounded-2xl shadow-lg shrink-0" />
+              <div>
+                <span className="text-2xl font-extrabold tracking-tight text-white block leading-none">ROTI POS</span>
+                <span className="text-[10px] uppercase font-bold tracking-widest text-primary">Cloud Restaurant POS</span>
               </div>
-              <span className="text-2xl font-bold tracking-tight text-white">ROTI POS</span>
             </div>
             
             <div className="space-y-2">

@@ -378,9 +378,7 @@ export default function Layout() {
         <header className="flex items-center justify-between bg-card border-b border-border sticky top-0 z-30 px-4 lg:px-6 py-3 shrink-0">
           {/* Left: Logo + Business Name */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl gradient-bg flex items-center justify-center shadow-md shadow-primary/30 shrink-0">
-              <Coffee className="w-4 h-4 text-white animate-pulse" />
-            </div>
+            <img src="/favicon.svg" alt="ROTI POS" className="w-9 h-9 rounded-xl shadow-md shadow-primary/30 shrink-0 object-contain" />
             <div className="overflow-hidden">
               <h1 className="font-extrabold text-sm tracking-tight gradient-text truncate max-w-[160px] leading-tight">{businessName}</h1>
               <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">POS · Multi-Sucursal</span>
