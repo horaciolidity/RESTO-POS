@@ -6,7 +6,6 @@ import {
   Coffee,
   Truck,
   Package,
-  PackagePlus,
   Layers,
   ShieldCheck,
   Shield,
@@ -207,12 +206,11 @@ export default function Layout() {
     { path: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['super_admin', 'admin', 'supervisor'] },
     { path: '/pos', label: 'Punto de Venta (POS)', icon: Coffee, roles: ['super_admin', 'admin', 'cajero', 'supervisor'] },
     { path: '/cash', label: 'Caja & Arqueos', icon: Wallet, roles: ['super_admin', 'admin', 'cajero', 'supervisor'] },
+    { path: '/inventory', label: 'Inventario & Stock', icon: Package, roles: ['super_admin', 'admin', 'supervisor'] },
     { path: '/history', label: 'Historial General', icon: History, roles: ['super_admin', 'admin', 'supervisor'] },
-    { path: '/inventory#add', label: 'Agregar Producto', icon: PackagePlus, roles: ['super_admin', 'admin', 'supervisor'] },
     // — Middle section —
     { path: '/tables', label: 'Salón & Mesas', icon: Layers, roles: ['super_admin', 'admin', 'mozo', 'supervisor'], pro: true },
     { path: '/delivery', label: 'Delivery & Repartos', icon: Truck, roles: ['super_admin', 'admin', 'cajero', 'delivery', 'supervisor'], pro: true },
-    { path: '/inventory', label: 'Inventario & Stock', icon: Package, roles: ['super_admin', 'admin', 'supervisor'] },
     { path: '/audit', label: 'Centro Conciliación', icon: ShieldCheck, roles: ['super_admin', 'admin', 'supervisor'], pro: true },
     { path: '/incidents', label: 'Incidencias & Turno', icon: AlertTriangle, roles: ['super_admin', 'admin', 'cajero', 'mozo', 'cocina', 'delivery', 'supervisor'], pro: true },
     // — Bottom —
